@@ -1,5 +1,5 @@
 // ERSETZE DIESEN LINK durch deinen "Als CSV veröffentlicht"-Link aus Google Sheets!
-const SHEET_CSV_URL = 'DEIN_GOOGLE_SHEET_CSV_LINK_HIER';
+const SHEET_CSV_URL = https://docs.google.com/spreadsheets/d/e/2PACX-1vT9TePT4iPJvaEyKhGkd1W2ujLGjFp6Ua_qjgTsqcuGmaWYWBPvqW4Xy-ZUXTOtRi_Xs4nI9dJhvDyf/pub?output=csv;
 
 let allVideos = [];
 
