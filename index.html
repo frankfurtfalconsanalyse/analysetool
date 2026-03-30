@@ -3,40 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Falcons Video Analyse</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Frankfurt Falcons | Video Analyse</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --red: #e30613; --black: #000000; --dark: #1a1a1a; --gray: #2d2d2d; }
+        
+        body { font-family: 'Montserrat', sans-serif; background: var(--black); color: white; margin: 0; padding: 0; }
+        
+        header { background: var(--black); padding: 40px 20px; text-align: center; border-bottom: 5px solid var(--red); }
+        .logo { font-size: 2.5rem; font-weight: 900; letter-spacing: -1px; margin-bottom: 20px; }
+        
+        nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        nav button { 
+            background: transparent; border: 2px solid white; color: white; padding: 10px 20px; 
+            cursor: pointer; font-weight: bold; transition: 0.3s; text-transform: uppercase;
+        }
+        nav button:hover, nav button.active { background: var(--red); border-color: var(--red); }
+
+        .container { padding: 40px; max-width: 1200px; margin: 0 auto; }
+        
+        .video-grid { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+            gap: 25px; 
+        }
+
+        .card { 
+            background: var(--gray); border-radius: 12px; overflow: hidden; 
+            transition: 0.3s; cursor: pointer; border: 1px solid #444;
+            display: flex; flex-direction: column; height: 100%;
+        }
+        .card:hover { transform: translateY(-8px); border-color: var(--red); box-shadow: 0 10px 20px rgba(227, 6, 19, 0.3); }
+        .card-content { padding: 20px; }
+        .card-tag { color: var(--red); font-size: 0.8rem; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; }
+        .card-title { font-size: 1.2rem; margin: 0; line-height: 1.3; }
+
+        /* Modal Player */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); }
+        .modal-body { width: 90%; max-width: 1000px; margin: 50px auto; position: relative; }
+        .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; border: 2px solid var(--red); }
+        .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .close { color: white; font-size: 40px; position: absolute; right: 0; top: -50px; cursor: pointer; }
+
+        #loading { text-align: center; font-size: 1.5rem; margin-top: 50px; }
+        .error-msg { background: #3d0000; color: #ff9999; padding: 20px; border-radius: 8px; text-align: center; }
+    </style>
 </head>
 <body>
-    <header>
-        <div class="logo">FRANKFURT FALCONS</div>
-        <nav id="filter-nav">
-            <button onclick="filterVideos('All')">Alle</button>
-            <button onclick="filterVideos('Offense')">Offense</button>
-            <button onclick="filterVideos('Defense')">Defense</button>
-            <button onclick="filterVideos('Powerplay')">Powerplay</button>
-            <button onclick="filterVideos('Penalty Kill')">Penalty Kill</button>
-            <button onclick="filterVideos('Setplays')">Setplays</button>
-        </nav>
-    </header>
 
-    <main>
-        <div id="video-container" class="video-grid">
-            <p>Videos werden geladen...</p>
-        </div>
-    </main>
+<header>
+    <div class="logo">FRANKFURT FALCONS</div>
+    <nav id="filters">
+        <button onclick="filterContent('All')" class="active">Alle</button>
+        <button onclick="filterContent('Offense')">Offense</button>
+        <button onclick="filterContent('Defense')">Defense</button>
+        <button onclick="filterContent('Powerplay')">Powerplay</button>
+        <button onclick="filterContent('Penalty Kill')">Penalty Kill</button>
+        <button onclick="filterContent('Setplays')">Setplays</button>
+    </nav>
+</header>
 
-    <!-- Modal für den Player -->
-    <div id="videoModal" class="modal" onclick="closeModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <div class="iframe-container">
-                <iframe id="videoFrame" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-            </div>
-            <h2 id="modalTitle"></h2>
+<div class="container">
+    <div id="loading">Videos werden analysiert...</div>
+    <div id="video-grid" class="video-grid"></div>
+</div>
+
+<div id="modal" class="modal" onclick="closePlayer()">
+    <div class="modal-body" onclick="event.stopPropagation()">
+        <span class="close" onclick="closePlayer()">&times;</span>
+        <div class="video-wrapper">
+            <iframe id="player" src="" frameborder="0" allowfullscreen></iframe>
         </div>
+        <h2 id="modal-title" style="margin-top: 20px;"></h2>
     </div>
+</div>
 
-    <script src="script.js"></script>
+<script>
+    // Dein Link
+    const SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9TePT4iPJvaEyKhGkd1W2ujLGjFp6Ua_qjgTsqcuGmaWYWBPvqW4Xy-ZUXTOtRi_Xs4nI9dJhvDyf/pub?output=csv';
+
+    let videoData = [];
+
+    async function init() {
+        try {
+            // Wir nutzen Fetch, aber parsen die CSV manuell, da sie von deinem Link sauber kommt
+            const response = await fetch(SPREADSHEET_URL);
+            const text = await response.text();
+            
+            // CSV Parsing (einfach & robust)
+            const rows = text.split('\n').slice(1); // Header weg
+            videoData = rows.map(row => {
+                // Berücksichtigt Kommas in Anführungszeichen
+                const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                if(cols.length >= 3) {
+                    return {
+                        title: cols[0].replace(/"/g, '').trim(),
+                        category: cols[1].replace(/"/g, '').trim(),
+                        link: cols[2].replace(/"/g, '').trim()
+                    };
+                }
+                return null;
+            }).filter(item => item !== null);
+
+            document.getElementById('loading').style.display = 'none';
+            renderVideos(videoData);
+        } catch (e) {
+            console.error(e);
+            document.getElementById('loading').innerHTML = `
+                <div class="error-msg">
+                    <h3>Verbindung fehlgeschlagen</h3>
+                    <p>Die Videos konnten nicht geladen werden. Bitte prüfe, ob der Link in der Google Tabelle korrekt ist.</p>
+                </div>`;
+        }
+    }
+
+    function renderVideos(list) {
+        const grid = document.getElementById('video-grid');
+        grid.innerHTML = '';
+        
+        list.forEach(video => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = () => openPlayer(video);
+            card.innerHTML = `
+                <div class="card-content">
+                    <div class="card-tag">${video.category}</div>
+                    <h3 class="card-title">${video.title}</h3>
+                    <p style="color: #888; margin-top: 15px;">▶ Abspielen</p>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function filterContent(category) {
+        // Button Styling
+        document.querySelectorAll('nav button').forEach(btn => {
+            btn.classList.remove('active');
+            if(btn.innerText === category || (category === 'All' && btn.innerText === 'Alle')) btn.classList.add('active');
+        });
+
+        if (category === 'All') {
+            renderVideos(videoData);
+        } else {
+            const filtered = videoData.filter(v => v.category.toLowerCase() === category.toLowerCase());
+            renderVideos(filtered);
+        }
+    }
+
+    function openPlayer(video) {
+        let url = video.link;
+        // Google Drive Link Transformation
+        if (url.includes('drive.google.com')) {
+            url = url.replace('/view?usp=sharing', '/preview');
+            url = url.replace('/view?usp=drive_link', '/preview');
+        }
+        
+        document.getElementById('player').src = url;
+        document.getElementById('modal-title').innerText = video.title;
+        document.getElementById('modal').style.display = 'block';
+    }
+
+    function closePlayer() {
+        document.getElementById('modal').style.display = 'none';
+        document.getElementById('player').src = '';
+    }
+
+    init();
+</script>
+
 </body>
 </html>
