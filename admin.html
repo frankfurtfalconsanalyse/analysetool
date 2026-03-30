@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Falcons Admin | Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        body { font-family: 'Montserrat'; background: #121212; color: white; padding: 40px; }
+        .box { background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #e30613; margin-bottom: 20px; }
+        input, select, button { padding: 10px; margin: 5px; border-radius: 5px; border: none; }
+        input, select { background: #333; color: white; width: 250px; }
+        button { background: #e30613; color: white; font-weight: bold; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #333; padding: 10px; text-align: left; }
+        th { background: #e30613; }
+        .delete-btn { background: #444; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <h1>Falcons Admin Panel</h1>
+
+    <div class="box">
+        <h3>Neuen Clip hinzufügen</h3>
+        <input type="text" id="v-title" placeholder="Titel (z.B. Breakout Übung)">
+        <input type="text" id="v-link" placeholder="Google Drive Link">
+        <select id="v-category">
+            <option value="Offense">Offense</option>
+            <option value="Defense">Defense</option>
+            <option value="Powerplay">Powerplay</option>
+            <option value="Penalty Kill">Penalty Kill</option>
+            <option value="Setplays">Setplays</option>
+        </select>
+        <select id="v-position">
+            <option value="Angriff">Angriff</option>
+            <option value="Center">Center</option>
+            <option value="Verteidigung">Verteidigung</option>
+            <option value="Goalie">Goalie</option>
+            <option value="Alle">Alle Positionen</option>
+        </select>
+        <button onclick="addVideo()">Hinzufügen</button>
+    </div>
+
+    <table>
+        <thead><tr><th>Titel</th><th>Kat.</th><th>Pos.</th><th>Aktion</th></tr></thead>
+        <tbody id="video-list"></tbody>
+    </table>
+
+    <script>
+        // DEINE FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU",
+            authDomain: "falcons-video-tool.firebaseapp.com",
+            projectId: "falcons-video-tool",
+            storageBucket: "falcons-video-tool.firebasestorage.app",
+            messagingSenderId: "306689889088",
+            appId: "1:306689889088:web:ad525fecd0682069c6e0a5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        async function addVideo() {
+            const title = document.getElementById('v-title').value;
+            let link = document.getElementById('v-link').value;
+            const category = document.getElementById('v-category').value;
+            const position = document.getElementById('v-position').value;
+
+            if(!title || !link) return alert("Titel und Link fehlen!");
+
+            // Drive Link umwandeln für Player
+            if (link.includes('drive.google.com')) {
+                link = link.replace('/view?usp=sharing', '/preview').replace('/view?usp=drive_link', '/preview');
+            }
+
+            await db.collection("videos").add({
+                title, link, category, position, createdAt: new Date()
+            });
+            alert("Video gespeichert!");
+            location.reload();
+        }
+
+        async function loadVideos() {
+            const snap = await db.collection("videos").orderBy("createdAt", "desc").get();
+            const tbody = document.getElementById('video-list');
+            snap.forEach(doc => {
+                const v = doc.data();
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${v.title}</td>
+                        <td>${v.category}</td>
+                        <td>${v.position}</td>
+                        <td><button class="delete-btn" onclick="deleteVideo('${doc.id}')">Löschen</button></td>
+                    </tr>`;
+            });
+        }
+
+        async function deleteVideo(id) {
+            if(confirm("Löschen?")) {
+                await db.collection("videos").doc(id).delete();
+                location.reload();
+            }
+        }
+        loadVideos();
+    </script>
+</body>
+</html>
