@@ -2,35 +2,57 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Falcons Admin | Positionen</title>
+    <title>Falcons Admin | Positionen Management</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        body { font-family: 'Montserrat'; background: #121212; color: white; padding: 20px; }
-        h1 { border-bottom: 3px solid #e30613; padding-bottom: 10px; }
-        table { width: 100%; border-collapse: collapse; background: #1e1e1e; margin-top: 20px; }
+        :root { --red: #e30613; --black: #000; --dark: #121212; --gray: #1e1e1e; }
+        body { font-family: 'Montserrat', sans-serif; background: var(--dark); color: white; padding: 30px; margin: 0; }
+        h1 { border-bottom: 3px solid var(--red); padding-bottom: 10px; margin-bottom: 30px; }
+        
+        #status-container { text-align: center; padding: 50px; }
+        .error-box { background: #3d0000; border: 1px solid var(--red); color: #ff9999; padding: 20px; border-radius: 8px; display: none; margin-bottom: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; background: var(--gray); display: none; margin-top: 20px; border-radius: 8px; overflow: hidden; }
         th, td { border: 1px solid #333; padding: 12px; text-align: left; }
-        th { background: #e30613; position: sticky; top: 0; z-index: 10; }
-        select { padding: 8px; background: #333; color: white; border: 1px solid #e30613; border-radius: 4px; }
-        .btn-save { background: #e30613; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.3s; }
+        th { background: var(--red); color: white; text-transform: uppercase; font-size: 0.8rem; position: sticky; top: 0; }
+        
+        select { padding: 8px; background: #333; color: white; border: 1px solid var(--red); border-radius: 4px; width: 100%; }
+        .btn-save { background: var(--red); color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; transition: 0.3s; }
         .btn-save:disabled { background: #555; cursor: not-allowed; }
-        #loading-msg { padding: 50px; text-align: center; font-size: 1.2rem; color: #888; }
-        .status-ok { color: #28a745; font-size: 0.8rem; margin-top: 5px; display: block; }
+
+        /* Loader Animation */
+        .loader { border: 4px solid #333; border-top: 4px solid var(--red); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <h1>Falcons Video Management</h1>
-    <div id="loading-msg">Lade Daten von Google Drive und Firebase...</div>
 
-    <table id="admin-table" style="display:none;">
+    <h1>Falcons Video-Management</h1>
+
+    <!-- Fehlermeldung -->
+    <div id="error-box" class="error-box">
+        <h3>Fehler beim Laden der Daten</h3>
+        <p id="error-message"></p>
+        <button onclick="location.reload()" style="background:white; border:none; padding:10px; cursor:pointer; font-weight:bold;">Erneut versuchen</button>
+    </div>
+
+    <!-- Lade-Anzeige -->
+    <div id="status-container">
+        <div id="loader" class="loader"></div>
+        <p id="status-text">Daten von Google Drive und Firebase werden synchronisiert...</p>
+    </div>
+
+    <!-- Haupt-Tabelle -->
+    <table id="admin-table">
         <thead>
             <tr>
-                <th>Video Name</th>
-                <th>Ordner</th>
+                <th>Video Titel</th>
+                <th>Kategorie (Drive Ordner)</th>
                 <th>Position zuweisen</th>
-                <th>Aktion</th>
+                <th style="width: 150px;">Aktion</th>
             </tr>
         </thead>
         <tbody id="table-body"></tbody>
@@ -49,24 +71,36 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // DEINE GOOGLE APPS SCRIPT URL
+        // GOOGLE APPS SCRIPT URL
         const DRIVE_API_URL = 'https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec';
 
         async function init() {
+            const table = document.getElementById('admin-table');
+            const statusContainer = document.getElementById('status-container');
+            const errorBox = document.getElementById('error-box');
+            const errorMessage = document.getElementById('error-message');
+
             try {
-                // Gleichzeitig von Drive und Firebase laden
+                // 1. Daten laden (Drive und Firebase parallel)
                 const [driveRes, metaSnap] = await Promise.all([
-                    fetch(DRIVE_API_URL).then(r => r.json()),
-                    db.collection("video_metadata").get()
+                    fetch(DRIVE_API_URL).then(r => {
+                        if (!r.ok) throw new Error("Google Drive API nicht erreichbar.");
+                        return r.json();
+                    }),
+                    db.collection("video_metadata").get().catch(err => {
+                        throw new Error("Keine Verbindung zur Firebase Datenbank.");
+                    })
                 ]);
 
+                // 2. Metadaten-Map erstellen
                 let metaData = {};
                 metaSnap.forEach(doc => { metaData[doc.id] = doc.data().position; });
 
+                // 3. Tabelle befüllen
                 const tbody = document.getElementById('table-body');
-                
+                tbody.innerHTML = ""; // Leer machen
+
                 driveRes.forEach(v => {
-                    // File ID extrahieren
                     const fileId = v.link.split('/d/')[1].split('/')[0];
                     const currentPos = metaData[fileId] || "Nicht zugewiesen";
 
@@ -83,7 +117,6 @@
                                 <option value="Goalie" ${currentPos==='Goalie'?'selected':''}>Goalie</option>
                                 <option value="Alle" ${currentPos==='Alle'?'selected':''}>Alle Positionen</option>
                             </select>
-                            <div id="status-${fileId}"></div>
                         </td>
                         <td>
                             <button class="btn-save" id="btn-${fileId}" onclick="savePosition('${fileId}')">Speichern</button>
@@ -92,26 +125,27 @@
                     tbody.appendChild(tr);
                 });
 
-                document.getElementById('loading-msg').style.display = 'none';
-                document.getElementById('admin-table').style.display = 'table';
+                // UI umschalten
+                statusContainer.style.display = 'none';
+                table.style.display = 'table';
 
             } catch (e) {
-                document.getElementById('loading-msg').innerHTML = "Fehler beim Laden: " + e.message;
-                console.error(e);
+                // Fehler anzeigen
+                statusContainer.style.display = 'none';
+                errorBox.style.display = 'block';
+                errorMessage.innerText = e.message;
+                console.error("Init-Fehler:", e);
             }
         }
 
         async function savePosition(fileId) {
             const btn = document.getElementById('btn-' + fileId);
             const pos = document.getElementById('pos-' + fileId).value;
-            const statusDiv = document.getElementById('status-' + fileId);
 
             btn.innerText = "Wird gespeichert...";
             btn.disabled = true;
-            statusDiv.innerText = "";
 
             try {
-                // In Firebase speichern
                 await db.collection("video_metadata").doc(fileId).set({
                     position: pos,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -119,7 +153,6 @@
 
                 btn.innerText = "Gespeichert!";
                 btn.style.background = "#28a745";
-                statusDiv.innerHTML = "<span class="status-ok">✔ In Datenbank aktualisiert</span>";
 
                 setTimeout(() => {
                     btn.innerText = "Speichern";
@@ -128,12 +161,14 @@
                 }, 2000);
 
             } catch (e) {
-                alert("FEHLER: " + e.message + "\n\nPrüfe, ob die Firestore Database aktiviert ist und die Rules auf 'true' stehen.");
+                alert("Fehler beim Speichern: " + e.message);
                 btn.innerText = "Fehler!";
+                btn.style.background = "#e30613";
                 btn.disabled = false;
             }
         }
 
+        // Start
         init();
     </script>
 </body>
