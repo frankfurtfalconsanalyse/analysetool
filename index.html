@@ -3,67 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Frankfurt Falcons | Video Analyse</title>
+    <title>Frankfurt Falcons | Analyse Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
     <style>
-        :root { --red: #e30613; --black: #000000; --dark: #1a1a1a; --gray: #2d2d2d; }
-        
-        body { font-family: 'Montserrat', sans-serif; background: var(--black); color: white; margin: 0; padding: 0; }
-        
-        header { background: var(--black); padding: 40px 20px; text-align: center; border-bottom: 5px solid var(--red); }
-        .logo { font-size: 2.5rem; font-weight: 900; letter-spacing: -1px; margin-bottom: 20px; }
-        
-        nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
-        nav button { 
-            background: transparent; border: 2px solid white; color: white; padding: 10px 20px; 
-            cursor: pointer; font-weight: bold; transition: 0.3s; text-transform: uppercase;
+        :root { 
+            --red: #e30613; 
+            --black: #000000; 
+            --dark: #121212; 
+            --gray: #1e1e1e;
+            --light-gray: #2d2d2d;
         }
-        nav button:hover, nav button.active { background: var(--red); border-color: var(--red); }
-
-        .container { padding: 40px; max-width: 1200px; margin: 0 auto; }
         
+        body { font-family: 'Montserrat', sans-serif; background: var(--dark); color: white; margin: 0; padding: 0; overflow-x: hidden; }
+        
+        header { 
+            background: var(--black); padding: 20px; text-align: center; 
+            border-bottom: 4px solid var(--red); position: sticky; top: 0; z-index: 100;
+        }
+        .logo { font-size: 1.8rem; font-weight: 900; letter-spacing: 1px; cursor: pointer; }
+        .logo span { color: var(--red); }
+
+        nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 15px; }
+        nav button { 
+            background: var(--light-gray); border: none; color: #aaa; padding: 8px 16px; 
+            cursor: pointer; font-weight: bold; transition: 0.3s; text-transform: uppercase; font-size: 0.75rem;
+            border-radius: 4px;
+        }
+        nav button.active { background: var(--red); color: white; box-shadow: 0 0 10px rgba(227, 6, 19, 0.5); }
+
+        .container { padding: 30px; max-width: 1200px; margin: 0 auto; min-height: 80vh; }
+        
+        /* Startseiten-Grid (Kategorien) */
+        .category-lobby { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 20px; margin-top: 20px;
+        }
+        .cat-card {
+            background: var(--gray); height: 180px; display: flex; align-items: center; justify-content: center;
+            border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: 0.4s;
+            position: relative; overflow: hidden;
+        }
+        .cat-card:hover { border-color: var(--red); transform: scale(1.02); background: var(--light-gray); }
+        .cat-card h2 { font-size: 1.5rem; text-transform: uppercase; z-index: 2; pointer-events: none; }
+        .cat-card::after { 
+            content: ""; position: absolute; bottom: 0; right: 0; width: 50px; height: 50px; 
+            background: var(--red); opacity: 0.1; border-radius: 50% 0 0 0; transition: 0.4s;
+        }
+        .cat-card:hover::after { width: 100%; height: 100%; border-radius: 0; opacity: 0.05; }
+
+        /* Video Grid */
         .video-grid { 
             display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
-            gap: 25px; 
+            gap: 25px; display: none; /* initial versteckt */
         }
-
-        .card { 
-            background: var(--gray); border-radius: 12px; overflow: hidden; 
-            transition: 0.3s; cursor: pointer; border: 1px solid #444;
-            display: flex; flex-direction: column; height: 100%;
+        .video-card { 
+            background: var(--gray); border-radius: 10px; overflow: hidden; 
+            transition: 0.3s; cursor: pointer; border-left: 4px solid var(--red);
         }
-        .card:hover { transform: translateY(-8px); border-color: var(--red); box-shadow: 0 10px 20px rgba(227, 6, 19, 0.3); }
-        .card-content { padding: 20px; }
-        .card-tag { color: var(--red); font-size: 0.8rem; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; }
-        .card-title { font-size: 1.2rem; margin: 0; line-height: 1.3; }
+        .video-card:hover { background: var(--light-gray); transform: translateX(5px); }
+        .video-card-content { padding: 20px; }
+        .video-card-title { font-size: 1.1rem; margin: 0; }
+        
+        .back-btn { 
+            display: none; margin-bottom: 20px; background: none; border: 1px solid white; 
+            color: white; padding: 8px 15px; cursor: pointer; border-radius: 4px;
+        }
 
         /* Modal Player */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); }
-        .modal-body { width: 90%; max-width: 1000px; margin: 50px auto; position: relative; }
-        .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; border: 2px solid var(--red); }
+        .modal-body { width: 95%; max-width: 1000px; margin: 40px auto; position: relative; }
+        .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; border: 2px solid var(--red); background: #000; }
         .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        .close { color: white; font-size: 40px; position: absolute; right: 0; top: -50px; cursor: pointer; }
+        .close { color: white; font-size: 40px; position: absolute; right: 0; top: -55px; cursor: pointer; }
 
-        #loading { text-align: center; font-size: 1.5rem; margin-top: 50px; }
-        .error-msg { background: #3d0000; color: #ff9999; padding: 20px; border-radius: 8px; text-align: center; }
+        #status-msg { text-align: center; font-size: 1.2rem; margin-top: 50px; color: #888; }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="logo">FRANKFURT FALCONS</div>
-    <nav id="filters">
-        <button onclick="filterContent('All')" class="active">Alle</button>
-        <button onclick="filterContent('Offense')">Offense</button>
-        <button onclick="filterContent('Defense')">Defense</button>
-        <button onclick="filterContent('Powerplay')">Powerplay</button>
-        <button onclick="filterContent('Penalty Kill')">Penalty Kill</button>
-        <button onclick="filterContent('Setplays')">Setplays</button>
+    <div class="logo" onclick="showLobby()">FRANKFURT <span>FALCONS</span></div>
+    <nav id="navbar">
+        <button id="btn-All" onclick="filterContent('All')">Alle</button>
+        <button id="btn-Offense" onclick="filterContent('Offense')">Offense</button>
+        <button id="btn-Defense" onclick="filterContent('Defense')">Defense</button>
+        <button id="btn-Powerplay" onclick="filterContent('Powerplay')">Powerplay</button>
+        <button id="btn-Penalty Kill" onclick="filterContent('Penalty Kill')">Penalty Kill</button>
+        <button id="btn-Setplays" onclick="filterContent('Setplays')">Setplays</button>
     </nav>
 </header>
 
 <div class="container">
-    <div id="loading">Videos werden analysiert...</div>
+    <button class="back-btn" id="back-btn" onclick="showLobby()">← Zurück zur Übersicht</button>
+    <h1 id="view-title" style="text-transform: uppercase; margin-bottom: 30px;">Analyse Übersicht</h1>
+    
+    <div id="status-msg">Daten werden geladen...</div>
+
+    <!-- Lobby: Große Kacheln -->
+    <div id="lobby" class="category-lobby">
+        <div class="cat-card" onclick="filterContent('Offense')"><h2>Offense</h2></div>
+        <div class="cat-card" onclick="filterContent('Defense')"><h2>Defense</h2></div>
+        <div class="cat-card" onclick="filterContent('Powerplay')"><h2>Powerplay</h2></div>
+        <div class="cat-card" onclick="filterContent('Penalty Kill')"><h2>Penalty Kill</h2></div>
+        <div class="cat-card" onclick="filterContent('Setplays')"><h2>Setplays</h2></div>
+    </div>
+
+    <!-- Video Anzeige -->
     <div id="video-grid" class="video-grid"></div>
 </div>
 
@@ -73,26 +118,22 @@
         <div class="video-wrapper">
             <iframe id="player" src="" frameborder="0" allowfullscreen></iframe>
         </div>
-        <h2 id="modal-title" style="margin-top: 20px;"></h2>
+        <h2 id="modal-title" style="margin-top: 20px; font-size: 1.4rem;"></h2>
     </div>
 </div>
 
 <script>
-    // Dein Link
     const SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9TePT4iPJvaEyKhGkd1W2ujLGjFp6Ua_qjgTsqcuGmaWYWBPvqW4Xy-ZUXTOtRi_Xs4nI9dJhvDyf/pub?output=csv';
 
     let videoData = [];
 
     async function init() {
         try {
-            // Wir nutzen Fetch, aber parsen die CSV manuell, da sie von deinem Link sauber kommt
             const response = await fetch(SPREADSHEET_URL);
             const text = await response.text();
+            const rows = text.split('\n').slice(1);
             
-            // CSV Parsing (einfach & robust)
-            const rows = text.split('\n').slice(1); // Header weg
             videoData = rows.map(row => {
-                // Berücksichtigt Kommas in Anführungszeichen
                 const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if(cols.length >= 3) {
                     return {
@@ -104,15 +145,9 @@
                 return null;
             }).filter(item => item !== null);
 
-            document.getElementById('loading').style.display = 'none';
-            renderVideos(videoData);
+            document.getElementById('status-msg').style.display = 'none';
         } catch (e) {
-            console.error(e);
-            document.getElementById('loading').innerHTML = `
-                <div class="error-msg">
-                    <h3>Verbindung fehlgeschlagen</h3>
-                    <p>Die Videos konnten nicht geladen werden. Bitte prüfe, ob der Link in der Google Tabelle korrekt ist.</p>
-                </div>`;
+            document.getElementById('status-msg').innerHTML = "Fehler beim Laden der Daten.";
         }
     }
 
@@ -120,15 +155,18 @@
         const grid = document.getElementById('video-grid');
         grid.innerHTML = '';
         
+        if(list.length === 0) {
+            grid.innerHTML = '<p style="color: #666;">Keine Videos in dieser Kategorie gefunden.</p>';
+        }
+
         list.forEach(video => {
             const card = document.createElement('div');
-            card.className = 'card';
+            card.className = 'video-card';
             card.onclick = () => openPlayer(video);
             card.innerHTML = `
-                <div class="card-content">
-                    <div class="card-tag">${video.category}</div>
-                    <h3 class="card-title">${video.title}</h3>
-                    <p style="color: #888; margin-top: 15px;">▶ Abspielen</p>
+                <div class="video-card-content">
+                    <div style="color: var(--red); font-size: 0.7rem; font-weight: 900; margin-bottom: 5px; text-transform: uppercase;">${video.category}</div>
+                    <h3 class="video-card-title">${video.title}</h3>
                 </div>
             `;
             grid.appendChild(card);
@@ -136,28 +174,40 @@
     }
 
     function filterContent(category) {
-        // Button Styling
-        document.querySelectorAll('nav button').forEach(btn => {
-            btn.classList.remove('active');
-            if(btn.innerText === category || (category === 'All' && btn.innerText === 'Alle')) btn.classList.add('active');
-        });
+        // UI Umschalten
+        document.getElementById('lobby').style.display = 'none';
+        document.getElementById('video-grid').style.display = 'grid';
+        document.getElementById('back-btn').style.display = 'block';
+        document.getElementById('view-title').innerText = category === 'All' ? 'Alle Videos' : category;
 
+        // Nav-Buttons aktiv setzen
+        document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById('btn-' + category);
+        if(activeBtn) activeBtn.classList.add('active');
+
+        // Filtern
         if (category === 'All') {
             renderVideos(videoData);
         } else {
             const filtered = videoData.filter(v => v.category.toLowerCase() === category.toLowerCase());
             renderVideos(filtered);
         }
+        window.scrollTo(0,0);
+    }
+
+    function showLobby() {
+        document.getElementById('lobby').style.display = 'grid';
+        document.getElementById('video-grid').style.display = 'none';
+        document.getElementById('back-btn').style.display = 'none';
+        document.getElementById('view-title').innerText = 'Analyse Übersicht';
+        document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
     }
 
     function openPlayer(video) {
         let url = video.link;
-        // Google Drive Link Transformation
         if (url.includes('drive.google.com')) {
-            url = url.replace('/view?usp=sharing', '/preview');
-            url = url.replace('/view?usp=drive_link', '/preview');
+            url = url.replace('/view?usp=sharing', '/preview').replace('/view?usp=drive_link', '/preview');
         }
-        
         document.getElementById('player').src = url;
         document.getElementById('modal-title').innerText = video.title;
         document.getElementById('modal').style.display = 'block';
