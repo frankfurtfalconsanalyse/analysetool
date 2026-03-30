@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Frankfurt Falcons | Analyse Hub</title>
+    <title>Frankfurt Falcons | Video Analyse Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
     <style>
+        /* DESIGN-SYSTEM */
         :root { 
             --red: #e30613; 
             --black: #000000; 
@@ -20,87 +21,76 @@
             background: var(--black); padding: 20px; text-align: center; 
             border-bottom: 4px solid var(--red); position: sticky; top: 0; z-index: 100;
         }
-        .logo { font-size: 1.8rem; font-weight: 900; letter-spacing: 1px; cursor: pointer; }
+        .logo { font-size: 1.8rem; font-weight: 900; letter-spacing: 1px; cursor: pointer; text-transform: uppercase; }
         .logo span { color: var(--red); }
-
-        nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 15px; }
-        nav button { 
-            background: var(--light-gray); border: none; color: #aaa; padding: 8px 16px; 
-            cursor: pointer; font-weight: bold; transition: 0.3s; text-transform: uppercase; font-size: 0.75rem;
-            border-radius: 4px;
-        }
-        nav button.active { background: var(--red); color: white; box-shadow: 0 0 10px rgba(227, 6, 19, 0.5); }
 
         .container { padding: 30px; max-width: 1200px; margin: 0 auto; min-height: 80vh; }
         
-        /* Startseiten-Grid (Kategorien) */
+        /* STATUS & LOADER */
+        #status { text-align: center; padding: 50px; color: #888; font-size: 1.2rem; }
+        .loader { 
+            border: 4px solid #333; border-top: 4px solid var(--red); border-radius: 50%; 
+            width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; 
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* LOBBY: KATEGORIE-KACHELN */
         .category-lobby { 
             display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
             gap: 20px; margin-top: 20px;
         }
         .cat-card {
             background: var(--gray); height: 180px; display: flex; align-items: center; justify-content: center;
-            border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: 0.4s;
+            border-radius: 12px; cursor: pointer; border-bottom: 5px solid var(--red); transition: 0.3s;
             position: relative; overflow: hidden;
         }
-        .cat-card:hover { border-color: var(--red); transform: scale(1.02); background: var(--light-gray); }
+        .cat-card:hover { transform: translateY(-5px); background: var(--light-gray); border-color: white; }
         .cat-card h2 { font-size: 1.5rem; text-transform: uppercase; z-index: 2; pointer-events: none; }
-        .cat-card::after { 
-            content: ""; position: absolute; bottom: 0; right: 0; width: 50px; height: 50px; 
-            background: var(--red); opacity: 0.1; border-radius: 50% 0 0 0; transition: 0.4s;
-        }
-        .cat-card:hover::after { width: 100%; height: 100%; border-radius: 0; opacity: 0.05; }
 
-        /* Video Grid */
+        /* VIDEO GRID */
         .video-grid { 
             display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
-            gap: 25px; display: none; /* initial versteckt */
+            gap: 25px; display: none;
         }
         .video-card { 
-            background: var(--gray); border-radius: 10px; overflow: hidden; 
-            transition: 0.3s; cursor: pointer; border-left: 4px solid var(--red);
+            background: var(--gray); border-radius: 10px; padding: 20px; 
+            cursor: pointer; border-left: 5px solid var(--red); transition: 0.2s;
         }
         .video-card:hover { background: var(--light-gray); transform: translateX(5px); }
-        .video-card-content { padding: 20px; }
-        .video-card-title { font-size: 1.1rem; margin: 0; }
+        .video-card h3 { margin: 0; font-size: 1.1rem; line-height: 1.3; }
+        .play-hint { margin-top: 15px; color: var(--red); font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
         
         .back-btn { 
             display: none; margin-bottom: 20px; background: none; border: 1px solid white; 
-            color: white; padding: 8px 15px; cursor: pointer; border-radius: 4px;
+            color: white; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: bold;
         }
+        .back-btn:hover { background: white; color: black; }
 
-        /* Modal Player */
+        /* MODAL PLAYER */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); }
         .modal-body { width: 95%; max-width: 1000px; margin: 40px auto; position: relative; }
         .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; border: 2px solid var(--red); background: #000; }
         .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         .close { color: white; font-size: 40px; position: absolute; right: 0; top: -55px; cursor: pointer; }
-
-        #status-msg { text-align: center; font-size: 1.2rem; margin-top: 50px; color: #888; }
     </style>
 </head>
 <body>
 
 <header>
     <div class="logo" onclick="showLobby()">FRANKFURT <span>FALCONS</span></div>
-    <nav id="navbar">
-        <button id="btn-All" onclick="filterContent('All')">Alle</button>
-        <button id="btn-Offense" onclick="filterContent('Offense')">Offense</button>
-        <button id="btn-Defense" onclick="filterContent('Defense')">Defense</button>
-        <button id="btn-Powerplay" onclick="filterContent('Powerplay')">Powerplay</button>
-        <button id="btn-Penalty Kill" onclick="filterContent('Penalty Kill')">Penalty Kill</button>
-        <button id="btn-Setplays" onclick="filterContent('Setplays')">Setplays</button>
-    </nav>
 </header>
 
 <div class="container">
-    <button class="back-btn" id="back-btn" onclick="showLobby()">← Zurück zur Übersicht</button>
+    <button class="back-btn" id="back-btn" onclick="showLobby()">← ZURÜCK ZUR ÜBERSICHT</button>
     <h1 id="view-title" style="text-transform: uppercase; margin-bottom: 30px;">Analyse Übersicht</h1>
     
-    <div id="status-msg">Daten werden geladen...</div>
+    <div id="status">
+        Verbindung zu Google Drive wird hergestellt...
+        <div class="loader"></div>
+    </div>
 
-    <!-- Lobby: Große Kacheln -->
-    <div id="lobby" class="category-lobby">
+    <!-- Lobby -->
+    <div id="lobby" class="category-lobby" style="display:none;">
         <div class="cat-card" onclick="filterContent('Offense')"><h2>Offense</h2></div>
         <div class="cat-card" onclick="filterContent('Defense')"><h2>Defense</h2></div>
         <div class="cat-card" onclick="filterContent('Powerplay')"><h2>Powerplay</h2></div>
@@ -108,7 +98,7 @@
         <div class="cat-card" onclick="filterContent('Setplays')"><h2>Setplays</h2></div>
     </div>
 
-    <!-- Video Anzeige -->
+    <!-- Video Grid -->
     <div id="video-grid" class="video-grid"></div>
 </div>
 
@@ -123,31 +113,26 @@
 </div>
 
 <script>
-    const SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9TePT4iPJvaEyKhGkd1W2ujLGjFp6Ua_qjgTsqcuGmaWYWBPvqW4Xy-ZUXTOtRi_Xs4nI9dJhvDyf/pub?output=csv';
+    // DEINE LIVE-SCHNITTSTELLE
+    const API_URL = 'https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec';
 
     let videoData = [];
 
     async function init() {
         try {
-            const response = await fetch(SPREADSHEET_URL);
-            const text = await response.text();
-            const rows = text.split('\n').slice(1);
+            // Fetch die Daten von der Google Web App
+            const response = await fetch(API_URL);
+            videoData = await response.json();
             
-            videoData = rows.map(row => {
-                const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                if(cols.length >= 3) {
-                    return {
-                        title: cols[0].replace(/"/g, '').trim(),
-                        category: cols[1].replace(/"/g, '').trim(),
-                        link: cols[2].replace(/"/g, '').trim()
-                    };
-                }
-                return null;
-            }).filter(item => item !== null);
-
-            document.getElementById('status-msg').style.display = 'none';
+            if(videoData.error) {
+                document.getElementById('status').innerText = "Drive Fehler: " + videoData.error;
+            } else {
+                document.getElementById('status').style.display = 'none';
+                document.getElementById('lobby').style.display = 'grid';
+            }
         } catch (e) {
-            document.getElementById('status-msg').innerHTML = "Fehler beim Laden der Daten.";
+            console.error(e);
+            document.getElementById('status').innerText = "Verbindung zum Google Server fehlgeschlagen.";
         }
     }
 
@@ -156,7 +141,7 @@
         grid.innerHTML = '';
         
         if(list.length === 0) {
-            grid.innerHTML = '<p style="color: #666;">Keine Videos in dieser Kategorie gefunden.</p>';
+            grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666; padding: 40px;">Noch keine Videos in diesem Ordner hochgeladen.</p>';
         }
 
         list.forEach(video => {
@@ -164,34 +149,24 @@
             card.className = 'video-card';
             card.onclick = () => openPlayer(video);
             card.innerHTML = `
-                <div class="video-card-content">
-                    <div style="color: var(--red); font-size: 0.7rem; font-weight: 900; margin-bottom: 5px; text-transform: uppercase;">${video.category}</div>
-                    <h3 class="video-card-title">${video.title}</h3>
-                </div>
+                <div style="color: var(--red); font-size: 0.7rem; font-weight: 900; margin-bottom: 8px; text-transform: uppercase;">${video.category}</div>
+                <h3>${video.title}</h3>
+                <div class="play-hint">▶ Video ansehen</div>
             `;
             grid.appendChild(card);
         });
     }
 
     function filterContent(category) {
-        // UI Umschalten
+        // UI umschalten
         document.getElementById('lobby').style.display = 'none';
         document.getElementById('video-grid').style.display = 'grid';
         document.getElementById('back-btn').style.display = 'block';
-        document.getElementById('view-title').innerText = category === 'All' ? 'Alle Videos' : category;
+        document.getElementById('view-title').innerText = category;
 
-        // Nav-Buttons aktiv setzen
-        document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
-        const activeBtn = document.getElementById('btn-' + category);
-        if(activeBtn) activeBtn.classList.add('active');
-
-        // Filtern
-        if (category === 'All') {
-            renderVideos(videoData);
-        } else {
-            const filtered = videoData.filter(v => v.category.toLowerCase() === category.toLowerCase());
-            renderVideos(filtered);
-        }
+        // Daten filtern (Groß/Kleinschreibung ignorieren)
+        const filtered = videoData.filter(v => v.category.toLowerCase().trim() === category.toLowerCase().trim());
+        renderVideos(filtered);
         window.scrollTo(0,0);
     }
 
@@ -200,15 +175,10 @@
         document.getElementById('video-grid').style.display = 'none';
         document.getElementById('back-btn').style.display = 'none';
         document.getElementById('view-title').innerText = 'Analyse Übersicht';
-        document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
     }
 
     function openPlayer(video) {
-        let url = video.link;
-        if (url.includes('drive.google.com')) {
-            url = url.replace('/view?usp=sharing', '/preview').replace('/view?usp=drive_link', '/preview');
-        }
-        document.getElementById('player').src = url;
+        document.getElementById('player').src = video.link;
         document.getElementById('modal-title').innerText = video.title;
         document.getElementById('modal').style.display = 'block';
     }
@@ -218,6 +188,7 @@
         document.getElementById('player').src = '';
     }
 
+    // Start
     init();
 </script>
 
