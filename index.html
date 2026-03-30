@@ -4,35 +4,57 @@
     <meta charset="UTF-8">
     <title>Frankfurt Falcons | Video Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --black: #000; --dark: #121212; --gray: #1e1e1e; }
-        body { font-family: 'Montserrat', sans-serif; background: var(--dark); color: white; margin: 0; }
+        :root { --red: #e30613; --black: #000; --dark: #121212; --gray: #1e1e1e; --light: #2d2d2d; }
+        body { font-family: 'Montserrat', sans-serif; background: var(--dark); color: white; margin: 0; padding: 0; }
+        
         header { background: var(--black); padding: 20px; text-align: center; border-bottom: 4px solid var(--red); position: sticky; top: 0; z-index: 100; }
-        .logo { font-size: 1.8rem; font-weight: 900; cursor: pointer; }
+        .logo { font-size: 1.8rem; font-weight: 900; cursor: pointer; text-transform: uppercase; }
         .logo span { color: var(--red); }
+
         .container { padding: 30px; max-width: 1200px; margin: 0 auto; min-height: 80vh; }
         
-        .lobby { display: none; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-        .cat-card { background: var(--gray); height: 160px; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; border-bottom: 5px solid var(--red); transition: 0.3s; }
-        .cat-card:hover { transform: translateY(-5px); background: #2d2d2d; }
+        h2.section-title { text-transform: uppercase; font-size: 1rem; color: #888; margin-top: 40px; border-left: 3px solid var(--red); padding-left: 15px; }
 
-        .filter-bar { display: none; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
-        .filter-btn { background: #222; border: 1px solid #444; color: white; padding: 10px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 0.8rem; }
-        .filter-btn.active { background: var(--red); border-color: var(--red); }
+        /* LOBBY GRID */
+        .lobby { display: none; } /* Wird nach Laden eingeblendet */
+        .grid-lobby { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        
+        .card { 
+            background: var(--gray); height: 120px; display: flex; align-items: center; justify-content: center; 
+            border-radius: 10px; cursor: pointer; transition: 0.3s; border-bottom: 4px solid transparent; 
+        }
+        .card:hover { transform: translateY(-5px); background: var(--light); border-color: var(--red); }
+        .card h3 { font-size: 1.1rem; text-transform: uppercase; text-align: center; }
 
+        /* FILTER BAR (In der Video-Ansicht) */
+        .filter-controls { display: none; flex-direction: column; gap: 15px; margin-bottom: 30px; background: var(--gray); padding: 20px; border-radius: 10px; }
+        .filter-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .filter-label { font-size: 0.7rem; font-weight: bold; color: #888; width: 100%; text-transform: uppercase; }
+        
+        .f-btn { 
+            background: #333; border: 1px solid #444; color: white; padding: 8px 16px; 
+            border-radius: 20px; cursor: pointer; font-size: 0.75rem; font-weight: bold; transition: 0.2s;
+        }
+        .f-btn.active { background: var(--red); border-color: var(--red); }
+
+        /* VIDEO GRID */
         .video-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
         .video-card { background: var(--gray); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); transition: 0.2s; }
         .video-card:hover { transform: translateX(5px); background: #252525; }
-        .video-card small { color: var(--red); font-weight: bold; text-transform: uppercase; font-size: 0.7rem; }
+        .video-card small { color: var(--red); font-weight: bold; text-transform: uppercase; font-size: 0.7rem; display: block; margin-bottom: 5px; }
 
-        #main-loader { text-align: center; padding: 100px; font-size: 1.5rem; color: #888; }
+        #main-loader { text-align: center; padding: 100px; font-size: 1.2rem; color: #888; }
+        
+        /* MODAL */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; }
         .modal-body { width: 95%; max-width: 900px; margin: 40px auto; }
         .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; border: 2px solid var(--red); }
         .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        .close { color: white; font-size: 40px; float: right; cursor: pointer; }
+        .close { color: white; font-size: 40px; float: right; cursor: pointer; margin-top: -50px; }
     </style>
 </head>
 <body>
@@ -40,25 +62,50 @@
 <header><div class="logo" onclick="location.reload()">FRANKFURT <span>FALCONS</span></div></header>
 
 <div class="container">
-    <div id="main-loader">Lade Analyse-Daten...</div>
+    <div id="main-loader">Analyse-Daten werden geladen...</div>
 
-    <button id="back-btn" onclick="location.reload()" style="display:none; background:none; border:1px solid white; color:white; padding:10px; cursor:pointer; margin-bottom:20px;">← ÜBERSICHT</button>
-    <h1 id="view-title" style="display:none;">Analyse Übersicht</h1>
+    <!-- BACK BUTTON -->
+    <button id="back-btn" onclick="location.reload()" style="display:none; background:none; border:1px solid white; color:white; padding:10px 20px; cursor:pointer; margin-bottom:20px; font-weight:bold; border-radius:5px;">← ZURÜCK ZUR ÜBERSICHT</button>
 
-    <div id="filter-bar" class="filter-bar">
-        <button class="filter-btn active" onclick="applyFilter('Alle', this)">Alle</button>
-        <button class="filter-btn" onclick="applyFilter('Angriff', this)">Angriff</button>
-        <button class="filter-btn" onclick="applyFilter('Center', this)">Center</button>
-        <button class="filter-btn" onclick="applyFilter('Verteidigung', this)">Verteidigung</button>
-        <button class="filter-btn" onclick="applyFilter('Goalie', this)">Goalie</button>
+    <!-- LOBBY STARTSEITE -->
+    <div id="lobby" class="lobby">
+        <h2 class="section-title">Nach Spielsituation filtern</h2>
+        <div class="grid-lobby">
+            <div class="card" onclick="selectFromLobby('cat', 'Offense')"><h3>Offense</h3></div>
+            <div class="card" onclick="selectFromLobby('cat', 'Defense')"><h3>Defense</h3></div>
+            <div class="card" onclick="selectFromLobby('cat', 'Powerplay')"><h3>Powerplay</h3></div>
+            <div class="card" onclick="selectFromLobby('cat', 'Penalty Kill')"><h3>Penalty Kill</h3></div>
+            <div class="card" onclick="selectFromLobby('cat', 'Setplays')"><h3>Setplays</h3></div>
+        </div>
+
+        <h2 class="section-title">Nach Position filtern</h2>
+        <div class="grid-lobby">
+            <div class="card" onclick="selectFromLobby('pos', 'Angriff')"><h3>Angriff</h3></div>
+            <div class="card" onclick="selectFromLobby('pos', 'Center')"><h3>Center</h3></div>
+            <div class="card" onclick="selectFromLobby('pos', 'Verteidigung')"><h3>Verteidigung</h3></div>
+            <div class="card" onclick="selectFromLobby('pos', 'Goalie')"><h3>Goalie</h3></div>
+        </div>
     </div>
 
-    <div id="lobby" class="lobby">
-        <div class="cat-card" onclick="selectCat('Offense')"><h2>Offense</h2></div>
-        <div class="cat-card" onclick="selectCat('Defense')"><h2>Defense</h2></div>
-        <div class="cat-card" onclick="selectCat('Powerplay')"><h2>Powerplay</h2></div>
-        <div class="cat-card" onclick="selectCat('Penalty Kill')"><h2>Penalty Kill</h2></div>
-        <div class="cat-card" onclick="selectCat('Setplays')"><h2>Setplays</h2></div>
+    <!-- FILTER BAR (Erscheint in der Videoansicht) -->
+    <div id="filter-controls" class="filter-controls">
+        <div class="filter-group">
+            <div class="filter-label">Kategorie</div>
+            <button class="f-btn btn-cat" id="f-cat-All" onclick="setFilter('cat', 'All')">Alle</button>
+            <button class="f-btn btn-cat" id="f-cat-Offense" onclick="setFilter('cat', 'Offense')">Offense</button>
+            <button class="f-btn btn-cat" id="f-cat-Defense" onclick="setFilter('cat', 'Defense')">Defense</button>
+            <button class="f-btn btn-cat" id="f-cat-Powerplay" onclick="setFilter('cat', 'Powerplay')">Powerplay</button>
+            <button class="f-btn btn-cat" id="f-cat-Penalty Kill" onclick="setFilter('cat', 'Penalty Kill')">Penalty Kill</button>
+            <button class="f-btn btn-cat" id="f-cat-Setplays" onclick="setFilter('cat', 'Setplays')">Setplays</button>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Position</div>
+            <button class="f-btn btn-pos" id="f-pos-All" onclick="setFilter('pos', 'All')">Alle</button>
+            <button class="f-btn btn-pos" id="f-pos-Angriff" onclick="setFilter('pos', 'Angriff')">Angriff</button>
+            <button class="f-btn btn-pos" id="f-pos-Center" onclick="setFilter('pos', 'Center')">Center</button>
+            <button class="f-btn btn-pos" id="f-pos-Verteidigung" onclick="setFilter('pos', 'Verteidigung')">Verteidigung</button>
+            <button class="f-btn btn-pos" id="f-pos-Goalie" onclick="setFilter('pos', 'Goalie')">Goalie</button>
+        </div>
     </div>
 
     <div id="video-grid" class="video-grid"></div>
@@ -73,6 +120,7 @@
 </div>
 
 <script>
+    // FIREBASE CONFIG
     const firebaseConfig = {
         apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU",
         authDomain: "falcons-video-tool.firebaseapp.com",
@@ -86,7 +134,8 @@
     const DRIVE_API_URL = 'https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec';
 
     let videosWithMeta = [];
-    let currentCat = "";
+    let filterCat = "All";
+    let filterPos = "All";
 
     async function loadData() {
         try {
@@ -104,34 +153,53 @@
             });
 
             document.getElementById('main-loader').style.display = 'none';
-            document.getElementById('lobby').style.display = 'grid';
-            document.getElementById('view-title').style.display = 'block';
+            document.getElementById('lobby').style.display = 'block';
         } catch (e) {
-            document.getElementById('main-loader').innerText = "Verbindung fehlgeschlagen.";
+            document.getElementById('main-loader').innerText = "Fehler beim Laden der Cloud-Daten.";
         }
     }
 
-    function selectCat(cat) {
-        currentCat = cat;
+    // Von der Startseite aus wählen
+    function selectFromLobby(type, value) {
+        if(type === 'cat') { filterCat = value; filterPos = "All"; }
+        else { filterPos = value; filterCat = "All"; }
+        
         document.getElementById('lobby').style.display = 'none';
-        document.getElementById('filter-bar').style.display = 'flex';
+        document.getElementById('filter-controls').style.display = 'flex';
         document.getElementById('video-grid').style.display = 'grid';
         document.getElementById('back-btn').style.display = 'block';
-        document.getElementById('view-title').innerText = cat;
-        applyFilter('Alle');
+        
+        updateUI();
     }
 
-    function applyFilter(pos, btn) {
-        if(btn) {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        }
+    // Filter in der Videoansicht ändern
+    function setFilter(type, value) {
+        if(type === 'cat') filterCat = value;
+        if(type === 'pos') filterPos = value;
+        updateUI();
+    }
+
+    function updateUI() {
+        // Buttons aktiv setzen
+        document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('f-cat-' + filterCat).classList.add('active');
+        document.getElementById('f-pos-' + filterPos).classList.add('active');
+
+        // Filtern
+        const filtered = videosWithMeta.filter(v => {
+            const matchCat = (filterCat === "All" || v.category === filterCat);
+            const matchPos = (filterPos === "All" || v.position === filterPos || v.position === "Alle");
+            return matchCat && matchPos;
+        });
+
+        renderVideos(filtered);
+    }
+
+    function renderVideos(list) {
         const grid = document.getElementById('video-grid');
-        grid.innerHTML = "";
-        const filtered = videosWithMeta.filter(v => 
-            v.category === currentCat && (pos === 'Alle' || v.position === pos || v.position === 'Alle')
-        );
-        filtered.forEach(v => {
+        grid.innerHTML = list.length ? "" : "<p style='grid-column: 1/-1; text-align:center; padding:50px; color:#666;'>Keine Videos für diese Kombination gefunden.</p>";
+        
+        list.forEach(v => {
             const card = document.createElement('div');
             card.className = 'video-card';
             card.onclick = () => {
@@ -139,7 +207,7 @@
                 document.getElementById('modal-title').innerText = v.title;
                 document.getElementById('modal').style.display = 'block';
             };
-            card.innerHTML = `<small>${v.position}</small><h3>${v.title}</h3>`;
+            card.innerHTML = `<small>${v.category} | ${v.position}</small><h3>${v.title}</h3>`;
             grid.appendChild(card);
         });
     }
