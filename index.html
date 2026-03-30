@@ -10,37 +10,32 @@
         :root { --red: #e30613; --black: #000; --dark: #121212; --gray: #1e1e1e; }
         body { font-family: 'Montserrat', sans-serif; background: var(--dark); color: white; margin: 0; }
         header { background: var(--black); padding: 20px; text-align: center; border-bottom: 4px solid var(--red); position: sticky; top: 0; z-index: 100; }
-        .logo { font-size: 1.8rem; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        .logo { font-size: 1.8rem; font-weight: 900; cursor: pointer; }
         .logo span { color: var(--red); }
         .container { padding: 30px; max-width: 1200px; margin: 0 auto; min-height: 80vh; }
         
         /* Lobby */
         .lobby { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-        .cat-card {
-            background: var(--gray); height: 150px; display: flex; align-items: center; justify-content: center;
-            border-radius: 12px; cursor: pointer; border-bottom: 5px solid var(--red); transition: 0.3s;
-        }
+        .cat-card { background: var(--gray); height: 160px; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; border-bottom: 5px solid var(--red); transition: 0.3s; }
         .cat-card:hover { transform: translateY(-5px); background: #2d2d2d; }
 
-        /* Sub-Filter (Positionen) */
-        .pos-filter { display: none; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
-        .pos-btn { 
-            background: #222; border: 1px solid #444; color: white; padding: 8px 18px; 
-            border-radius: 20px; cursor: pointer; font-size: 0.8rem; font-weight: bold;
-        }
-        .pos-btn.active { background: var(--red); border-color: var(--red); }
+        /* Filter */
+        .filter-bar { display: none; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        .filter-btn { background: #222; border: 1px solid #444; color: white; padding: 10px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 0.8rem; }
+        .filter-btn.active { background: var(--red); border-color: var(--red); }
 
         /* Video Grid */
         .video-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-        .video-card { background: var(--gray); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 4px solid var(--red); transition: 0.2s; }
+        .video-card { background: var(--gray); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); transition: 0.2s; }
         .video-card:hover { transform: translateX(5px); background: #252525; }
+        .video-card small { color: var(--red); font-weight: bold; text-transform: uppercase; }
 
-        /* Modal */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); }
-        .modal-body { width: 95%; max-width: 900px; margin: 40px auto; position: relative; }
+        /* Modal Player */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; }
+        .modal-body { width: 95%; max-width: 900px; margin: 40px auto; }
         .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; border: 2px solid var(--red); }
         .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        .close { color: white; font-size: 40px; position: absolute; right: 0; top: -55px; cursor: pointer; }
+        .close { color: white; font-size: 40px; float: right; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -48,25 +43,23 @@
 <header><div class="logo" onclick="location.reload()">FRANKFURT <span>FALCONS</span></div></header>
 
 <div class="container">
-    <button id="back-btn" onclick="location.reload()" style="display:none; background:none; border:1px solid white; color:white; padding:10px; cursor:pointer; margin-bottom:20px;">← ZURÜCK</button>
+    <button id="back-btn" onclick="location.reload()" style="display:none; background:none; border:1px solid white; color:white; padding:10px; cursor:pointer; margin-bottom:20px;">← ÜBERSICHT</button>
     <h1 id="view-title">Analyse Übersicht</h1>
 
-    <!-- Positions Filter (erscheint nach Kat-Wahl) -->
-    <div id="pos-bar" class="pos-filter">
-        <button class="pos-btn active" onclick="filterByPos('Alle', this)">Alle Positionen</button>
-        <button class="pos-btn" onclick="filterByPos('Angriff', this)">Angriff</button>
-        <button class="pos-btn" onclick="filterByPos('Center', this)">Center</button>
-        <button class="pos-btn" onclick="filterByPos('Verteidigung', this)">Verteidigung</button>
-        <button class="pos-btn" onclick="filterByPos('Goalie', this)">Goalie</button>
+    <div id="filter-bar" class="filter-bar">
+        <button class="filter-btn active" onclick="applyFilter('Alle', this)">Alle</button>
+        <button class="filter-btn" onclick="applyFilter('Angriff', this)">Angriff</button>
+        <button class="filter-btn" onclick="applyFilter('Center', this)">Center</button>
+        <button class="filter-btn" onclick="applyFilter('Verteidigung', this)">Verteidigung</button>
+        <button class="filter-btn" onclick="applyFilter('Goalie', this)">Goalie</button>
     </div>
 
-    <!-- Lobby -->
     <div id="lobby" class="lobby">
-        <div class="cat-card" onclick="selectCategory('Offense')"><h2>Offense</h2></div>
-        <div class="cat-card" onclick="selectCategory('Defense')"><h2>Defense</h2></div>
-        <div class="cat-card" onclick="selectCategory('Powerplay')"><h2>Powerplay</h2></div>
-        <div class="cat-card" onclick="selectCategory('Penalty Kill')"><h2>Penalty Kill</h2></div>
-        <div class="cat-card" onclick="selectCategory('Setplays')"><h2>Setplays</h2></div>
+        <div class="cat-card" onclick="selectCat('Offense')"><h2>Offense</h2></div>
+        <div class="cat-card" onclick="selectCat('Defense')"><h2>Defense</h2></div>
+        <div class="cat-card" onclick="selectCat('Powerplay')"><h2>Powerplay</h2></div>
+        <div class="cat-card" onclick="selectCat('Penalty Kill')"><h2>Penalty Kill</h2></div>
+        <div class="cat-card" onclick="selectCat('Setplays')"><h2>Setplays</h2></div>
     </div>
 
     <div id="video-grid" class="video-grid"></div>
@@ -91,37 +84,53 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const DRIVE_API_URL = 'https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec';
 
-    let allVideos = [];
+    let rawVideos = [];
+    let videosWithMeta = [];
     let currentCat = "";
 
-    async function selectCategory(cat) {
+    async function loadAllData() {
+        const driveRes = await fetch(DRIVE_API_URL);
+        rawVideos = await driveRes.json();
+        
+        const metaSnap = await db.collection("video_metadata").get();
+        let metaData = {};
+        metaSnap.forEach(doc => { metaData[doc.id] = doc.data().position; });
+
+        videosWithMeta = rawVideos.map(v => {
+            const id = v.link.split('/d/')[1].split('/')[0];
+            return { ...v, position: metaData[id] || "Nicht zugewiesen" };
+        });
+    }
+
+    async function selectCat(cat) {
         currentCat = cat;
+        await loadAllData(); // Frische Daten laden
+        
         document.getElementById('lobby').style.display = 'none';
-        document.getElementById('pos-bar').style.display = 'flex';
+        document.getElementById('filter-bar').style.display = 'flex';
         document.getElementById('video-grid').style.display = 'grid';
         document.getElementById('back-btn').style.display = 'block';
         document.getElementById('view-title').innerText = cat;
-
-        const snap = await db.collection("videos").where("category", "==", cat).get();
-        allVideos = snap.docs.map(doc => doc.data());
-        filterByPos('Alle');
+        
+        applyFilter('Alle');
     }
 
-    function filterByPos(pos, btn) {
+    function applyFilter(pos, btn) {
         if(btn) {
-            document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
         }
 
-        const filtered = pos === 'Alle' ? allVideos : allVideos.filter(v => v.position === pos || v.position === 'Alle');
-        renderVideos(filtered);
-    }
-
-    function renderVideos(list) {
         const grid = document.getElementById('video-grid');
-        grid.innerHTML = list.length ? "" : "<p>Keine Videos gefunden.</p>";
-        list.forEach(v => {
+        grid.innerHTML = "";
+
+        const filtered = videosWithMeta.filter(v => 
+            v.category === currentCat && (pos === 'Alle' || v.position === pos || v.position === 'Alle')
+        );
+
+        filtered.forEach(v => {
             const card = document.createElement('div');
             card.className = 'video-card';
             card.onclick = () => {
@@ -129,15 +138,15 @@
                 document.getElementById('modal-title').innerText = v.title;
                 document.getElementById('modal').style.display = 'block';
             };
-            card.innerHTML = `<small style="color:var(--red)">${v.position}</small><h3>${v.title}</h3>`;
+            card.innerHTML = `<small>${v.position}</small><h3>${v.title}</h3><p>▶ Abspielen</p>`;
             grid.appendChild(card);
         });
     }
 
-    function closePlayer() {
-        document.getElementById('modal').style.display = 'none';
-        document.getElementById('player').src = '';
-    }
+    function closePlayer() { document.getElementById('modal').style.display = 'none'; document.getElementById('player').src = ''; }
+    
+    // Vorab laden
+    loadAllData();
 </script>
 </body>
 </html>
