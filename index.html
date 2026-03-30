@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Falcons Video Analyse</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="logo">FRANKFURT FALCONS</div>
+        <nav id="filter-nav">
+            <button onclick="filterVideos('All')">Alle</button>
+            <button onclick="filterVideos('Offense')">Offense</button>
+            <button onclick="filterVideos('Defense')">Defense</button>
+            <button onclick="filterVideos('Powerplay')">Powerplay</button>
+            <button onclick="filterVideos('Penalty Kill')">Penalty Kill</button>
+            <button onclick="filterVideos('Setplays')">Setplays</button>
+        </nav>
+    </header>
+
+    <main>
+        <div id="video-container" class="video-grid">
+            <p>Videos werden geladen...</p>
+        </div>
+    </main>
+
+    <!-- Modal für den Player -->
+    <div id="videoModal" class="modal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div class="iframe-container">
+                <iframe id="videoFrame" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+            </div>
+            <h2 id="modalTitle"></h2>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
