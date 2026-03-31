@@ -228,21 +228,43 @@
         listenForComments(id);
     }
 
-    function listenForComments(videoId) {
-        if(commentUnsubscribe) commentUnsubscribe();
-        commentUnsubscribe = db.collection("comments").where("videoId", "==", videoId).orderBy("createdAt", "asc")
-            .onSnapshot(snap => {
-                const display = document.getElementById('modal-comment-display');
-                display.innerHTML = snap.empty ? "<p style='color:#555; padding:10px;'>Kein Feedback vorhanden.</p>" : "";
-                snap.forEach(doc => {
-                    const c = doc.data();
-                    const text = c.text.replace(/(@\d+ \([^)]+\)|@\d+)/g, '<span class="mention">$1</span>');
-                    display.innerHTML += `<div class="mini-comment"><small>${c.author} (#${c.authorNr})</small><div>${text}</div></div>`;
+        // Suche in deiner index.html die Funktion listenForComments(videoId) und ersetze sie:
+        
+        function listenForComments(videoId) {
+            if(commentUnsubscribe) commentUnsubscribe();
+        
+            // Admin Check für das Modal
+            const isAdmin = (currentUser.nr === "22"); // Erweitere dies um die Admin-DB Abfrage falls nötig
+        
+            commentUnsubscribe = db.collection("comments")
+                .where("videoId", "==", videoId)
+                .onSnapshot((snapshot) => {
+                    const display = document.getElementById('modal-comment-display');
+                    display.innerHTML = "";
+                    
+                    let docs = [];
+                    snapshot.forEach(d => docs.push({id: d.id, ...d.data()}));
+                    docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+        
+                    docs.forEach(c => {
+                        const formattedText = c.text.replace(/(@\d+ | @\d+|@\d+\|[^ ]+)/g, '<span class="mention">$1</span>');
+                        const delBtn = (currentUser.nr === "22" || currentUser.nr === c.authorNr) 
+                            ? `<button onclick="deleteCommentFromHub('${c.id}')" style="background:none; border:none; color:#555; cursor:pointer; float:right;">🗑</button>` 
+                            : '';
+        
+                        display.innerHTML += `
+                            <div class="mini-comment">
+                                <small>${c.author} (#${c.authorNr}) ${delBtn}</small>
+                                <div>${formattedText}</div>
+                            </div>`;
+                    });
+                    display.scrollTop = display.scrollHeight;
                 });
-                display.scrollTop = display.scrollHeight;
-            });
-    }
-
+        }
+        
+        async function deleteCommentFromHub(cid) {
+            if(confirm("Löschen?")) await db.collection("comments").doc(cid).delete();
+        }
     function closePlayer() { document.getElementById('videoModal').style.display='none'; document.getElementById('modal-iframe').src=''; if(commentUnsubscribe) commentUnsubscribe(); }
 
     startHub();
