@@ -7,89 +7,95 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --panel: #1a1a1a; }
+        :root { --red: #e30613; --bg: #000; --panel: #111; --border: #333; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
 
-        /* Linke Seite: Video & Zeichenfläche */
-        .viewer-container { flex: 3; position: relative; display: flex; flex-direction: column; background: #000; }
+        /* VIDEO & ZEICHENBEREICH */
+        .main-view { flex: 3; display: flex; flex-direction: column; position: relative; border-right: 2px solid var(--border); }
         
-        .video-box { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; }
+        .video-wrapper { position: relative; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        #drive-iframe { width: 100%; height: 100%; border: none; z-index: 1; }
         
-        /* Das Video Iframe von Google Drive */
-        #drive-frame { width: 100%; height: 100%; border: none; z-index: 1; }
-
-        /* Das transparente Zeichen-Layer */
-        #draw-layer { 
+        #draw-canvas { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            z-index: 2; pointer-events: none; /* Klicks gehen standardmäßig durch zum Video */
+            z-index: 2; pointer-events: none; 
         }
-        #draw-layer.active { pointer-events: auto; cursor: crosshair; }
+        #draw-canvas.active { pointer-events: auto; cursor: crosshair; }
 
-        /* Toolbar unten */
-        .toolbar { background: var(--panel); padding: 15px; display: flex; gap: 10px; align-items: center; border-top: 2px solid #333; z-index: 10; }
+        /* TOOLBAR UNTEN */
+        .toolbar { background: var(--panel); padding: 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--border); z-index: 10; }
         .btn { 
-            background: #333; color: white; border: 1px solid #444; padding: 10px 18px; 
-            border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.8rem;
+            background: #222; border: 1px solid #444; color: white; padding: 10px 15px; 
+            border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.75rem; transition: 0.2s;
         }
-        .btn:hover { background: #444; border-color: var(--red); }
-        .btn.active { background: var(--red); border-color: white; box-shadow: 0 0 10px var(--red); }
-        .btn-hub { background: transparent; border: 1px solid white; margin-left: auto; }
+        .btn:hover { border-color: var(--red); }
+        .btn.active { background: var(--red); border-color: white; box-shadow: 0 0 15px var(--red); }
+        .btn-red { background: var(--red); border: none; }
 
-        /* Rechte Seite: Kommentare */
-        .sidebar { flex: 1; background: var(--panel); border-left: 2px solid #333; display: flex; flex-direction: column; min-width: 300px; }
+        /* SEITENLEISTE (KOMMENTARE) */
+        .sidebar { flex: 1; background: var(--panel); display: flex; flex-direction: column; min-width: 320px; }
         .sidebar-header { padding: 20px; border-bottom: 2px solid var(--red); }
-        .comment-input-area { padding: 15px; background: #111; }
-        .comment-input-area input { 
-            width: 100%; padding: 10px; background: #222; border: 1px solid #444; 
-            color: white; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;
-        }
-        .comment-list { flex: 1; overflow-y: auto; padding: 15px; }
-        .comment-item { 
-            background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 12px; 
-            border-left: 4px solid var(--red); position: relative;
-        }
-        .time-tag { color: var(--red); font-weight: bold; font-size: 0.75rem; margin-bottom: 5px; display: block; }
+        
+        .comment-section { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+        .comment-box { background: #1a1a1a; padding: 12px; border-radius: 8px; border-left: 4px solid var(--red); position: relative; }
+        .comment-box small { color: var(--red); font-weight: 900; font-size: 0.65rem; display: block; margin-bottom: 5px; }
+        .mention-tag { color: #5dade2; font-weight: bold; }
 
-        /* Zeichnen Farbe */
-        .color-dot { width: 20px; height: 20px; border-radius: 50%; display: inline-block; cursor: pointer; border: 2px solid white; }
+        .input-area { padding: 20px; background: #0a0a0a; border-top: 1px solid var(--border); }
+        textarea { 
+            width: 100%; height: 80px; background: #111; border: 1px solid #444; 
+            color: white; border-radius: 5px; padding: 10px; resize: none; font-family: 'Montserrat';
+            box-sizing: border-box; margin-bottom: 10px;
+        }
+
+        /* FARBEN */
+        .colors { display: flex; gap: 8px; margin-right: 15px; }
+        .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div class="viewer-container">
-        <div class="video-box">
-            <!-- Video wird hier geladen -->
-            <iframe id="drive-frame" src=""></iframe>
-            <canvas id="draw-layer"></canvas>
+    <div class="main-view">
+        <div class="video-wrapper">
+            <iframe id="drive-iframe" src=""></iframe>
+            <canvas id="draw-canvas"></canvas>
         </div>
 
         <div class="toolbar">
-            <button class="btn" id="btn-draw" onclick="toggleDrawing()">✏️ ZEICHNEN AKTIVIEREN</button>
-            <button class="btn" onclick="clearCanvas()">🗑 LÖSCHEN</button>
-            <div style="margin-left: 10px; display: flex; gap: 5px;">
-                <div class="color-dot" style="background: red;" onclick="changeColor('#e30613')"></div>
-                <div class="color-dot" style="background: yellow;" onclick="changeColor('#ffff00')"></div>
-                <div class="color-dot" style="background: cyan;" onclick="changeColor('#00ffff')"></div>
+            <div class="colors">
+                <div class="dot" style="background: red;" onclick="setPenColor('#e30613')"></div>
+                <div class="dot" style="background: yellow;" onclick="setPenColor('#ffff00')"></div>
+                <div class="dot" style="background: #00ff00;" onclick="setPenColor('#00ff00')"></div>
             </div>
-            <button class="btn btn-hub" onclick="window.location.href='index.html'">ZURÜCK ZUM HUB</button>
+            
+            <button class="btn" id="draw-toggle" onclick="toggleDrawing()">✏️ ZEICHNEN</button>
+            <button class="btn" onclick="clearCanvas()">🗑 LÖSCHEN</button>
+            
+            <div style="width: 2px; height: 30px; background: #333; margin: 0 10px;"></div>
+            
+            <button class="btn" onclick="alert('Nutze die Tasten 1, 2, 3 für Speed-Wechsel am Player')">ℹ️ SPEED</button>
+            <button class="btn btn-red" style="margin-left:auto;" onclick="location.href='index.html'">HUB BEENDEN</button>
         </div>
     </div>
 
     <div class="sidebar">
         <div class="sidebar-header">
-            <h3 id="clip-title" style="margin:0;">Lade Video...</h3>
+            <h3 id="video-title" style="margin:0; font-size: 1rem;">Analyse-Modus</h3>
+            <p id="user-info" style="font-size: 0.7rem; color: #888; margin: 5px 0 0 0;"></p>
         </div>
-        <div class="comment-input-area">
-            <input type="text" id="com-text" placeholder="Kommentar eingeben (@Spieler)...">
-            <button class="btn" style="width:100%;" onclick="saveComment()">KOMMENTAR ABSCHICKEN</button>
+
+        <div class="comment-section" id="comment-list">
+            <!-- Kommentare werden hier geladen -->
         </div>
-        <div class="comment-list" id="comment-list">
-            <!-- Kommentare werden geladen -->
+
+        <div class="input-area">
+            <textarea id="comment-input" placeholder="Feedback schreiben... Tippe @Nummer um Spieler zu markieren (z.B. @12)"></textarea>
+            <button class="btn btn-red" style="width:100%;" onclick="sendComment()">KOMMENTAR SENDEN</button>
         </div>
     </div>
 
     <script>
-        // FIREBASE CONFIG (Deine Daten)
+        // FIREBASE CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU",
             authDomain: "falcons-video-tool.firebaseapp.com",
@@ -101,88 +107,95 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // URL Parameter (Video ID)
+        // DATEN AUS URL & LOCALSTORAGE
         const params = new URLSearchParams(window.location.search);
         const videoId = params.get('id');
+        const user = JSON.parse(localStorage.getItem('falcons_user') || '{"name":"Gast","nr":"0"}');
 
-        // Video & Canvas Setup
-        const canvas = document.getElementById('draw-layer');
+        const canvas = document.getElementById('draw-canvas');
         const ctx = canvas.getContext('2d');
-        const frame = document.getElementById('drive-frame');
-        let drawing = false;
-        let paintColor = "#e30613";
+        const iframe = document.getElementById('drive-iframe');
+        let isDrawing = false;
+        let penColor = "#e30613";
 
-        // 1. VIDEO LADEN
-        function loadVideo() {
-            if(!videoId) {
-                alert("Kein Video ausgewählt!");
-                window.location.href='index.html';
-                return;
-            }
-            // Wir bauen den Link direkt aus der ID
-            frame.src = `https://drive.google.com/file/d/${videoId}/preview`;
+        // INITIALISIERUNG
+        function init() {
+            if(!videoId) return window.location.href='index.html';
             
-            // Titel abfragen (optional aus Firebase oder Drive Name)
-            document.getElementById('clip-title').innerText = "Analyse Modus";
+            iframe.src = `https://drive.google.com/file/d/${videoId}/preview`;
+            document.getElementById('user-info').innerText = `Angemeldet als: ${user.name} (#${user.nr})`;
+            
+            resizeCanvas();
             loadComments();
         }
 
-        // 2. ZEICHEN-LOGIK
+        // ZEICHEN-FUNKTIONEN
         function toggleDrawing() {
-            const btn = document.getElementById('btn-draw');
             canvas.classList.toggle('active');
-            
+            const btn = document.getElementById('draw-toggle');
+            btn.classList.toggle('active');
             if(canvas.classList.contains('active')) {
-                canvas.width = canvas.offsetWidth;
-                canvas.height = canvas.offsetHeight;
-                btn.innerText = "✏️ ZEICHNEN STOPPEN";
-                btn.classList.add('active');
-            } else {
-                btn.innerText = "✏️ ZEICHNEN AKTIVIEREN";
-                btn.classList.remove('active');
+                resizeCanvas();
+                alert("Zeichnen aktiviert! Video-Steuerung pausiert.");
             }
         }
 
-        canvas.addEventListener('mousedown', (e) => {
+        function setPenColor(color) { penColor = color; }
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+
+        canvas.onmousedown = (e) => {
             if(!canvas.classList.contains('active')) return;
-            drawing = true;
+            isDrawing = true;
             ctx.beginPath();
-            ctx.strokeStyle = paintColor;
+            ctx.strokeStyle = penColor;
             ctx.lineWidth = 4;
             ctx.lineCap = "round";
             const rect = canvas.getBoundingClientRect();
             ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-        });
+        };
 
-        canvas.addEventListener('mousemove', (e) => {
-            if(!drawing) return;
+        canvas.onmousemove = (e) => {
+            if(!isDrawing) return;
             const rect = canvas.getBoundingClientRect();
             ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
             ctx.stroke();
-        });
+        };
 
-        canvas.addEventListener('mouseup', () => drawing = false);
+        canvas.onmouseup = () => isDrawing = false;
+        function clearCanvas() { ctx.clearRect(0,0,canvas.width, canvas.height); }
 
-        function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-
-        function changeColor(c) {
-            paintColor = c;
-        }
-
-        // 3. KOMMENTAR-SYSTEM
-        async function saveComment() {
-            const text = document.getElementById('com-text').value;
+        // KOMMENTAR & MENTIONS
+        async function sendComment() {
+            const input = document.getElementById('comment-input');
+            const text = input.value;
             if(!text) return;
 
-            await db.collection("comments").add({
-                videoId: videoId,
-                text: text,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            document.getElementById('com-text').value = "";
-            loadComments();
+            // Suche @Nummer (z.B. @12)
+            const mentionRegex = /@(\d+)/g;
+            let mentions = [];
+            let match;
+            while ((match = mentionRegex.exec(text)) !== null) {
+                mentions.push(match[1]); 
+            }
+
+            try {
+                await db.collection("comments").add({
+                    videoId: videoId,
+                    text: text,
+                    author: user.name,
+                    authorNr: user.nr,
+                    mentions: mentions,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                input.value = "";
+                loadComments();
+            } catch (e) {
+                alert("Fehler beim Senden: " + e.message);
+            }
         }
 
         async function loadComments() {
@@ -193,25 +206,24 @@
             
             const list = document.getElementById('comment-list');
             list.innerHTML = "";
+            
             snap.forEach(doc => {
                 const c = doc.data();
+                // Formatiere Text: @12 hervorheben
+                const formattedText = c.text.replace(/@(\d+)/g, '<span class="mention-tag">@$1</span>');
+                
                 const div = document.createElement('div');
-                div.className = "comment-item";
+                div.className = "comment-box";
                 div.innerHTML = `
-                    <small class="time-tag">HINWEIS</small>
-                    <div style="font-size:0.9rem;">${c.text}</div>
+                    <small>${c.author} (#${c.authorNr})</small>
+                    <div style="font-size:0.85rem;">${formattedText}</div>
                 `;
                 list.appendChild(div);
             });
         }
 
-        // Init
-        window.onload = loadVideo;
-        window.onresize = () => {
-            // Bei Resize Canvas anpassen ohne Zeichnung zu verlieren (einfachheitshalber hier Reset)
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
-        };
+        window.onresize = resizeCanvas;
+        window.onload = init;
     </script>
 </body>
 </html>
