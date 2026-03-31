@@ -3,59 +3,81 @@
 <head>
     <meta charset="UTF-8"><title>Falcons Pro Analyse | Editor</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --panel: #1a1a1a; --border: #333; }
+        :root { --red: #e30613; --bg: #0d0d0d; --panel: #1a1a1a; --border: #333; --text-gray: #aaaaaa; --mention-blue: #5dade2; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
 
+        /* VIDEO AREA */
         .viewer-container { flex: 3; position: relative; display: flex; flex-direction: column; background: #000; }
         .video-box { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; }
-        #drive-frame { width: 100%; height: 100%; border: none; z-index: 1; }
+        iframe { width: 100%; height: 100%; border: none; z-index: 1; }
+        
+        /* ZEICHEN LAYER */
         #draw-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
         #draw-layer.active { pointer-events: auto; cursor: crosshair; }
 
+        /* TOOLBAR */
         .toolbar { background: var(--panel); padding: 15px; display: flex; gap: 10px; align-items: center; border-top: 2px solid var(--border); z-index: 10; }
-        .btn { background: #333; color: white; border: 1px solid #444; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.8rem; }
+        .btn { background: #333; color: white; border: 1px solid #444; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.8rem; transition: 0.2s; }
+        .btn:hover { border-color: var(--red); }
         .btn.active { background: var(--red); border-color: white; }
+        .btn-hub { background: transparent; border: 1px solid white; margin-left: auto; }
 
+        /* SIDEBAR */
         .sidebar { flex: 1; background: var(--panel); border-left: 2px solid var(--border); display: flex; flex-direction: column; min-width: 350px; }
         .sidebar-header { padding: 20px; border-bottom: 2px solid var(--red); background: #000; }
         
-        .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #111; }
-        .comment-item { background: #252525; padding: 12px; border-radius: 8px; border-left: 4px solid var(--red); position: relative; }
-        .comment-meta { font-size: 0.7rem; color: var(--red); font-weight: 900; margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; background: #111; }
+        .comment-item { background: #1e1e1e; padding: 15px; border-radius: 8px; border-left: 4px solid var(--red); position: relative; line-height: 1.5; }
         
-        /* HIER: Markierung für den ganzen Namen */
-        .mention { color: #5dade2; font-weight: bold; background: rgba(93, 173, 226, 0.1); padding: 2px 4px; border-radius: 3px; }
+        .comment-meta { font-size: 0.65rem; color: var(--red); font-weight: 900; margin-bottom: 8px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
         
-        .delete-btn { background: none; border: none; color: #555; cursor: pointer; font-size: 1rem; }
+        /* TEXTFARBEN */
+        .comment-text { font-size: 0.9rem; color: var(--text-gray); } /* Standardtext ist GRAU */
+        .mention { color: var(--mention-blue) !important; font-weight: bold; } /* Mentions sind BLAU */
+        
+        .delete-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 1rem; }
         .delete-btn:hover { color: var(--red); }
 
         .input-area { padding: 15px; background: #000; border-top: 1px solid var(--border); }
         textarea { width: 100%; height: 80px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 10px; resize: none; font-family: 'Montserrat'; box-sizing: border-box; }
+        
+        .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; transition: 0.2s; }
+        .color-dot:hover { transform: scale(1.2); }
     </style>
 </head>
 <body>
 
     <div class="viewer-container">
         <div class="video-box">
-            <iframe id="drive-frame" src=""></iframe>
+            <iframe id="video-frame" src="" allow="autoplay; fullscreen"></iframe>
             <canvas id="draw-layer"></canvas>
         </div>
         <div class="toolbar">
-            <button class="btn" id="btn-draw" onclick="toggleDrawing()">✏️ ZEICHNEN</button>
+            <button class="btn" id="btn-draw" onclick="toggleDrawing()">✏️ ZEICHNEN MODUS</button>
             <button class="btn" onclick="clearCanvas()">🗑 LÖSCHEN</button>
-            <button class="btn" onclick="window.location.href='index.html'" style="margin-left:auto;">ZURÜCK</button>
+            <div style="display: flex; gap: 8px; margin-left: 10px;">
+                <div class="color-dot" style="background: #e30613;" onclick="changeColor('#e30613')"></div>
+                <div class="color-dot" style="background: #ffff00;" onclick="changeColor('#ffff00')"></div>
+                <div class="color-dot" style="background: #00ffff;" onclick="changeColor('#00ffff')"></div>
+            </div>
+            <button class="btn btn-hub" onclick="window.location.href='index.html'">ZURÜCK ZUM HUB</button>
         </div>
     </div>
 
     <div class="sidebar">
-        <div class="sidebar-header"><h3 style="margin:0;">FEEDBACK</h3></div>
-        <div class="comment-list" id="comment-display"></div>
+        <div class="sidebar-header"><h3 style="margin:0; letter-spacing: 1px;">ANALYSE FEEDBACK</h3></div>
+        
+        <div class="comment-list" id="comment-display">
+            <!-- Kommentare laden hier -->
+        </div>
+
         <div class="input-area">
-            <textarea id="com-input" placeholder="Feedback @Nr (z.B. @19)"></textarea>
-            <button class="btn" style="width:100%; background:var(--red); border:none; margin-top:10px;" onclick="sendComment()">SENDEN</button>
+            <textarea id="com-input" placeholder="Tippe Feedback... Erwähne Spieler mit @Nr (z.B. @19)"></textarea>
+            <button class="btn" style="width:100%; background:var(--red); border:none; margin-top:10px; padding: 12px;" onclick="sendComment()">KOMMENTAR ABSCHICKEN</button>
         </div>
     </div>
 
@@ -66,65 +88,79 @@
 
         const params = new URLSearchParams(window.location.search);
         const videoId = params.get('id');
+        const type = params.get('type') || 'drive';
         const user = JSON.parse(localStorage.getItem('falcons_user') || '{"name":"Gast","nr":"0"}');
+
         let playerMap = {};
         let isAdmin = false;
 
         async function init() {
             if(!videoId) return location.href='index.html';
-            document.getElementById('drive-frame').src = `https://drive.google.com/file/d/${videoId}/preview`;
-            
-            // Spieler laden für Autocomplete
+
+            // 1. Team laden für Autocomplete
             const pSnap = await db.collection("players").get();
             pSnap.forEach(doc => { playerMap[doc.id] = doc.data().name; });
 
-            // Admin Check
+            // 2. Admin Check
             const adminDoc = await db.collection("admins").doc(user.nr).get();
             if(user.nr === "22" || adminDoc.exists) isAdmin = true;
+
+            // 3. Video-URL setzen
+            const frame = document.getElementById('video-frame');
+            if(type === 'youtube') {
+                const ytDoc = await db.collection("youtube_clips").doc(videoId).get();
+                if(ytDoc.exists) {
+                    const d = ytDoc.data();
+                    frame.src = `https://www.youtube.com/embed/${d.ytId}?start=${d.startTime}&autoplay=1&rel=0`;
+                }
+            } else {
+                frame.src = `https://drive.google.com/file/d/${videoId}/preview`;
+            }
 
             listenForComments();
         }
 
+        // KOMMENTAR LOGIK
         async function sendComment() {
             const input = document.getElementById('com-input');
             let text = input.value.trim();
             if(!text) return;
 
             let mentions = [];
-            // Autocomplete @19 -> @19 | Laurens Schmitt
+            // @19 -> @19 | Name
             let resolvedText = text.replace(/@(\d+)/g, (match, nr) => {
                 mentions.push(nr);
                 return playerMap[nr] ? `@${nr} | ${playerMap[nr]}` : match;
             });
 
-            await db.collection("comments").add({
-                videoId: videoId,
-                text: resolvedText,
-                author: user.name,
-                authorNr: user.nr,
-                mentions: mentions,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            input.value = "";
+            try {
+                await db.collection("comments").add({
+                    videoId: videoId,
+                    text: resolvedText,
+                    author: user.name,
+                    authorNr: user.nr,
+                    mentions: mentions,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                input.value = "";
+            } catch (e) { alert("Fehler beim Senden!"); }
         }
 
         function listenForComments() {
-            // Vereinfachte Abfrage ohne OrderBy, um Index-Fehler zu vermeiden
             db.collection("comments")
               .where("videoId", "==", videoId)
               .onSnapshot((snapshot) => {
                   const display = document.getElementById('comment-display');
                   display.innerHTML = "";
-                  
                   let docs = [];
                   snapshot.forEach(d => docs.push({id: d.id, ...d.data()}));
                   
-                  // Manuelle Sortierung im Browser
+                  // Sortieren nach Zeit
                   docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
 
                   docs.forEach(c => {
-                      // Regex erkennt den ganzen Block: @19 | Name
-                      const formattedText = c.text.replace(/(@\d+ \| [^!\?\.,\n]+|@\d+)/g, '<span class="mention">$1</span>');
+                      // Regex markiert nur den Block @Nr | Name
+                      const formattedText = c.text.replace(/(@\d+ \| [^,!\?\.\n\r]+|@\d+)/g, '<span class="mention">$1</span>');
                       const delBtn = (isAdmin || user.nr === c.authorNr) ? `<button class="delete-btn" onclick="deleteComment('${c.id}')">🗑</button>` : '';
                       
                       display.innerHTML += `
@@ -141,23 +177,21 @@
         }
 
         async function deleteComment(cid) {
-            if(confirm("Löschen?")) await db.collection("comments").doc(cid).delete();
+            if(confirm("Diesen Kommentar wirklich löschen?")) {
+                await db.collection("comments").doc(cid).delete();
+            }
         }
 
-        // Zeichen-Logik
+        // ZEICHEN LOGIK
         const canvas = document.getElementById('draw-layer');
         const ctx = canvas.getContext('2d');
         let drawing = false;
+        let paintColor = "#e30613";
+
         function toggleDrawing() {
             canvas.classList.toggle('active');
-            if(canvas.classList.contains('active')) { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
-        }
-        canvas.onmousedown = (e) => { if(!canvas.classList.contains('active')) return; drawing=true; ctx.beginPath(); ctx.strokeStyle="#e30613"; ctx.lineWidth=4; ctx.lineCap="round"; const r=canvas.getBoundingClientRect(); ctx.moveTo(e.clientX-r.left, e.clientY-r.top); };
-        canvas.onmousemove = (e) => { if(!drawing) return; const r=canvas.getBoundingClientRect(); ctx.lineTo(e.clientX-r.left, e.clientY-r.top); ctx.stroke(); };
-        canvas.onmouseup = () => drawing=false;
-        function clearCanvas() { ctx.clearRect(0,0,canvas.width,canvas.height); }
-
-        init();
-    </script>
-</body>
-</html>
+            const active = canvas.classList.contains('active');
+            if(active) {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                document.getElementById('btn-draw').classList.add('ac
