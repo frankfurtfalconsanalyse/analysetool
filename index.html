@@ -21,7 +21,7 @@
 
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         
-        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align:center; }
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 5000; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align:center; }
         #login-overlay input { padding: 15px; font-size: 1.5rem; width: 120px; text-align: center; border-radius: 10px; border: 2px solid var(--red); background: #222; color: white; margin-top: 20px; }
 
         .section-title { color: var(--red); text-transform: uppercase; margin-top: 40px; border-left: 4px solid var(--red); padding-left: 15px; font-size: 1.2rem; }
@@ -31,31 +31,43 @@
         .card h3 { margin: 0; text-transform: uppercase; font-size: 1rem; }
 
         .video-list-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
-        .v-card { background: var(--card); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); transition: 0.2s; }
-        .v-card:hover { background: #222; }
-        .v-card h3 { margin: 8px 0 0 0; font-size: 1rem; line-height: 1.3; }
-        .v-card small { color: var(--red); font-weight: bold; text-transform: uppercase; font-size: 0.65rem; }
+        .v-card { background: var(--card); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); }
+        .v-card h3 { margin: 10px 0 0 0; font-size: 1rem; }
+        .v-card small { color: var(--red); font-weight: bold; text-transform: uppercase; font-size: 0.7rem; }
         
-        .back-btn { background: none; border: 1px solid white; color: white; padding: 10px 20px; cursor: pointer; display: none; margin-bottom: 20px; font-family: 'Montserrat'; font-weight: bold; border-radius: 5px; }
+        .back-btn { background: none; border: 1px solid white; color: white; padding: 10px 20px; cursor: pointer; display: none; margin-bottom: 20px; font-family: 'Montserrat'; font-weight: bold; }
 
-        /* MODAL */
+        /* MODAL PLAYER MIT KOMMENTAREN */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); }
-        .modal-content { max-width: 900px; margin: 40px auto; padding: 10px; position: relative; }
-        .video-container { position: relative; padding-bottom: 56.25%; height: 0; border: 2px solid var(--red); background: #000; }
-        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:none; }
-        .modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; background: #111; padding: 15px; border-radius: 8px; }
-        .btn-analyse { background: var(--red); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: 900; text-transform: uppercase; }
-        .btn-close-modal { color: white; font-size: 40px; position: absolute; right: 0; top: -55px; cursor: pointer; }
+        .modal-content { 
+            max-width: 1100px; width: 95%; margin: 20px auto; background: #111; 
+            border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; 
+            box-shadow: 0 0 30px rgba(0,0,0,1); border: 1px solid #333;
+        }
+        .modal-main { display: flex; flex-wrap: wrap; }
+        
+        .video-side { flex: 2; min-width: 300px; background: #000; position: relative; padding-bottom: 37%; height: 0; } /* 16:9 Verhältnis angepasst */
+        .video-side iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:none; }
 
-        #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); z-index: 5000; display: none; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .comment-side { flex: 1; min-width: 300px; background: #1a1a1a; display: flex; flex-direction: column; max-height: 500px; }
+        .comment-side h4 { padding: 15px; margin: 0; background: #000; border-bottom: 2px solid var(--red); font-size: 0.8rem; text-transform: uppercase; }
+        
+        .modal-comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .mini-comment { background: #252525; padding: 10px; border-radius: 5px; border-left: 3px solid var(--red); font-size: 0.85rem; }
+        .mini-comment small { color: var(--red); font-weight: bold; font-size: 0.65rem; display: block; margin-bottom: 3px; }
+        .mention { color: #5dade2; font-weight: bold; }
+
+        .modal-footer { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #000; border-top: 1px solid #333; }
+        .btn-analyse { background: var(--red); color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-weight: 900; text-transform: uppercase; }
+        .btn-close-modal { color: white; font-size: 35px; cursor: pointer; margin-left: 20px; font-weight: bold; }
+
+        @media (max-width: 800px) { .video-side { padding-bottom: 56.25%; } .modal-content { margin: 10px auto; } }
     </style>
 </head>
 <body>
 
-<div id="loading-overlay">Daten werden synchronisiert...</div>
-
 <div id="login-overlay">
-    <h1 style="font-size: 3rem; margin:0; letter-spacing: 2px;">FRANKFURT <span style="color:var(--red);">FALCONS</span></h1>
+    <h1 style="font-size: 3rem; margin:0;">FRANKFURT <span style="color:var(--red);">FALCONS</span></h1>
     <p>TRIKOTNUMMER EINGEBEN</p>
     <input type="number" id="login-nr" oninput="checkLogin()">
 </div>
@@ -70,7 +82,7 @@
 </header>
 
 <div class="container" id="hub-content" style="display:none;">
-    <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK ZUR ÜBERSICHT</button>
+    <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK</button>
 
     <div id="lobby">
         <h2 class="section-title">Für dich markiert</h2>
@@ -97,14 +109,26 @@
     <div id="video-grid" class="video-list-grid"></div>
 </div>
 
-<!-- MODAL -->
+<!-- MODAL MIT KOMMENTAREN -->
 <div id="videoModal" class="modal" onclick="closePlayer()">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <span class="btn-close-modal" onclick="closePlayer()">&times;</span>
-        <div class="video-container"><iframe id="modal-iframe" src=""></iframe></div>
+        <div class="modal-main">
+            <div class="video-side">
+                <iframe id="modal-iframe" src="" allowfullscreen></iframe>
+            </div>
+            <div class="comment-side">
+                <h4>Feedback & Analyse</h4>
+                <div class="modal-comment-list" id="modal-comment-display">
+                    <!-- Kommentare laden hier -->
+                </div>
+            </div>
+        </div>
         <div class="modal-footer">
-            <h3 id="modal-title" style="margin:0; font-size: 1rem;">Video</h3>
-            <button class="btn-analyse" id="btn-goto-analyse">ZUR PRO-ANALYSE</button>
+            <h3 id="modal-title" style="margin:0; font-size:0.9rem;">Video</h3>
+            <div style="display:flex; align-items:center;">
+                <button class="btn-analyse" id="btn-goto-analyse">ZUR ANALYSE</button>
+                <span class="btn-close-modal" onclick="closePlayer()">&times;</span>
+            </div>
         </div>
     </div>
 </div>
@@ -116,14 +140,7 @@
 
     let currentUser = null;
     let driveVideos = [];
-
-    // Hilfsfunktion ID Extraktion
-    function getFileId(url) {
-        if(!url) return null;
-        const parts = url.split('/d/');
-        if(parts.length < 2) return null;
-        return parts[1].split('/')[0];
-    }
+    let commentUnsubscribe = null; // Um den Listener zu stoppen
 
     async function checkLogin() {
         const nr = document.getElementById('login-nr').value;
@@ -154,31 +171,67 @@
     function logout() { localStorage.removeItem('falcons_user'); location.reload(); }
 
     async function loadData() {
-        document.getElementById('loading-overlay').style.display = 'flex';
-        try {
-            const res = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
-            driveVideos = await res.json();
-            console.log("Drive Videos geladen:", driveVideos);
-            
-            // Personal Mentions
-            const mSnap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
-            const pGrid = document.getElementById('personal-grid');
-            pGrid.innerHTML = mSnap.empty ? "<p style='color:#666; font-size: 0.8rem;'>Keine Markierungen.</p>" : "";
-            
-            mSnap.forEach(doc => {
-                const c = doc.data();
-                const v = driveVideos.find(item => item.link.includes(c.videoId));
-                if(v) {
-                    const fileId = getFileId(v.link);
-                    pGrid.innerHTML += `<div class="v-card" onclick="openNormalPlayer('${fileId}', '${v.title}')">
-                        <small>MARKIERUNG</small><h3>${v.title}</h3>
-                    </div>`;
-                }
+        const res = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
+        driveVideos = await res.json();
+        
+        const mSnap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
+        const pGrid = document.getElementById('personal-grid');
+        pGrid.innerHTML = mSnap.empty ? "<p style='color:#666;'>Keine Markierungen.</p>" : "";
+        
+        mSnap.forEach(doc => {
+            const c = doc.data();
+            const v = driveVideos.find(item => item.link.includes(c.videoId));
+            if(v) {
+                const fileId = v.link.split('/d/')[1].split('/')[0];
+                pGrid.innerHTML += `<div class="v-card" onclick="openNormalPlayer('${fileId}', '${v.title}')">
+                    <small>ERWÄHNUNG</small><h3>${v.title}</h3>
+                </div>`;
+            }
+        });
+    }
+
+    // MODAL FUNKTIONEN (Normaler Player)
+    function openNormalPlayer(id, title) {
+        document.getElementById('modal-iframe').src = `https://drive.google.com/file/d/${id}/preview`;
+        document.getElementById('modal-title').innerText = title;
+        document.getElementById('videoModal').style.display = 'block';
+        document.getElementById('btn-goto-analyse').onclick = () => window.location.href=`analyze.html?id=${id}`;
+        
+        // Kommentare für dieses Video laden
+        listenForComments(id);
+    }
+
+    function listenForComments(videoId) {
+        // Falls bereits ein Listener läuft, stoppen
+        if(commentUnsubscribe) commentUnsubscribe();
+
+        commentUnsubscribe = db.collection("comments")
+            .where("videoId", "==", videoId)
+            .orderBy("createdAt", "asc")
+            .onSnapshot((snapshot) => {
+                const display = document.getElementById('modal-comment-display');
+                display.innerHTML = snapshot.empty ? "<p style='color:#555; font-size:0.8rem; padding:10px;'>Kein Feedback zu diesem Clip vorhanden.</p>" : "";
+                
+                snapshot.forEach(doc => {
+                    const c = doc.data();
+                    const formattedText = c.text.replace(/(@\d+ \([^)]+\)|@\d+)/g, '<span class="mention">$1</span>');
+                    
+                    const div = document.createElement('div');
+                    div.className = "mini-comment";
+                    div.innerHTML = `
+                        <small>${c.author} (#${c.authorNr})</small>
+                        <div>${formattedText}</div>
+                    `;
+                    display.appendChild(div);
+                });
+                display.scrollTop = display.scrollHeight;
             });
-        } catch (e) {
-            console.error("Fehler beim Laden:", e);
-        }
-        document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    function closePlayer() {
+        document.getElementById('videoModal').style.display = 'none';
+        document.getElementById('modal-iframe').src = '';
+        if(commentUnsubscribe) commentUnsubscribe(); // Stop Firebase Listener
     }
 
     async function filterVideos(type, value) {
@@ -187,45 +240,24 @@
         document.getElementById('back-btn').style.display = 'block';
         
         const grid = document.getElementById('video-grid');
-        grid.innerHTML = "<div style='grid-column:1/-1; text-align:center;'>Suche Clips...</div>";
+        grid.innerHTML = "Lade Clips...";
 
         const metaSnap = await db.collection("video_metadata").get();
         let meta = {}; metaSnap.forEach(d => meta[d.id] = d.data().position);
 
-        console.log("Filtere nach:", type, value);
-
         const filtered = driveVideos.filter(v => {
-            const fileId = getFileId(v.link);
-            if(type === 'cat') {
-                // EXTREM ROBUSTER VERGLEICH (Trimmen, Kleinschreibung)
-                return v.category.toLowerCase().replace(/\s/g, '') === value.toLowerCase().replace(/\s/g, '');
-            } else {
-                return meta[fileId] === value || meta[fileId] === 'Alle';
-            }
+            const fileId = v.link.split('/d/')[1].split('/')[0];
+            if(type === 'cat') return v.category.toLowerCase().trim() === value.toLowerCase().trim();
+            else return meta[fileId] === value || meta[fileId] === 'Alle';
         });
 
-        console.log("Gefundene Clips:", filtered.length);
-
-        grid.innerHTML = filtered.length ? "" : "<p style='grid-column:1/-1; text-align:center; padding:50px;'>Keine Videos gefunden.<br><small style='color:#666;'>Prüfe ob der Ordnername in Drive exakt '"+value+"' heißt.</small></p>";
-        
+        grid.innerHTML = filtered.length ? "" : "<p>Keine Videos gefunden.</p>";
         filtered.forEach(v => {
-            const fileId = getFileId(v.link);
+            const fileId = v.link.split('/d/')[1].split('/')[0];
             grid.innerHTML += `<div class="v-card" onclick="openNormalPlayer('${fileId}', '${v.title}')">
                 <small>${v.category}</small><h3>${v.title}</h3>
             </div>`;
         });
-    }
-
-    function openNormalPlayer(id, title) {
-        document.getElementById('modal-iframe').src = `https://drive.google.com/file/d/${id}/preview`;
-        document.getElementById('modal-title').innerText = title;
-        document.getElementById('videoModal').style.display = 'block';
-        document.getElementById('btn-goto-analyse').onclick = () => window.location.href=`analyze.html?id=${id}`;
-    }
-
-    function closePlayer() {
-        document.getElementById('videoModal').style.display = 'none';
-        document.getElementById('modal-iframe').src = '';
     }
 
     startHub();
