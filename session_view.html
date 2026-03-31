@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8"><title>Falcons Hub | Session</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root { --red: #e30613; --bg: #0d0d0d; --panel: #1a1a1a; }
+        body { font-family: 'Montserrat'; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        .main-content { flex: 3; display: flex; flex-direction: column; background: #000; }
+        .video-box { flex: 1; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        .side-panel { flex: 1; background: var(--panel); border-left: 2px solid var(--red); display: flex; flex-direction: column; min-width: 350px; }
+        .info-area { padding: 20px; border-bottom: 1px solid #333; }
+        .clip-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .clip-item { padding: 15px; background: #222; margin-bottom: 10px; border-radius: 5px; cursor: pointer; border-left: 5px solid transparent; }
+        .clip-item.active { border-left-color: var(--red); background: #333; }
+        
+        .nav-btns { padding: 15px; display: flex; justify-content: space-between; background: #000; }
+        .btn { background: var(--red); color: white; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .btn:disabled { background: #333; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="main-content">
+    <div class="video-box"><iframe id="player" src="" allowfullscreen></iframe></div>
+    <div class="nav-btns">
+        <button class="btn" onclick="prevClip()">← VORHERIGER CLIP</button>
+        <div id="progress-text">Clip 1 / X</div>
+        <button class="btn" onclick="nextClip()">NÄCHSTER CLIP →</button>
+    </div>
+</div>
+
+<div class="side-panel">
+    <div class="info-area">
+        <h2 id="s-title" style="margin:0;">Session</h2>
+        <p id="s-desc" style="font-size:0.8rem; color:#888; margin-top:10px;"></p>
+    </div>
+    <div class="clip-list" id="toc"></div>
+    <button class="btn" style="margin:20px; background:#444;" onclick="location.href='index.html'">HUB BEENDEN</button>
+</div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const sessionId = new URLSearchParams(window.location.search).get('id');
+    const user = JSON.parse(localStorage.getItem('falcons_user'));
+    let currentSession = null;
+    let currentIdx = 0;
+    let videoData = [];
+
+    async function init() {
+        const sDoc = await db.collection("sessions").doc(sessionId).get();
+        currentSession = sDoc.data();
+        document.getElementById('s-title').innerText = currentSession.title;
+        document.getElementById('s-desc').innerText = currentSession.description;
+
+        // Videos laden
+        const driveRes = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json());
+        const ytSnap = await db.collection("youtube_clips").get();
+        const allClips = [...driveRes.map(v => ({ id: v.link.split('/d/')[1].split('/')[0], title: v.title, link: `https://drive.google.com/file/d/${v.link.split('/d/')[1].split('/')[0]}/preview` })), 
+                          ...ytSnap.docs.map(d => ({ id: d.id, title: d.data().title, link: `https://www.youtube.com/embed/${d.data().ytId}?start=${d.data().startTime}&autoplay=1` }))];
+
+        videoData = currentSession.videoIds.map(id => allClips.find(c => c.id === id)).filter(v => v);
+        
+        renderTOC();
+        playClip(0);
+    }
+
+    function renderTOC() {
+        const toc = document.getElementById('toc');
+        toc.innerHTML = "";
+        videoData.forEach((v, i) => {
+            toc.innerHTML += `<div class="clip-item ${i===currentIdx?'active':''}" onclick="playClip(${i})">
+                <small style="color:var(--red)">Clip ${i+1}</small><br>
+                <strong>${v.title}</strong>
+            </div>`;
+        });
+    }
+
+    function playClip(idx) {
+        currentIdx = idx;
+        const v = videoData[idx];
+        document.getElementById('player').src = v.link;
+        document.getElementById('progress-text').innerText = `Clip ${idx+1} / ${videoData.length}`;
+        renderTOC();
+        updateProgress();
+    }
+
+    async function updateProgress() {
+        const progRef = db.collection("progress").doc(user.nr);
+        await progRef.set({ [sessionId]: currentIdx + 1 }, { merge: true });
+    }
+
+    function nextClip() { if(currentIdx < videoData.length-1) playClip(currentIdx+1); }
+    function prevClip() { if(currentIdx > 0) playClip(currentIdx-1); }
+
+    init();
+</script>
+</body>
+</html>
