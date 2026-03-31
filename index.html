@@ -250,25 +250,44 @@
         filtered.forEach(v => { grid.innerHTML += `<div class="v-card" onclick="openPlayer('${v.id}')"><h3>${v.title}</h3><small>${v.category}</small></div>`; });
     }
 
-    function openPlayer(id) {
+function openPlayer(id) {
         const v = combinedVideos.find(item => item.id === id);
+        if (!v) return; // Sicherheits-Check
+
+        // 1. UI-Elemente befüllen
         document.getElementById('modal-iframe').src = v.link;
         document.getElementById('modal-title').innerText = v.title;
         document.getElementById('videoModal').style.display = 'block';
         document.getElementById('btn-goto-analyse').onclick = () => location.href=`analyze.html?id=${id}&type=${v.type}`;
         
-        db.collection("comments").where("videoId", "==", id).onSnapshot(snap => {
+        // 2. NEU: Video-Tracking (Speichert, dass dieser Spieler das Video geöffnet hat)
+        if(currentUser && currentUser.nr) {
+            db.collection("video_views").doc(currentUser.nr).set({ [id]: true }, { merge: true });
+        }
+
+        // 3. Kommentare laden
+        if(commentUnsubscribe) commentUnsubscribe(); // Verhindert doppelte Listener
+        commentUnsubscribe = db.collection("comments").where("videoId", "==", id).onSnapshot(snap => {
             const display = document.getElementById('modal-comment-display');
             display.innerHTML = "";
             let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
+            
+            // Sortieren nach Zeit
             docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+            
             docs.forEach(c => {
+                // Nur @Nr | Name blau färben
                 const formatted = c.text.replace(/(@\d+ \| [^,!\?\.\n\r]+|@\d+)/g, '<span class="mention">$1</span>');
-                display.innerHTML += `<div class="mini-comment"><small>${c.author}</small><div>${formatted}</div></div>`;
+                
+                // Mülleimer-Button für Admins oder Verfasser
+                const delBtn = (currentUser.nr === "22" || currentUser.nr === c.authorNr) 
+                    ? `<button onclick="deleteComment('${c.id}')" style="float:right; background:none; border:none; color:#555; cursor:pointer;">🗑</button>` : '';
+
+                display.innerHTML += `<div class="mini-comment"><small>${c.author} (#${c.authorNr})${delBtn}</small><div>${formatted}</div></div>`;
             });
+            display.scrollTop = display.scrollHeight; // Zum neuesten Kommentar scrollen
         });
     }
-
     function closePlayer() { document.getElementById('videoModal').style.display='none'; document.getElementById('modal-iframe').src=''; }
     function logout() { localStorage.removeItem('falcons_user'); location.reload(); }
     function showLobby() { location.reload(); }
