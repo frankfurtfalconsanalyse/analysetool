@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8"><title>Falcons Hub | Admin Center</title>
+    <meta charset="UTF-8"><title>Falcons Admin | Zentrale</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -10,109 +10,136 @@
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: none; }
         
         /* HEADER */
-        header { background: #000; padding: 20px 40px; border-bottom: 4px solid var(--red); display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-weight: 900; letter-spacing: 2px; text-transform: uppercase; font-size: 1.2rem; }
-        .btn-hub { text-decoration: none; color: #888; font-size: 0.8rem; font-weight: bold; border: 1px solid #444; padding: 8px 15px; border-radius: 5px; transition: 0.2s; }
-        .btn-hub:hover { color: white; border-color: white; }
+        header { background: #000; padding: 20px 40px; border-bottom: 4px solid var(--red); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .logo { font-weight: 900; letter-spacing: 2px; text-transform: uppercase; }
+        .btn-hub { text-decoration: none; color: white; background: #333; padding: 8px 15px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; }
 
-        .container { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
+        .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
 
-        /* TABS NAVIGATION */
-        .tab-nav { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-        .tab-btn { background: none; border: none; color: #666; padding: 10px 20px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; transition: 0.3s; }
-        .tab-btn.active { color: var(--red); border-bottom: 2px solid var(--red); }
+        /* TABS */
+        .tab-nav { display: flex; gap: 5px; margin-bottom: 30px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+        .tab-btn { background: none; border: none; color: #666; padding: 12px 20px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.75rem; white-space: nowrap; transition: 0.3s; }
+        .tab-btn.active { color: var(--red); border-bottom: 3px solid var(--red); }
 
         .tab-content { display: none; animation: fadeIn 0.3s ease; }
         .tab-content.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* CARDS & FORMS */
-        .admin-card { background: var(--card); border-radius: 12px; padding: 25px; border: 1px solid var(--border); margin-bottom: 20px; }
-        h3 { margin-top: 0; text-transform: uppercase; font-size: 1rem; color: var(--red); letter-spacing: 1px; margin-bottom: 20px; }
+        .admin-card { background: var(--card); border-radius: 12px; padding: 25px; border: 1px solid var(--border); margin-bottom: 25px; }
+        h3 { margin-top: 0; text-transform: uppercase; font-size: 1rem; color: var(--red); letter-spacing: 1px; margin-bottom: 20px; border-left: 3px solid var(--red); padding-left: 10px; }
         
-        .form-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 20px; }
+        .form-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; }
         .form-group { display: flex; flex-direction: column; gap: 5px; }
-        label { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: bold; }
+        label { font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: bold; }
         
-        input, select { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; font-family: inherit; }
+        input, select, textarea { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; font-family: inherit; }
         input:focus { border-color: var(--red); outline: none; }
         
-        .btn-action { background: var(--red); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; }
+        .btn-action { background: var(--red); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.75rem; }
         .btn-action:hover { background: #ff1a1a; }
 
         /* TABLES */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { text-align: left; font-size: 0.7rem; color: #555; text-transform: uppercase; padding: 10px; border-bottom: 1px solid var(--border); }
-        td { padding: 12px 10px; border-bottom: 1px solid #222; font-size: 0.9rem; }
-        .delete-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 1rem; }
+        th { text-align: left; font-size: 0.65rem; color: #555; text-transform: uppercase; padding: 12px 10px; border-bottom: 1px solid var(--border); }
+        td { padding: 12px 10px; border-bottom: 1px solid #222; font-size: 0.85rem; }
+        .delete-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 1.1rem; }
         .delete-btn:hover { color: var(--red); }
-        
-        .badge { font-size: 0.7rem; padding: 3px 7px; border-radius: 3px; font-weight: bold; background: #333; color: #aaa; }
+
+        /* SESSION SPECIFIC */
+        .video-selector { max-height: 300px; overflow-y: auto; background: #111; padding: 10px; border-radius: 5px; border: 1px solid #333; margin-top: 10px; }
+        .video-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #222; font-size: 0.8rem; }
+        .video-item:last-child { border: none; }
+        .selected-counter { background: var(--red); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; margin-left: 10px; }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="logo">Admin <span>Zentrale</span></div>
-    <a href="index.html" class="btn-hub">← ZURÜCK ZUM HUB</a>
+    <div class="logo">Falcons <span>Admin</span></div>
+    <a href="index.html" class="btn-hub">← HUB ÖFFNEN</a>
 </header>
 
 <div class="container">
     <nav class="tab-nav">
-        <button class="tab-btn active" onclick="openTab('yt')">YouTube Clips</button>
+        <button class="tab-btn active" onclick="openTab('sessions')">Sessions Editor</button>
+        <button class="tab-btn" onclick="openTab('yt')">YouTube Clips</button>
         <button class="tab-btn" onclick="openTab('drive')">Drive Zuordnung</button>
         <button class="tab-btn" onclick="openTab('kader')">Kader</button>
-        <button class="tab-btn" onclick="openTab('rechte')">Admin-Rechte</button>
+        <button class="tab-btn" onclick="openTab('rechte')">Rechte</button>
     </nav>
 
-    <!-- TAB: YOUTUBE -->
-    <div id="yt" class="tab-content active">
+    <!-- TAB: SESSIONS (PLAYLISTS) -->
+    <div id="sessions" class="tab-content active">
         <div class="admin-card">
-            <h3>🎥 Neuen YouTube Clip hinzufügen</h3>
+            <h3>🆕 Neue Analyse-Session erstellen</h3>
+            <div class="form-group">
+                <label>Session Titel</label>
+                <input type="text" id="s-title" placeholder="z.B. Gegner-Analyse Spiel 1" style="width: 100%; margin-bottom: 15px;">
+            </div>
+            <div class="form-group">
+                <label>Beschreibung / Trainer-Anweisung</label>
+                <textarea id="s-desc" placeholder="Worauf sollen die Spieler achten?" style="width: 100%; height: 80px; margin-bottom: 15px; box-sizing: border-box;"></textarea>
+            </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Titel</label>
-                    <input type="text" id="yt-title" placeholder="z.B. Powerplay Tor" style="width: 200px;">
+                    <label>Zielgruppe</label>
+                    <select id="s-group">
+                        <option value="Gesamtes Team">Gesamtes Team</option>
+                        <option value="Verteidigung">Verteidigung</option>
+                        <option value="Angriff">Angriff</option>
+                        <option value="Special Teams">Special Teams</option>
+                        <option value="Goalies">Goalies</option>
+                    </select>
                 </div>
-                <div class="form-group">
-                    <label>YouTube Link</label>
-                    <input type="text" id="yt-url" placeholder="URL einfügen" style="width: 200px;">
+                <div style="flex:1"></div>
+                <button class="btn-action" onclick="saveSession()">Session veröffentlichen</button>
+            </div>
+
+            <div style="margin-top:25px;">
+                <label>Videos für diese Session wählen <span id="s-count" class="selected-counter">0 gewählt</span></label>
+                <div class="video-selector" id="s-video-list">
+                    <!-- Wird dynamisch befüllt -->
                 </div>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <h3>Vorhandene Sessions</h3>
+            <table id="session-table">
+                <thead><tr><th>Titel</th><th>Datum</th><th>Clips</th><th>Aktion</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: YOUTUBE -->
+    <div id="yt" class="tab-content">
+        <div class="admin-card">
+            <h3>🎥 YouTube Clip einpflegen</h3>
+            <div class="form-row">
+                <div class="form-group"><label>Titel</label><input type="text" id="yt-title" style="width:180px;"></div>
+                <div class="form-group"><label>Link</label><input type="text" id="yt-url" placeholder="https://..." style="width:180px;"></div>
                 <div class="form-group">
-                    <label>Startzeit (Std : Min : Sek)</label>
-                    <div style="display:flex; align-items:center; gap:5px;">
-                        <input type="number" id="yt-hr" class="time-input" value="0" style="width:45px;"> :
-                        <input type="number" id="yt-min" class="time-input" value="0" style="width:45px;"> :
-                        <input type="number" id="yt-sec" class="time-input" value="0" style="width:45px;">
+                    <label>Start (H:M:S)</label>
+                    <div style="display:flex; align-items:center; gap:3px;">
+                        <input type="number" id="yt-hr" value="0" style="width:35px; padding:8px 5px;">:
+                        <input type="number" id="yt-min" value="0" style="width:35px; padding:8px 5px;">:
+                        <input type="number" id="yt-sec" value="0" style="width:35px; padding:8px 5px;">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Kategorie</label>
+                    <label>Kat.</label>
                     <select id="yt-cat">
-                        <option value="Offense">Offense</option>
-                        <option value="Defense">Defense</option>
-                        <option value="Powerplay">Powerplay</option>
-                        <option value="Penalty Kill">Penalty Kill</option>
-                        <option value="Setplays">Setplays</option>
+                        <option value="Offense">Offense</option><option value="Defense">Defense</option><option value="Powerplay">Powerplay</option><option value="Penalty Kill">Penalty Kill</option><option value="Setplays">Setplays</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Position</label>
-                    <select id="yt-pos">
-                        <option value="Alle">Alle</option>
-                        <option value="Angriff">Angriff</option>
-                        <option value="Center">Center</option>
-                        <option value="Verteidigung">Verteidigung</option>
-                        <option value="Goalie">Goalie</option>
-                    </select>
-                </div>
-                <button class="btn-action" onclick="addYoutubeClip()">Speichern</button>
+                <button class="btn-action" onclick="addYT()">Speichern</button>
             </div>
         </div>
         <div class="admin-card">
-            <h3>Liste der YouTube Clips</h3>
             <table id="yt-table">
-                <thead><tr><th>Titel</th><th>Kategorie</th><th>Startzeit</th><th>Aktion</th></tr></thead>
+                <thead><tr><th>Titel</th><th>Startzeit</th><th>Aktion</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
@@ -121,10 +148,9 @@
     <!-- TAB: DRIVE -->
     <div id="drive" class="tab-content">
         <div class="admin-card">
-            <h3>📂 Drive Videos Positionen zuweisen</h3>
-            <p style="font-size:0.8rem; color:#666; margin-bottom:20px;">Hinweis: Die Kategorie wird automatisch durch den Google Drive Ordner bestimmt.</p>
-            <table id="video-table">
-                <thead><tr><th>Video Name</th><th>Position</th><th>Aktion</th></tr></thead>
+            <h3>📂 Google Drive Positionen</h3>
+            <table id="drive-table">
+                <thead><tr><th>Video (Ordner)</th><th>Position zuweisen</th><th>Aktion</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
@@ -136,12 +162,11 @@
             <h3>👥 Spieler hinzufügen</h3>
             <div class="form-row">
                 <div class="form-group"><label>Nr.</label><input type="number" id="p-nr" style="width:60px;"></div>
-                <div class="form-group"><label>Vollständiger Name</label><input type="text" id="p-name" style="width:250px;"></div>
+                <div class="form-group"><label>Name</label><input type="text" id="p-name" style="width:200px;"></div>
                 <button class="btn-action" onclick="addPlayer()">Hinzufügen</button>
             </div>
         </div>
         <div class="admin-card">
-            <h3>Aktueller Kader</h3>
             <table id="player-table">
                 <thead><tr><th>Nr.</th><th>Name</th><th>Löschen</th></tr></thead>
                 <tbody></tbody>
@@ -152,17 +177,15 @@
     <!-- TAB: RECHTE -->
     <div id="rechte" class="tab-content">
         <div class="admin-card">
-            <h3>🔑 Admin-Status vergeben</h3>
-            <p style="font-size:0.8rem; color:#666; margin-bottom:20px;">Gekoppelt an die Trikotnummer. Nummer 22 ist permanent Admin.</p>
+            <h3>🔑 Admins verwalten</h3>
             <div class="form-row">
-                <div class="form-group"><label>Trikotnummer</label><input type="number" id="admin-nr" style="width:100px;"></div>
+                <div class="form-group"><label>Nr.</label><input type="number" id="admin-nr" style="width:80px;"></div>
                 <button class="btn-action" onclick="addAdmin()">Admin-Rechte geben</button>
             </div>
         </div>
         <div class="admin-card">
-            <h3>Zusätzliche Admins</h3>
             <table id="admin-table">
-                <thead><tr><th>Trikotnummer</th><th>Status</th><th>Entziehen</th></tr></thead>
+                <thead><tr><th>Trikotnummer</th><th>Aktion</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
@@ -175,111 +198,126 @@
     const db = firebase.firestore();
     const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
 
+    let allAvailableVideos = []; // Speicher für Session-Editor
+    let selectedForSession = [];
+
     async function checkAuth() {
         const adminDoc = await db.collection("admins").doc(user.nr || "0").get();
         if (user.nr === "22" || adminDoc.exists) { 
             document.body.style.display = "block"; 
-            loadYT(); loadKader(); loadDrive(); loadAdmins();
+            loadAll();
         } else { 
-            alert("Zugriff verweigert!"); window.location.href = "index.html"; 
+            alert("Kein Zugriff!"); window.location.href = "index.html"; 
         }
     }
 
     function openTab(id) {
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content, .tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         event.currentTarget.classList.add('active');
     }
 
-    // --- YOUTUBE LOGIK ---
-    async function addYoutubeClip() {
-        const title = document.getElementById('yt-title').value;
-        const url = document.getElementById('yt-url').value;
-        const cat = document.getElementById('yt-cat').value;
-        const pos = document.getElementById('yt-pos').value;
-        const totalSec = (parseInt(document.getElementById('yt-hr').value)||0)*3600 + (parseInt(document.getElementById('yt-min').value)||0)*60 + (parseInt(document.getElementById('yt-sec').value)||0);
-        
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const match = url.match(regExp);
-        const ytId = (match && match[2].length == 11) ? match[2] : null;
-
-        if(!ytId || !title) return alert("Daten unvollständig!");
-        await db.collection("youtube_clips").add({ title, ytId, category: cat, position: pos, startTime: totalSec, createdAt: new Date() });
-        location.reload();
-    }
-
-    async function loadYT() {
-        const snap = await db.collection("youtube_clips").orderBy("createdAt", "desc").get();
-        const tbody = document.querySelector("#yt-table tbody");
+    // --- SESSIONS LOGIK ---
+    async function loadSessions() {
+        const snap = await db.collection("sessions").orderBy("createdAt", "desc").get();
+        const tbody = document.querySelector("#session-table tbody");
+        tbody.innerHTML = "";
         snap.forEach(doc => {
-            const d = doc.data();
-            const time = `${Math.floor(d.startTime/3600)}h ${Math.floor((d.startTime%3600)/60)}m ${d.startTime%60}s`;
-            tbody.innerHTML += `<tr><td>${d.title}</td><td><span class="badge">${d.category}</span></td><td>${time}</td><td><button class="delete-btn" onclick="deleteDoc('youtube_clips','${doc.id}')">🗑</button></td></tr>`;
+            const s = doc.data();
+            tbody.innerHTML += `<tr><td>${s.title}</td><td>${new Date(s.createdAt.seconds*1000).toLocaleDateString()}</td><td>${s.videoIds.length}</td><td><button class="delete-btn" onclick="deleteDoc('sessions','${doc.id}')">🗑</button></td></tr>`;
         });
     }
 
-    // --- DRIVE LOGIK ---
-    async function loadDrive() {
-        const res = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
-        const driveData = await res.json();
+    function toggleVideoSelection(id) {
+        const idx = selectedForSession.indexOf(id);
+        if(idx > -1) selectedForSession.splice(idx, 1);
+        else selectedForSession.push(id);
+        document.getElementById('s-count').innerText = selectedForSession.length + " gewählt";
+    }
+
+    async function saveSession() {
+        const title = document.getElementById('s-title').value;
+        const description = document.getElementById('s-desc').value;
+        const targetGroup = document.getElementById('s-group').value;
+
+        if(!title || selectedForSession.length === 0) return alert("Bitte Titel und Videos wählen!");
+
+        await db.collection("sessions").add({
+            title, description, targetGroup,
+            videoIds: selectedForSession,
+            createdAt: new Date()
+        });
+        alert("Session veröffentlicht!");
+        location.reload();
+    }
+
+    // --- YOUTUBE LOGIK ---
+    async function addYT() {
+        const title = document.getElementById('yt-title').value;
+        const url = document.getElementById('yt-url').value;
+        const totalSec = (parseInt(document.getElementById('yt-hr').value)||0)*3600 + (parseInt(document.getElementById('yt-min').value)||0)*60 + (parseInt(document.getElementById('yt-sec').value)||0);
+        const ytId = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=))([\w\-]{11})/)?.[1];
+
+        if(!ytId || !title) return alert("Eingabe prüfen!");
+        await db.collection("youtube_clips").add({ title, ytId, category: document.getElementById('yt-cat').value, position: "Alle", startTime: totalSec, createdAt: new Date() });
+        location.reload();
+    }
+
+    // --- DATEN LADEN ---
+    async function loadAll() {
+        // Kader
+        const pSnap = await db.collection("players").get();
+        pSnap.forEach(d => document.querySelector("#player-table tbody").innerHTML += `<tr><td>#${d.id}</td><td>${d.data().name}</td><td><button class="delete-btn" onclick="deleteDoc('players','${d.id}')">🗑</button></td></tr>`);
+
+        // Admins
+        const aSnap = await db.collection("admins").get();
+        aSnap.forEach(d => document.querySelector("#admin-table tbody").innerHTML += `<tr><td>#${d.id}</td><td><button class="delete-btn" onclick="deleteDoc('admins','${d.id}')">🗑</button></td></tr>`);
+
+        // YouTube
+        const ytSnap = await db.collection("youtube_clips").get();
+        ytSnap.forEach(d => {
+            const data = d.data();
+            document.querySelector("#yt-table tbody").innerHTML += `<tr><td>${data.title}</td><td>${data.startTime}s</td><td><button class="delete-btn" onclick="deleteDoc('youtube_clips','${d.id}')">🗑</button></td></tr>`;
+            allAvailableVideos.push({ id: d.id, title: "[YT] " + data.title });
+        });
+
+        // Drive & Meta
+        const driveRes = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json());
         const metaSnap = await db.collection("video_metadata").get();
         let meta = {}; metaSnap.forEach(d => meta[d.id] = d.data().position);
 
-        const tbody = document.querySelector("#video-table tbody");
-        driveData.forEach(v => {
+        driveRes.forEach(v => {
             const id = v.link.split('/d/')[1].split('/')[0];
-            tbody.innerHTML += `<tr>
-                <td>${v.title} <br><small style="color:#555">${v.category}</small></td>
-                <td><select id="v-${id}"><option value="Alle" ${meta[id]==='Alle'?'selected':''}>Alle</option><option value="Angriff" ${meta[id]==='Angriff'?'selected':''}>Angriff</option><option value="Center" ${meta[id]==='Center'?'selected':''}>Center</option><option value="Verteidigung" ${meta[id]==='Verteidigung'?'selected':''}>Verteidigung</option><option value="Goalie" ${meta[id]==='Goalie'?'selected':''}>Goalie</option></select></td>
-                <td><button class="btn-action" style="padding:5px 10px;" onclick="saveVideoMeta('${id}')">Save</button></td>
-            </tr>`;
+            allAvailableVideos.push({ id: id, title: "[Drive] " + v.title });
+            document.querySelector("#drive-table tbody").innerHTML += `<tr><td>${v.title}<br><small>${v.category}</small></td><td><select id="v-${id}"><option value="Alle" ${meta[id]==='Alle'?'selected':''}>Alle</option><option value="Angriff" ${meta[id]==='Angriff'?'selected':''}>Angriff</option><option value="Center" ${meta[id]==='Center'?'selected':''}>Center</option><option value="Verteidigung" ${meta[id]==='Verteidigung'?'selected':''}>Verteidigung</option><option value="Goalie" ${meta[id]==='Goalie'?'selected':''}>Goalie</option></select></td><td><button class="btn-action" onclick="saveMeta('${id}')">Save</button></td></tr>`;
         });
+
+        // Session Selector befüllen
+        const sList = document.getElementById('s-video-list');
+        allAvailableVideos.forEach(v => {
+            sList.innerHTML += `<div class="video-item"><input type="checkbox" onchange="toggleVideoSelection('${v.id}')"> ${v.title}</div>`;
+        });
+
+        loadSessions();
     }
 
-    async function saveVideoMeta(id) {
-        const pos = document.getElementById('v-'+id).value;
-        await db.collection("video_metadata").doc(id).set({ position: pos });
+    async function saveMeta(id) {
+        await db.collection("video_metadata").doc(id).set({ position: document.getElementById('v-'+id).value });
         alert("Gespeichert!");
     }
 
-    // --- KADER LOGIK ---
     async function addPlayer() {
         const nr = document.getElementById('p-nr').value;
-        const name = document.getElementById('p-name').value;
-        if(!nr || !name) return;
-        await db.collection("players").doc(nr).set({ name, nr });
+        await db.collection("players").doc(nr).set({ name: document.getElementById('p-name').value, nr: nr });
         location.reload();
     }
 
-    async function loadKader() {
-        const snap = await db.collection("players").get();
-        const tbody = document.querySelector("#player-table tbody");
-        snap.forEach(doc => {
-            const p = doc.data();
-            tbody.innerHTML += `<tr><td>#${p.nr}</td><td>${p.name}</td><td><button class="delete-btn" onclick="deleteDoc('players','${p.nr}')">🗑</button></td></tr>`;
-        });
-    }
-
-    // --- ADMIN RECHTE ---
     async function addAdmin() {
-        const nr = document.getElementById('admin-nr').value;
-        if(!nr) return;
-        await db.collection("admins").doc(nr).set({ active: true });
+        await db.collection("admins").doc(document.getElementById('admin-nr').value).set({ active: true });
         location.reload();
     }
 
-    async function loadAdmins() {
-        const snap = await db.collection("admins").get();
-        const tbody = document.querySelector("#admin-table tbody");
-        snap.forEach(doc => {
-            tbody.innerHTML += `<tr><td>#${doc.id}</td><td><span class="badge" style="background:green; color:white;">AKTIV</span></td><td><button class="delete-btn" onclick="deleteDoc('admins','${doc.id}')">🗑</button></td></tr>`;
-        });
-    }
-
-    async function deleteDoc(col, id) { 
-        if(confirm("Löschen?")) { await db.collection(col).doc(id).delete(); location.reload(); } 
-    }
+    async function deleteDoc(col, id) { if(confirm("Löschen?")) { await db.collection(col).doc(id).delete(); location.reload(); } }
 
     checkAuth();
 </script>
