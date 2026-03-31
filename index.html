@@ -8,11 +8,20 @@
     <style>
         :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; }
         body { font-family: 'Montserrat'; background: var(--bg); color: white; margin: 0; }
-        header { background: #000; padding: 20px; text-align: center; border-bottom: 4px solid var(--red); display: flex; justify-content: center; align-items: center; position: relative; }
-        #admin-link { position: absolute; right: 20px; background: var(--red); color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; display: none; font-size: 0.8rem; }
         
+        header { 
+            background: #000; padding: 15px 25px; border-bottom: 4px solid var(--red); 
+            display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 100;
+        }
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        
+        #admin-link { background: var(--red); color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; display: none; font-size: 0.75rem; }
+        .logout-btn { background: transparent; border: 1px solid #555; color: #888; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; font-weight: bold; }
+        .logout-btn:hover { color: white; border-color: white; }
+
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         
+        /* Login Overlay */
         #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align:center; }
         #login-overlay input { padding: 15px; font-size: 1.5rem; width: 120px; text-align: center; border-radius: 10px; border: 2px solid var(--red); background: #222; color: white; margin-top: 20px; }
 
@@ -26,23 +35,30 @@
         .v-card { background: var(--card); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); }
         
         .back-btn { background: none; border: 1px solid white; color: white; padding: 10px 20px; cursor: pointer; display: none; margin-bottom: 20px; font-family: 'Montserrat'; font-weight: bold; }
+        .user-tag { font-size: 0.8rem; color: #ccc; }
     </style>
 </head>
 <body>
 
+<!-- LOGIN OVERLAY -->
 <div id="login-overlay">
-    <h1 style="font-size: 3rem; margin:0;">FRANKFURT <span style="color:var(--red);">FALCONS</span></h1>
-    <p>TRIKOTNUMMER EINGEBEN</p>
-    <input type="number" id="login-nr" oninput="checkLogin()">
+    <h1 style="font-size: 3rem; margin:0; letter-spacing: 2px;">FRANKFURT <span style="color:var(--red);">FALCONS</span></h1>
+    <p style="letter-spacing: 1px; color:#888;">VIDEO ANALYSE HUB</p>
+    <input type="number" id="login-nr" placeholder="Nr." oninput="checkLogin()">
+    <p id="login-error" style="color:var(--red); font-size:0.8rem; margin-top:10px;"></p>
 </div>
 
+<!-- HEADER -->
 <header>
     <div class="logo" style="font-weight:900; letter-spacing:2px; cursor:pointer;" onclick="location.reload()">FALCONS <span style="color:var(--red);">HUB</span></div>
-    <a href="admin.html" id="admin-link">ADMIN PANEL</a>
+    <div class="header-right">
+        <span id="user-display" class="user-tag"></span>
+        <a href="admin.html" id="admin-link">ADMIN PANEL</a>
+        <button class="logout-btn" onclick="logout()">LOGOUT</button>
+    </div>
 </header>
 
 <div class="container" id="hub-content" style="display:none;">
-    <h2 id="welcome-msg">Servus</h2>
     
     <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK ZUR ÜBERSICHT</button>
 
@@ -84,17 +100,22 @@
     let currentUser = null;
     let driveVideos = [];
 
+    // LOGIN PRÜFEN
     async function checkLogin() {
         const nr = document.getElementById('login-nr').value;
         if(!nr) return;
+        
         const doc = await db.collection("players").doc(nr).get();
         if(doc.exists) {
             currentUser = doc.data();
             localStorage.setItem('falcons_user', JSON.stringify(currentUser));
             startHub();
+        } else {
+            document.getElementById('login-error').innerText = "Nummer nicht im Kader gefunden.";
         }
     }
 
+    // HUB STARTEN
     async function startHub() {
         const saved = localStorage.getItem('falcons_user');
         if(!saved) return;
@@ -102,7 +123,7 @@
 
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('hub-content').style.display = 'block';
-        document.getElementById('welcome-msg').innerText = `Servus, ${currentUser.name} (#${currentUser.nr})`;
+        document.getElementById('user-display').innerText = `${currentUser.name} (#${currentUser.nr})`;
 
         // Admin-Button Check
         const adminDoc = await db.collection("admins").doc(currentUser.nr).get();
@@ -113,6 +134,14 @@
         loadData();
     }
 
+    // LOGOUT
+    function logout() {
+        if(confirm("Möchtest du dich wirklich ausloggen?")) {
+            localStorage.removeItem('falcons_user');
+            location.reload();
+        }
+    }
+
     async function loadData() {
         const res = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
         driveVideos = await res.json();
@@ -120,14 +149,14 @@
         // Personal Dashboard: Suche Mentions
         const mSnap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
         const pGrid = document.getElementById('personal-grid');
-        pGrid.innerHTML = mSnap.empty ? "<p style='color:#666;'>Keine neuen Markierungen.</p>" : "";
+        pGrid.innerHTML = mSnap.empty ? "<p style='color:#666; font-size:0.8rem;'>Keine neuen Markierungen für dich.</p>" : "";
         
         mSnap.forEach(doc => {
             const c = doc.data();
             const v = driveVideos.find(item => item.link.includes(c.videoId));
             if(v) {
                 pGrid.innerHTML += `<div class="v-card" onclick="location.href='analyze.html?id=${c.videoId}'">
-                    <small>ERWÄHNUNG</small><h3>${v.title}</h3><p style='font-size:0.8rem; color:#888;'>"${c.text}"</p>
+                    <small style="color:var(--red); font-weight:bold;">ERWÄHNUNG</small><h3>${v.title}</h3><p style='font-size:0.8rem; color:#888; margin-top:10px;'>Feedback: "${c.text}"</p>
                 </div>`;
             }
         });
@@ -151,11 +180,11 @@
             if(type === 'pos') return meta[id] === value || meta[id] === 'Alle';
         });
 
-        grid.innerHTML = filtered.length ? "" : "<p>Keine Videos gefunden.</p>";
+        grid.innerHTML = filtered.length ? "" : "<p style='text-align:center; grid-column: 1/-1;'>Keine Videos für diese Auswahl gefunden.</p>";
         filtered.forEach(v => {
             const id = v.link.split('/d/')[1].split('/')[0];
             grid.innerHTML += `<div class="v-card" onclick="location.href='analyze.html?id=${id}'">
-                <small>${v.category}</small><h3>${v.title}</h3>
+                <small style="color:var(--red); font-weight:bold;">${v.category}</small><h3 style="margin-top:5px;">${v.title}</h3>
             </div>`;
         });
     }
