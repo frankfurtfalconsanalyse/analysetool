@@ -1,51 +1,79 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8"><title>Falcons Hub</title>
+    <meta charset="UTF-8"><title>Falcons Hub | Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
         :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; }
         body { font-family: 'Montserrat'; background: var(--bg); color: white; margin: 0; }
-        header { background: #000; padding: 20px; text-align: center; border-bottom: 4px solid var(--red); }
+        header { background: #000; padding: 20px; text-align: center; border-bottom: 4px solid var(--red); display: flex; justify-content: center; align-items: center; position: relative; }
+        #admin-link { position: absolute; right: 20px; background: var(--red); color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; display: none; font-size: 0.8rem; }
+        
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         
-        /* Login Overlay */
-        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        #login-overlay input { padding: 15px; font-size: 1.5rem; width: 100px; text-align: center; border-radius: 10px; border: 2px solid var(--red); background: #222; color: white; }
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align:center; }
+        #login-overlay input { padding: 15px; font-size: 1.5rem; width: 120px; text-align: center; border-radius: 10px; border: 2px solid var(--red); background: #222; color: white; margin-top: 20px; }
+
+        .section-title { color: var(--red); text-transform: uppercase; margin-top: 40px; border-left: 4px solid var(--red); padding-left: 15px; font-size: 1.2rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 15px; }
+        .card { background: var(--card); padding: 25px; border-radius: 12px; cursor: pointer; border: 1px solid #333; transition: 0.3s; text-align: center; }
+        .card:hover { border-color: var(--red); transform: translateY(-5px); background: #222; }
+        .card h3 { margin: 0; text-transform: uppercase; font-size: 1rem; }
+
+        .video-list-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+        .v-card { background: var(--card); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); }
         
-        .section-title { color: var(--red); text-transform: uppercase; margin-top: 40px; border-left: 4px solid var(--red); padding-left: 15px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-        .card { background: var(--card); padding: 20px; border-radius: 12px; cursor: pointer; border: 1px solid #333; }
-        .card:hover { border-color: var(--red); transform: translateY(-5px); transition: 0.3s; }
-        
-        .mention-badge { background: var(--red); color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
+        .back-btn { background: none; border: 1px solid white; color: white; padding: 10px 20px; cursor: pointer; display: none; margin-bottom: 20px; font-family: 'Montserrat'; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
-    <h1 style="margin-bottom:10px;">FRANKFURT <span>FALCONS</span></h1>
-    <p>Bitte gib deine Trikotnummer ein:</p>
+    <h1 style="font-size: 3rem; margin:0;">FRANKFURT <span style="color:var(--red);">FALCONS</span></h1>
+    <p>TRIKOTNUMMER EINGEBEN</p>
     <input type="number" id="login-nr" oninput="checkLogin()">
 </div>
 
-<header><div class="logo">FALCONS <span>VIDEO HUB</span></div></header>
+<header>
+    <div class="logo" style="font-weight:900; letter-spacing:2px; cursor:pointer;" onclick="location.reload()">FALCONS <span style="color:var(--red);">HUB</span></div>
+    <a href="admin.html" id="admin-link">ADMIN PANEL</a>
+</header>
 
 <div class="container" id="hub-content" style="display:none;">
-    <h2 id="welcome-msg">Willkommen</h2>
+    <h2 id="welcome-msg">Servus</h2>
     
-    <h2 class="section-title">Für dich markiert</h2>
-    <div id="personal-grid" class="grid"></div>
+    <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK ZUR ÜBERSICHT</button>
 
-    <h2 class="section-title">Kategorien</h2>
-    <div class="grid" id="cat-grid">
-        <div class="card" onclick="openCat('Offense')"><h3>Offense</h3></div>
-        <div class="card" onclick="openCat('Defense')"><h3>Defense</h3></div>
-        <div class="card" onclick="openCat('Powerplay')"><h3>Powerplay</h3></div>
-        <div class="card" onclick="openCat('Penalty Kill')"><h3>Penalty Kill</h3></div>
+    <!-- PERSÖNLICHES DASHBOARD -->
+    <div id="personal-section">
+        <h2 class="section-title">Für dich markiert</h2>
+        <div id="personal-grid" class="grid"></div>
     </div>
+
+    <!-- LOBBY -->
+    <div id="lobby">
+        <h2 class="section-title">Spielsituation</h2>
+        <div class="grid">
+            <div class="card" onclick="filterVideos('cat', 'Offense')"><h3>Offense</h3></div>
+            <div class="card" onclick="filterVideos('cat', 'Defense')"><h3>Defense</h3></div>
+            <div class="card" onclick="filterVideos('cat', 'Powerplay')"><h3>Powerplay</h3></div>
+            <div class="card" onclick="filterVideos('cat', 'Penalty Kill')"><h3>Penalty Kill</h3></div>
+            <div class="card" onclick="filterVideos('cat', 'Setplays')"><h3>Setplays</h3></div>
+        </div>
+
+        <h2 class="section-title">Positionen</h2>
+        <div class="grid">
+            <div class="card" onclick="filterVideos('pos', 'Angriff')"><h3>Angriff</h3></div>
+            <div class="card" onclick="filterVideos('pos', 'Center')"><h3>Center</h3></div>
+            <div class="card" onclick="filterVideos('pos', 'Verteidigung')"><h3>Verteidigung</h3></div>
+            <div class="card" onclick="filterVideos('pos', 'Goalie')"><h3>Goalie</h3></div>
+        </div>
+    </div>
+
+    <!-- VIDEO GRID -->
+    <div id="video-grid" class="video-list-grid"></div>
 </div>
 
 <script>
@@ -54,11 +82,11 @@
     const db = firebase.firestore();
 
     let currentUser = null;
+    let driveVideos = [];
 
     async function checkLogin() {
         const nr = document.getElementById('login-nr').value;
-        if(nr.length < 1) return;
-        
+        if(!nr) return;
         const doc = await db.collection("players").doc(nr).get();
         if(doc.exists) {
             currentUser = doc.data();
@@ -67,43 +95,72 @@
         }
     }
 
-    function startHub() {
-        if(!currentUser) {
-            const saved = localStorage.getItem('falcons_user');
-            if(saved) currentUser = JSON.parse(saved);
-            else return;
-        }
+    async function startHub() {
+        const saved = localStorage.getItem('falcons_user');
+        if(!saved) return;
+        currentUser = JSON.parse(saved);
+
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('hub-content').style.display = 'block';
         document.getElementById('welcome-msg').innerText = `Servus, ${currentUser.name} (#${currentUser.nr})`;
-        loadPersonalClips();
+
+        // Admin-Button Check
+        const adminDoc = await db.collection("admins").doc(currentUser.nr).get();
+        if(currentUser.nr === "22" || adminDoc.exists) {
+            document.getElementById('admin-link').style.display = 'block';
+        }
+
+        loadData();
     }
 
-    async function loadPersonalClips() {
-        // Suche nach Kommentaren mit @Nummer
-        const snap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
-        const personalGrid = document.getElementById('personal-grid');
+    async function loadData() {
+        const res = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
+        driveVideos = await res.json();
         
-        // Hole alle Video-Infos von Drive
-        const driveRes = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
-        const driveData = await driveRes.json();
-
-        snap.forEach(doc => {
+        // Personal Dashboard: Suche Mentions
+        const mSnap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
+        const pGrid = document.getElementById('personal-grid');
+        pGrid.innerHTML = mSnap.empty ? "<p style='color:#666;'>Keine neuen Markierungen.</p>" : "";
+        
+        mSnap.forEach(doc => {
             const c = doc.data();
-            const v = driveData.find(item => item.link.includes(c.videoId));
+            const v = driveVideos.find(item => item.link.includes(c.videoId));
             if(v) {
-                personalGrid.innerHTML += `
-                    <div class="card" onclick="location.href='analyze.html?id=${c.videoId}'">
-                        <span class="mention-badge">ERWÄHNUNG</span>
-                        <h3>${v.title}</h3>
-                        <p style="font-size:0.8rem; color:#888;">"${c.text}"</p>
-                    </div>`;
+                pGrid.innerHTML += `<div class="v-card" onclick="location.href='analyze.html?id=${c.videoId}'">
+                    <small>ERWÄHNUNG</small><h3>${v.title}</h3><p style='font-size:0.8rem; color:#888;'>"${c.text}"</p>
+                </div>`;
             }
         });
     }
 
-    function openCat(cat) { location.href = `index.html?cat=${cat}`; } // Hier Logik für Filter einbauen
-    window.onload = startHub;
+    async function filterVideos(type, value) {
+        document.getElementById('lobby').style.display = 'none';
+        document.getElementById('personal-section').style.display = 'none';
+        document.getElementById('video-grid').style.display = 'grid';
+        document.getElementById('back-btn').style.display = 'block';
+        
+        const grid = document.getElementById('video-grid');
+        grid.innerHTML = "Lade Clips...";
+
+        const metaSnap = await db.collection("video_metadata").get();
+        let meta = {}; metaSnap.forEach(d => meta[d.id] = d.data().position);
+
+        const filtered = driveVideos.filter(v => {
+            const id = v.link.split('/d/')[1].split('/')[0];
+            if(type === 'cat') return v.category === value;
+            if(type === 'pos') return meta[id] === value || meta[id] === 'Alle';
+        });
+
+        grid.innerHTML = filtered.length ? "" : "<p>Keine Videos gefunden.</p>";
+        filtered.forEach(v => {
+            const id = v.link.split('/d/')[1].split('/')[0];
+            grid.innerHTML += `<div class="v-card" onclick="location.href='analyze.html?id=${id}'">
+                <small>${v.category}</small><h3>${v.title}</h3>
+            </div>`;
+        });
+    }
+
+    startHub();
 </script>
 </body>
 </html>
