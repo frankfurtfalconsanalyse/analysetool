@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Falcons Taktik-Board</title>
+    <style>
+        body { background: #121212; color: white; font-family: sans-serif; text-align: center; }
+        #rink { 
+            width: 800px; height: 400px; background: #333; border: 5px solid white; 
+            margin: 20px auto; position: relative; background-image: 
+                linear-gradient(white 2px, transparent 2px), 
+                linear-gradient(90deg, white 2px, transparent 2px);
+            background-size: 100% 50%, 50% 100%; /* Einfaches Feld-Layout */
+        }
+        .player { 
+            width: 30px; height: 30px; border-radius: 50%; position: absolute; 
+            cursor: move; display: flex; align-items: center; justify-content: center; font-weight: bold; 
+        }
+        .home { background: #e30613; color: white; }
+        .away { background: white; color: black; }
+    </style>
+</head>
+<body>
+    <h1>📋 Floorball Taktik-Board</h1>
+    <button onclick="addPlayer('home')">+ Falcons Spieler</button>
+    <button onclick="addPlayer('away')">+ Gegner</button>
+    <div id="rink"></div>
+
+    <script>
+        function addPlayer(team) {
+            const p = document.createElement('div');
+            p.className = 'player ' + team;
+            p.innerHTML = team === 'home' ? 'F' : 'G';
+            p.style.left = "50px"; p.style.top = "50px";
+            p.onmousedown = dragMouseDown;
+            document.getElementById('rink').appendChild(p);
+        }
+
+        function dragMouseDown(e) {
+            let pos1 = 0, pos2 = 0, pos3 = e.clientX, pos4 = e.clientY;
+            const el = e.target;
+            document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; };
+            document.onmousemove = (e) => {
+                pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
+                pos3 = e.clientX; pos4 = e.clientY;
+                el.style.top = (el.offsetTop - pos2) + "px";
+                el.style.left = (el.offsetLeft - pos1) + "px";
+            };
+        }
+    </script>
+</body>
+</html>
