@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8"><title>Falcons Hub | Dashboard</title>
+    <meta charset="UTF-8"><title>Falcons Hub | Video Analyse</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -33,44 +33,46 @@
 
         .video-list-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
         .v-card { background: var(--card); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); }
+        .v-card h3 { margin: 10px 0 0 0; font-size: 1rem; }
+        .v-card small { color: var(--red); font-weight: bold; text-transform: uppercase; font-size: 0.7rem; }
         
         .back-btn { background: none; border: 1px solid white; color: white; padding: 10px 20px; cursor: pointer; display: none; margin-bottom: 20px; font-family: 'Montserrat'; font-weight: bold; }
-        .user-tag { font-size: 0.8rem; color: #ccc; }
+
+        /* MODAL PLAYER */
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); }
+        .modal-content { max-width: 900px; margin: 40px auto; padding: 10px; position: relative; }
+        .video-container { position: relative; padding-bottom: 56.25%; height: 0; border: 2px solid var(--red); background: #000; }
+        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:none; }
+        .modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; background: #111; padding: 15px; border-radius: 8px; }
+        .btn-analyse { background: var(--red); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 900; text-transform: uppercase; }
+        .btn-close-modal { color: white; font-size: 40px; position: absolute; right: 0; top: -55px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<!-- LOGIN OVERLAY -->
 <div id="login-overlay">
-    <h1 style="font-size: 3rem; margin:0; letter-spacing: 2px;">FRANKFURT <span style="color:var(--red);">FALCONS</span></h1>
-    <p style="letter-spacing: 1px; color:#888;">VIDEO ANALYSE HUB</p>
-    <input type="number" id="login-nr" placeholder="Nr." oninput="checkLogin()">
-    <p id="login-error" style="color:var(--red); font-size:0.8rem; margin-top:10px;"></p>
+    <h1 style="font-size: 3rem; margin:0;">FRANKFURT <span style="color:var(--red);">FALCONS</span></h1>
+    <p>TRIKOTNUMMER EINGEBEN</p>
+    <input type="number" id="login-nr" oninput="checkLogin()">
 </div>
 
-<!-- HEADER -->
 <header>
     <div class="logo" style="font-weight:900; letter-spacing:2px; cursor:pointer;" onclick="location.reload()">FALCONS <span style="color:var(--red);">HUB</span></div>
     <div class="header-right">
-        <span id="user-display" class="user-tag"></span>
+        <span id="user-display" style="font-size: 0.8rem; color: #ccc;"></span>
         <a href="admin.html" id="admin-link">ADMIN PANEL</a>
         <button class="logout-btn" onclick="logout()">LOGOUT</button>
     </div>
 </header>
 
 <div class="container" id="hub-content" style="display:none;">
-    
-    <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK ZUR ÜBERSICHT</button>
+    <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK</button>
 
-    <!-- PERSÖNLICHES DASHBOARD -->
-    <div id="personal-section">
+    <div id="lobby">
         <h2 class="section-title">Für dich markiert</h2>
         <div id="personal-grid" class="grid"></div>
-    </div>
 
-    <!-- LOBBY -->
-    <div id="lobby">
-        <h2 class="section-title">Spielsituation</h2>
+        <h2 class="section-title">Spielsituation (Ordner)</h2>
         <div class="grid">
             <div class="card" onclick="filterVideos('cat', 'Offense')"><h3>Offense</h3></div>
             <div class="card" onclick="filterVideos('cat', 'Defense')"><h3>Defense</h3></div>
@@ -79,7 +81,7 @@
             <div class="card" onclick="filterVideos('cat', 'Setplays')"><h3>Setplays</h3></div>
         </div>
 
-        <h2 class="section-title">Positionen</h2>
+        <h2 class="section-title">Positionen (Zuweisung)</h2>
         <div class="grid">
             <div class="card" onclick="filterVideos('pos', 'Angriff')"><h3>Angriff</h3></div>
             <div class="card" onclick="filterVideos('pos', 'Center')"><h3>Center</h3></div>
@@ -88,8 +90,19 @@
         </div>
     </div>
 
-    <!-- VIDEO GRID -->
     <div id="video-grid" class="video-list-grid"></div>
+</div>
+
+<!-- MODAL -->
+<div id="videoModal" class="modal" onclick="closePlayer()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <span class="btn-close-modal" onclick="closePlayer()">&times;</span>
+        <div class="video-container"><iframe id="modal-iframe" src=""></iframe></div>
+        <div class="modal-footer">
+            <h3 id="modal-title" style="margin:0;">Video</h3>
+            <button class="btn-analyse" id="btn-goto-analyse">ZUR PRO-ANALYSE</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -100,63 +113,50 @@
     let currentUser = null;
     let driveVideos = [];
 
-    // LOGIN PRÜFEN
     async function checkLogin() {
         const nr = document.getElementById('login-nr').value;
         if(!nr) return;
-        
         const doc = await db.collection("players").doc(nr).get();
         if(doc.exists) {
             currentUser = doc.data();
             localStorage.setItem('falcons_user', JSON.stringify(currentUser));
             startHub();
-        } else {
-            document.getElementById('login-error').innerText = "Nummer nicht im Kader gefunden.";
         }
     }
 
-    // HUB STARTEN
     async function startHub() {
         const saved = localStorage.getItem('falcons_user');
         if(!saved) return;
         currentUser = JSON.parse(saved);
-
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('hub-content').style.display = 'block';
         document.getElementById('user-display').innerText = `${currentUser.name} (#${currentUser.nr})`;
 
-        // Admin-Button Check
         const adminDoc = await db.collection("admins").doc(currentUser.nr).get();
         if(currentUser.nr === "22" || adminDoc.exists) {
             document.getElementById('admin-link').style.display = 'block';
         }
-
         loadData();
     }
 
-    // LOGOUT
-    function logout() {
-        if(confirm("Möchtest du dich wirklich ausloggen?")) {
-            localStorage.removeItem('falcons_user');
-            location.reload();
-        }
-    }
+    function logout() { localStorage.removeItem('falcons_user'); location.reload(); }
 
     async function loadData() {
         const res = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
         driveVideos = await res.json();
         
-        // Personal Dashboard: Suche Mentions
+        // Personal Mentions
         const mSnap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
         const pGrid = document.getElementById('personal-grid');
-        pGrid.innerHTML = mSnap.empty ? "<p style='color:#666; font-size:0.8rem;'>Keine neuen Markierungen für dich.</p>" : "";
+        pGrid.innerHTML = mSnap.empty ? "<p style='color:#666;'>Keine Markierungen.</p>" : "";
         
         mSnap.forEach(doc => {
             const c = doc.data();
             const v = driveVideos.find(item => item.link.includes(c.videoId));
             if(v) {
-                pGrid.innerHTML += `<div class="v-card" onclick="location.href='analyze.html?id=${c.videoId}'">
-                    <small style="color:var(--red); font-weight:bold;">ERWÄHNUNG</small><h3>${v.title}</h3><p style='font-size:0.8rem; color:#888; margin-top:10px;'>Feedback: "${c.text}"</p>
+                const fileId = v.link.split('/d/')[1].split('/')[0];
+                pGrid.innerHTML += `<div class="v-card" onclick="openNormalPlayer('${fileId}', '${v.title}')">
+                    <small>ERWÄHNUNG</small><h3>${v.title}</h3>
                 </div>`;
             }
         });
@@ -164,7 +164,6 @@
 
     async function filterVideos(type, value) {
         document.getElementById('lobby').style.display = 'none';
-        document.getElementById('personal-section').style.display = 'none';
         document.getElementById('video-grid').style.display = 'grid';
         document.getElementById('back-btn').style.display = 'block';
         
@@ -174,19 +173,37 @@
         const metaSnap = await db.collection("video_metadata").get();
         let meta = {}; metaSnap.forEach(d => meta[d.id] = d.data().position);
 
+        // FILTER LOGIK
         const filtered = driveVideos.filter(v => {
-            const id = v.link.split('/d/')[1].split('/')[0];
-            if(type === 'cat') return v.category === value;
-            if(type === 'pos') return meta[id] === value || meta[id] === 'Alle';
+            const fileId = v.link.split('/d/')[1].split('/')[0];
+            if(type === 'cat') {
+                // Vergleiche Ordner-Namen aus Drive (v.category)
+                return v.category.toLowerCase().trim() === value.toLowerCase().trim();
+            } else {
+                // Vergleiche Position aus Firebase (meta)
+                return meta[fileId] === value || meta[fileId] === 'Alle';
+            }
         });
 
-        grid.innerHTML = filtered.length ? "" : "<p style='text-align:center; grid-column: 1/-1;'>Keine Videos für diese Auswahl gefunden.</p>";
+        grid.innerHTML = filtered.length ? "" : "<p>Keine Videos gefunden.</p>";
         filtered.forEach(v => {
-            const id = v.link.split('/d/')[1].split('/')[0];
-            grid.innerHTML += `<div class="v-card" onclick="location.href='analyze.html?id=${id}'">
-                <small style="color:var(--red); font-weight:bold;">${v.category}</small><h3 style="margin-top:5px;">${v.title}</h3>
+            const fileId = v.link.split('/d/')[1].split('/')[0];
+            grid.innerHTML += `<div class="v-card" onclick="openNormalPlayer('${fileId}', '${v.title}')">
+                <small>${v.category}</small><h3>${v.title}</h3>
             </div>`;
         });
+    }
+
+    function openNormalPlayer(id, title) {
+        document.getElementById('modal-iframe').src = `https://drive.google.com/file/d/${id}/preview`;
+        document.getElementById('modal-title').innerText = title;
+        document.getElementById('videoModal').style.display = 'block';
+        document.getElementById('btn-goto-analyse').onclick = () => window.location.href=`analyze.html?id=${id}`;
+    }
+
+    function closePlayer() {
+        document.getElementById('videoModal').style.display = 'none';
+        document.getElementById('modal-iframe').src = '';
     }
 
     startHub();
