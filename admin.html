@@ -6,7 +6,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --border: #333; }
+        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --border: #333; --green: #28a745; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: none; }
         
         header { background: #000; padding: 20px 40px; border-bottom: 4px solid var(--red); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
@@ -27,27 +27,30 @@
         .admin-card { background: var(--card); border-radius: 12px; padding: 25px; border: 1px solid var(--border); margin-bottom: 25px; }
         h3 { margin-top: 0; text-transform: uppercase; font-size: 1rem; color: var(--red); letter-spacing: 1px; margin-bottom: 20px; border-left: 3px solid var(--red); padding-left: 10px; }
         
-        input, select, textarea { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; font-family: inherit; margin: 5px 0; }
-        .btn-action { background: var(--red); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.75rem; }
-
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; font-size: 0.65rem; color: #555; text-transform: uppercase; padding: 12px 10px; border-bottom: 1px solid var(--border); }
-        td { padding: 12px 10px; border-bottom: 1px solid #222; font-size: 0.85rem; }
-        .delete-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 1.1rem; }
-
         /* STATUS CHECK STYLES */
+        .status-type-toggle { display: flex; gap: 10px; margin-bottom: 20px; }
+        .type-btn { background: #222; border: 1px solid #444; color: white; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
+        .type-btn.active { background: var(--red); border-color: var(--red); }
+
         .status-row { background: #111; margin-bottom: 10px; border-radius: 8px; border: 1px solid #222; overflow: hidden; }
         .status-header { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
         .status-header:hover { background: #1a1a1a; }
-        .status-content { display: none; padding: 15px; background: #0a0a0a; border-top: 1px solid #222; }
+        .status-content { display: none; padding: 20px; background: #0a0a0a; border-top: 1px solid #222; }
         
-        .player-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
-        .player-tag { background: #1a1a1a; padding: 8px 12px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
-        .icon-check { color: #28a745; font-weight: bold; }
-        .icon-x { color: var(--red); opacity: 0.3; }
+        .block-title { font-size: 0.7rem; text-transform: uppercase; font-weight: 900; margin-bottom: 10px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+        .block-watched { color: var(--green); }
+        .block-open { color: var(--red); }
 
+        .player-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 25px; }
+        .player-tag { background: #1a1a1a; padding: 10px 15px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; font-size: 0.85rem; }
+        
+        /* GENERAL UI */
+        input, select, textarea { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; font-family: inherit; margin: 5px 0; }
+        .btn-action { background: var(--red); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.75rem; }
+        table { width: 100%; border-collapse: collapse; }
+        td, th { padding: 12px; text-align: left; border-bottom: 1px solid #222; }
+        .delete-btn { background: none; border: none; color: #444; cursor: pointer; }
         .video-selector { max-height: 300px; overflow-y: auto; background: #111; padding: 10px; border-radius: 5px; border: 1px solid #333; }
-        .video-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #222; font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -66,35 +69,34 @@
         <button class="tab-btn" onclick="openTab('kader')">Kader</button>
     </nav>
 
-    <!-- TAB: STATUS-CHECK (NEU) -->
+    <!-- TAB: STATUS-CHECK -->
     <div id="status" class="tab-content active">
         <div class="admin-card">
             <h3>📈 Wer hat was gesehen?</h3>
-            <p style="font-size:0.8rem; color:#888; margin-bottom:20px;">Klicke auf eine Session, um die Spieler-Liste zu sehen.</p>
+            <div class="status-type-toggle">
+                <button class="type-btn active" id="btn-show-sessions" onclick="switchStatusMode('sessions')">Sessions (Playlists)</button>
+                <button class="type-btn" id="btn-show-videos" onclick="switchStatusMode('videos')">Einzelne Videos</button>
+            </div>
             <div id="status-list-container">
-                <!-- Sessions werden hier geladen -->
+                <!-- Content wird hier geladen -->
             </div>
         </div>
     </div>
 
-    <!-- TAB: SESSIONS -->
+    <!-- ANDERE TABS (Sessions, YT, Drive, Kader) -->
     <div id="sessions" class="tab-content">
         <div class="admin-card">
             <h3>🆕 Neue Session erstellen</h3>
-            <input type="text" id="s-title" placeholder="Titel" style="width:100%;">
-            <textarea id="s-desc" placeholder="Anweisungen..." style="width:100%; height:60px;"></textarea>
+            <input type="text" id="s-title" placeholder="Session Titel" style="width:100%;">
+            <textarea id="s-desc" placeholder="Anweisungen an die Spieler..." style="width:100%; height:60px;"></textarea>
             <button class="btn-action" onclick="saveSession()">Veröffentlichen</button>
-            <div style="margin-top:20px;">
-                <label style="font-size:0.7rem; color:#888;">VIDEOS WÄHLEN:</label>
-                <div class="video-selector" id="s-video-list"></div>
-            </div>
+            <div style="margin-top:20px;"><div class="video-selector" id="s-video-list"></div></div>
         </div>
     </div>
 
-    <!-- TAB: YOUTUBE -->
     <div id="yt" class="tab-content">
         <div class="admin-card">
-            <h3>🎥 YouTube Link</h3>
+            <h3>🎥 YouTube Link einpflegen</h3>
             <input type="text" id="yt-title" placeholder="Titel">
             <input type="text" id="yt-url" placeholder="YouTube URL">
             <button class="btn-action" onclick="addYT()">Speichern</button>
@@ -102,18 +104,16 @@
         <div class="admin-card"><table id="yt-table"><tbody></tbody></table></div>
     </div>
 
-    <!-- TAB: DRIVE -->
     <div id="drive" class="tab-content">
-        <div class="admin-card"><table id="drive-table"><tbody></tbody></table></div>
+        <div class="admin-card"><table id="drive-table"><thead><tr><th>Video</th><th>Position</th><th>Aktion</th></tr></thead><tbody></tbody></table></div>
     </div>
 
-    <!-- TAB: KADER -->
     <div id="kader" class="tab-content">
         <div class="admin-card">
             <h3>👥 Spieler hinzufügen</h3>
-            <input type="number" id="p-nr" placeholder="Nr.">
-            <input type="text" id="p-name" placeholder="Name">
-            <button class="btn-action" onclick="addPlayer()">Speichern</button>
+            <input type="number" id="p-nr" placeholder="Trikot Nr.">
+            <input type="text" id="p-name" placeholder="Name des Spielers">
+            <button class="btn-action" onclick="addPlayer()">Hinzufügen</button>
         </div>
         <div class="admin-card"><table id="player-table"><tbody></tbody></table></div>
     </div>
@@ -126,13 +126,15 @@
     const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
 
     let allPlayers = [];
+    let allVideos = [];
+    let statusMode = 'sessions';
     let selectedForSession = [];
 
     async function checkAuth() {
         const adminDoc = await db.collection("admins").doc(user.nr || "0").get();
         if (user.nr === "22" || adminDoc.exists) { 
             document.body.style.display = "block"; 
-            loadInitialData();
+            loadBaseData();
         } else { alert("Kein Zugriff!"); window.location.href = "index.html"; }
     }
 
@@ -140,105 +142,103 @@
         document.querySelectorAll('.tab-content, .tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         event.currentTarget.classList.add('active');
-        if(id === 'status') loadStatusCheck();
+        if(id === 'status') loadStatusData();
     }
 
-    async function loadInitialData() {
-        // Spieler laden
+    async function loadBaseData() {
+        // 1. Spieler
         const pSnap = await db.collection("players").get();
         allPlayers = pSnap.docs.map(d => ({id: d.id, ...d.data()}));
-        
         const pTable = document.querySelector("#player-table tbody");
-        allPlayers.forEach(p => pTable.innerHTML += `<tr><td>#${p.id}</td><td>${p.name}</td><td><button class="delete-btn" onclick="deleteDoc('players','${p.id}')">🗑</button></td></tr>`);
+        allPlayers.sort((a,b)=>a.id-b.id).forEach(p => pTable.innerHTML += `<tr><td>#${p.id}</td><td>${p.name}</td><td><button class="delete-btn" onclick="deleteDoc('players','${p.id}')">🗑</button></td></tr>`);
 
-        // Drive & YouTube laden (für den Session Selector)
+        // 2. Drive & YT
         const driveRes = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json());
         const ytSnap = await db.collection("youtube_clips").get();
         
-        const sList = document.getElementById('s-video-list');
-        driveRes.forEach(v => {
-            const id = v.link.split('/d/')[1].split('/')[0];
-            sList.innerHTML += `<div class="video-item"><input type="checkbox" onchange="toggleVideoSelection('${id}')"> [Drive] ${v.title}</div>`;
-        });
-        ytSnap.forEach(d => {
-            sList.innerHTML += `<div class="video-item"><input type="checkbox" onchange="toggleVideoSelection('${d.id}')"> [YT] ${d.data().title}</div>`;
-            document.querySelector("#yt-table tbody").innerHTML += `<tr><td>${d.data().title}</td><td><button class="delete-btn" onclick="deleteDoc('youtube_clips','${d.id}')">🗑</button></td></tr>`;
-        });
+        allVideos = [
+            ...driveRes.map(v => ({ id: v.link.split('/d/')[1].split('/')[0], title: v.title, type: 'Drive' })),
+            ...ytSnap.docs.map(d => ({ id: d.id, title: d.data().title, type: 'YouTube' }))
+        ];
 
-        loadStatusCheck();
+        // UI füllen
+        const sList = document.getElementById('s-video-list');
+        allVideos.forEach(v => sList.innerHTML += `<div class="video-item"><input type="checkbox" onchange="toggleVideoSelection('${v.id}')"> [${v.type}] ${v.title}</div>`);
+        
+        loadStatusData();
     }
 
-    async function loadStatusCheck() {
-        const container = document.getElementById('status-list-container');
-        container.innerHTML = "Lade Status-Daten...";
+    function switchStatusMode(mode) {
+        statusMode = mode;
+        document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-show-' + mode).classList.add('active');
+        loadStatusData();
+    }
 
-        const [sSnap, progSnap] = await Promise.all([
+    async function loadStatusData() {
+        const container = document.getElementById('status-list-container');
+        container.innerHTML = "Daten werden berechnet...";
+
+        const [sSnap, progSnap, viewsSnap] = await Promise.all([
             db.collection("sessions").orderBy("createdAt", "desc").get(),
-            db.collection("progress").get()
+            db.collection("progress").get(), // Für Sessions
+            db.collection("video_views").get() // Für Einzelvideos
         ]);
 
-        let playerProgress = {};
-        progSnap.forEach(doc => { playerProgress[doc.id] = doc.data(); });
+        let playerProgress = {}; progSnap.forEach(d => playerProgress[d.id] = d.data());
+        let playerViews = {}; viewsSnap.forEach(d => playerViews[d.id] = d.data());
 
         container.innerHTML = "";
-        sSnap.forEach(doc => {
-            const s = doc.data();
-            const sid = doc.id;
-            
-            let playerListHtml = "";
-            allPlayers.sort((a,b) => a.id - b.id).forEach(p => {
-                const progressValue = playerProgress[p.id] ? (playerProgress[p.id][sid] || 0) : 0;
-                const isDone = progressValue >= s.videoIds.length && s.videoIds.length > 0;
-                playerListHtml += `
-                    <div class="player-tag">
-                        <span>#${p.id} ${p.name}</span>
-                        <span class="${isDone ? 'icon-check' : 'icon-x'}">${isDone ? '✅' : '❌'}</span>
-                    </div>`;
-            });
 
-            container.innerHTML += `
-                <div class="status-row">
-                    <div class="status-header" onclick="toggleAccordion(this)">
-                        <span><strong>${s.title}</strong> <small style="color:#666; margin-left:10px;">(${s.videoIds.length} Clips)</small></span>
-                        <span>▼</span>
-                    </div>
-                    <div class="status-content">
-                        <div class="player-status-grid">${playerListHtml}</div>
-                    </div>
-                </div>`;
+        if(statusMode === 'sessions') {
+            sSnap.forEach(doc => renderStatusRow(container, doc.data().title, doc.id, doc.data().videoIds.length, playerProgress, 'session'));
+        } else {
+            allVideos.forEach(v => renderStatusRow(container, v.title, v.id, 1, playerViews, 'video'));
+        }
+    }
+
+    function renderStatusRow(container, title, id, target, dataMap, type) {
+        let watched = [];
+        let notWatched = [];
+
+        allPlayers.forEach(p => {
+            let hasWatched = false;
+            if(type === 'session') {
+                hasWatched = (dataMap[p.id] && dataMap[p.id][id] >= target);
+            } else {
+                hasWatched = (dataMap[p.id] && dataMap[p.id][id] === true);
+            }
+
+            const pTag = `<div class="player-tag"><span>#${p.id} ${p.name}</span><span>${hasWatched ? '✅':'❌'}</span></div>`;
+            if(hasWatched) watched.push(pTag); else notWatched.push(pTag);
         });
+
+        const row = document.createElement('div');
+        row.className = 'status-row';
+        row.innerHTML = `
+            <div class="status-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block'">
+                <span><strong>${title}</strong></span>
+                <span style="font-size:0.7rem; color:#888;">${watched.length} / ${allPlayers.length} Gesehen ▼</span>
+            </div>
+            <div class="status-content">
+                <div class="block-title block-watched">✅ Gesehen (${watched.length})</div>
+                <div class="player-status-grid">${watched.join('') || '<small style="color:#444">Niemand</small>'}</div>
+                <div class="block-title block-open">❌ Offen (${notWatched.length})</div>
+                <div class="player-status-grid">${notWatched.join('') || '<small style="color:#444">Alle haben geschaut!</small>'}</div>
+            </div>`;
+        container.appendChild(row);
     }
 
-    function toggleAccordion(el) {
-        const content = el.nextElementSibling;
-        content.style.display = content.style.display === "block" ? "none" : "block";
-    }
-
+    // Standard Funktionen
     function toggleVideoSelection(id) {
         const idx = selectedForSession.indexOf(id);
-        if(idx > -1) selectedForSession.splice(idx, 1);
-        else selectedForSession.push(id);
+        if(idx > -1) selectedForSession.splice(idx, 1); else selectedForSession.push(id);
     }
 
     async function saveSession() {
         const title = document.getElementById('s-title').value;
-        if(!title || selectedForSession.length === 0) return alert("Titel und Videos wählen!");
-        await db.collection("sessions").add({ title, description: document.getElementById('s-desc').value, videoIds: selectedForSession, targetGroup: "Alle", createdAt: new Date() });
-        location.reload();
-    }
-
-    async function addYT() {
-        const title = document.getElementById('yt-title').value;
-        const url = document.getElementById('yt-url').value;
-        const ytId = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=))([\w\-]{11})/)?.[1];
-        if(!ytId) return alert("URL ungültig");
-        await db.collection("youtube_clips").add({ title, ytId, category: "YouTube", position: "Alle", startTime: 0, createdAt: new Date() });
-        location.reload();
-    }
-
-    async function addPlayer() {
-        const nr = document.getElementById('p-nr').value;
-        await db.collection("players").doc(nr).set({ name: document.getElementById('p-name').value, nr: nr });
+        if(!title || selectedForSession.length === 0) return alert("Fehler!");
+        await db.collection("sessions").add({ title, description: document.getElementById('s-desc').value, videoIds: selectedForSession, createdAt: new Date() });
         location.reload();
     }
 
