@@ -200,7 +200,7 @@
             // @19 -> @19 | Name
             let resolvedText = text.replace(/@(\d+)/g, (match, nr) => {
                 mentions.push(nr);
-                return playerMap[nr] ? `@${nr} | ${playerMap[nr]}*` : match;
+                return playerMap[nr] ? `@${nr} | ${playerMap[nr]}*` : `${match}*`;
             });
 
             try {
@@ -229,7 +229,7 @@
 
                   docs.forEach(c => {
                       // Regex markiert nur den Block @Nr | Name
-                      const formatted = c.text.replace(/(@\d+ \| [^*]+|@\d+)/g, '<span class="mention">$1</span>');
+                      const formatted = c.text.replace(/(@\d+ \| [^*]+|@\d+)*/g, '<span class="mention">$1</span>');
                       const delBtn = (isAdmin || user.nr === c.authorNr) ? `<button class="delete-btn" onclick="deleteCom('${c.id}')">🗑</button>` : '';
                       
                       display.innerHTML += `
