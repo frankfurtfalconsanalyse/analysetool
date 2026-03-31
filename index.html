@@ -31,37 +31,30 @@
         .card h3 { margin: 0; text-transform: uppercase; font-size: 1rem; }
 
         .video-list-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
-        .v-card { background: var(--card); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); }
+        .v-card { background: var(--card); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); transition: 0.2s; }
+        .v-card:hover { transform: translateX(5px); }
         .v-card h3 { margin: 10px 0 0 0; font-size: 1rem; }
         .v-card small { color: var(--red); font-weight: bold; text-transform: uppercase; font-size: 0.7rem; }
         
-        .back-btn { background: none; border: 1px solid white; color: white; padding: 10px 20px; cursor: pointer; display: none; margin-bottom: 20px; font-family: 'Montserrat'; font-weight: bold; }
+        .back-btn { background: none; border: 1px solid white; color: white; padding: 10px 20px; cursor: pointer; display: none; margin-bottom: 20px; font-family: 'Montserrat'; font-weight: bold; border-radius: 5px; }
 
-        /* MODAL PLAYER MIT KOMMENTAREN */
+        /* MODAL */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); }
-        .modal-content { 
-            max-width: 1100px; width: 95%; margin: 20px auto; background: #111; 
-            border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; 
-            box-shadow: 0 0 30px rgba(0,0,0,1); border: 1px solid #333;
-        }
+        .modal-content { max-width: 1100px; width: 95%; margin: 20px auto; background: #111; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #333; }
         .modal-main { display: flex; flex-wrap: wrap; }
-        
-        .video-side { flex: 2; min-width: 300px; background: #000; position: relative; padding-bottom: 37%; height: 0; } /* 16:9 Verhältnis angepasst */
+        .video-side { flex: 2; min-width: 300px; background: #000; position: relative; padding-bottom: 37.25%; height: 0; }
         .video-side iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:none; }
-
-        .comment-side { flex: 1; min-width: 300px; background: #1a1a1a; display: flex; flex-direction: column; max-height: 500px; }
+        .comment-side { flex: 1; min-width: 300px; background: #1a1a1a; display: flex; flex-direction: column; max-height: 500px; border-left: 1px solid #333; }
         .comment-side h4 { padding: 15px; margin: 0; background: #000; border-bottom: 2px solid var(--red); font-size: 0.8rem; text-transform: uppercase; }
-        
         .modal-comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .mini-comment { background: #252525; padding: 10px; border-radius: 5px; border-left: 3px solid var(--red); font-size: 0.85rem; }
-        .mini-comment small { color: var(--red); font-weight: bold; font-size: 0.65rem; display: block; margin-bottom: 3px; }
+        .mini-comment small { color: var(--red); font-weight: bold; font-size: 0.65rem; display: block; }
         .mention { color: #5dade2; font-weight: bold; }
-
         .modal-footer { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #000; border-top: 1px solid #333; }
         .btn-analyse { background: var(--red); color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-weight: 900; text-transform: uppercase; }
         .btn-close-modal { color: white; font-size: 35px; cursor: pointer; margin-left: 20px; font-weight: bold; }
 
-        @media (max-width: 800px) { .video-side { padding-bottom: 56.25%; } .modal-content { margin: 10px auto; } }
+        #loading-info { text-align: center; color: #888; padding: 20px; display: none; }
     </style>
 </head>
 <body>
@@ -83,6 +76,7 @@
 
 <div class="container" id="hub-content" style="display:none;">
     <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK</button>
+    <div id="loading-info">Synchronisiere mit Google Drive...</div>
 
     <div id="lobby">
         <h2 class="section-title">Für dich markiert</h2>
@@ -109,18 +103,14 @@
     <div id="video-grid" class="video-list-grid"></div>
 </div>
 
-<!-- MODAL MIT KOMMENTAREN -->
+<!-- MODAL -->
 <div id="videoModal" class="modal" onclick="closePlayer()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-main">
-            <div class="video-side">
-                <iframe id="modal-iframe" src="" allowfullscreen></iframe>
-            </div>
+            <div class="video-side"><iframe id="modal-iframe" src="" allowfullscreen></iframe></div>
             <div class="comment-side">
                 <h4>Feedback & Analyse</h4>
-                <div class="modal-comment-list" id="modal-comment-display">
-                    <!-- Kommentare laden hier -->
-                </div>
+                <div class="modal-comment-list" id="modal-comment-display"></div>
             </div>
         </div>
         <div class="modal-footer">
@@ -140,7 +130,8 @@
 
     let currentUser = null;
     let driveVideos = [];
-    let commentUnsubscribe = null; // Um den Listener zu stoppen
+    let isDataLoaded = false;
+    let commentUnsubscribe = null;
 
     async function checkLogin() {
         const nr = document.getElementById('login-nr').value;
@@ -171,94 +162,88 @@
     function logout() { localStorage.removeItem('falcons_user'); location.reload(); }
 
     async function loadData() {
-        const res = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
-        driveVideos = await res.json();
-        
-        const mSnap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
-        const pGrid = document.getElementById('personal-grid');
-        pGrid.innerHTML = mSnap.empty ? "<p style='color:#666;'>Keine Markierungen.</p>" : "";
-        
-        mSnap.forEach(doc => {
-            const c = doc.data();
-            const v = driveVideos.find(item => item.link.includes(c.videoId));
-            if(v) {
-                const fileId = v.link.split('/d/')[1].split('/')[0];
-                pGrid.innerHTML += `<div class="v-card" onclick="openNormalPlayer('${fileId}', '${v.title}')">
-                    <small>ERWÄHNUNG</small><h3>${v.title}</h3>
-                </div>`;
-            }
-        });
-    }
-
-    // MODAL FUNKTIONEN (Normaler Player)
-    function openNormalPlayer(id, title) {
-        document.getElementById('modal-iframe').src = `https://drive.google.com/file/d/${id}/preview`;
-        document.getElementById('modal-title').innerText = title;
-        document.getElementById('videoModal').style.display = 'block';
-        document.getElementById('btn-goto-analyse').onclick = () => window.location.href=`analyze.html?id=${id}`;
-        
-        // Kommentare für dieses Video laden
-        listenForComments(id);
-    }
-
-    function listenForComments(videoId) {
-        // Falls bereits ein Listener läuft, stoppen
-        if(commentUnsubscribe) commentUnsubscribe();
-
-        commentUnsubscribe = db.collection("comments")
-            .where("videoId", "==", videoId)
-            .orderBy("createdAt", "asc")
-            .onSnapshot((snapshot) => {
-                const display = document.getElementById('modal-comment-display');
-                display.innerHTML = snapshot.empty ? "<p style='color:#555; font-size:0.8rem; padding:10px;'>Kein Feedback zu diesem Clip vorhanden.</p>" : "";
-                
-                snapshot.forEach(doc => {
-                    const c = doc.data();
-                    const formattedText = c.text.replace(/(@\d+ \([^)]+\)|@\d+)/g, '<span class="mention">$1</span>');
-                    
-                    const div = document.createElement('div');
-                    div.className = "mini-comment";
-                    div.innerHTML = `
-                        <small>${c.author} (#${c.authorNr})</small>
-                        <div>${formattedText}</div>
-                    `;
-                    display.appendChild(div);
-                });
-                display.scrollTop = display.scrollHeight;
+        document.getElementById('loading-info').style.display = 'block';
+        try {
+            const res = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
+            driveVideos = await res.json();
+            isDataLoaded = true;
+            document.getElementById('loading-info').style.display = 'none';
+            
+            // Markierungen laden
+            const mSnap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
+            const pGrid = document.getElementById('personal-grid');
+            pGrid.innerHTML = mSnap.empty ? "<p style='color:#666;'>Keine Markierungen.</p>" : "";
+            mSnap.forEach(doc => {
+                const c = doc.data();
+                const v = driveVideos.find(item => item.link.includes(c.videoId));
+                if(v) {
+                    const id = v.link.split('/d/')[1].split('/')[0];
+                    pGrid.innerHTML += `<div class="v-card" onclick="openNormalPlayer('${id}', '${v.title}')">
+                        <small>ERWÄHNUNG</small><h3>${v.title}</h3>
+                    </div>`;
+                }
             });
-    }
-
-    function closePlayer() {
-        document.getElementById('videoModal').style.display = 'none';
-        document.getElementById('modal-iframe').src = '';
-        if(commentUnsubscribe) commentUnsubscribe(); // Stop Firebase Listener
+        } catch(e) { console.error(e); }
     }
 
     async function filterVideos(type, value) {
+        if(!isDataLoaded) return alert("Daten werden noch geladen...");
+
         document.getElementById('lobby').style.display = 'none';
         document.getElementById('video-grid').style.display = 'grid';
         document.getElementById('back-btn').style.display = 'block';
         
         const grid = document.getElementById('video-grid');
-        grid.innerHTML = "Lade Clips...";
+        grid.innerHTML = "Filtere Clips...";
 
         const metaSnap = await db.collection("video_metadata").get();
         let meta = {}; metaSnap.forEach(d => meta[d.id] = d.data().position);
 
         const filtered = driveVideos.filter(v => {
-            const fileId = v.link.split('/d/')[1].split('/')[0];
-            if(type === 'cat') return v.category.toLowerCase().trim() === value.toLowerCase().trim();
-            else return meta[fileId] === value || meta[fileId] === 'Alle';
+            const id = v.link.split('/d/')[1].split('/')[0];
+            if(type === 'cat') {
+                // EXTREM ROBUST: Alles klein, keine Leerzeichen
+                let cleanDriveCat = v.category.toLowerCase().replace(/\s/g, '');
+                let cleanFilterVal = value.toLowerCase().replace(/\s/g, '');
+                return cleanDriveCat === cleanFilterVal;
+            } else {
+                return meta[id] === value || meta[id] === 'Alle';
+            }
         });
 
-        grid.innerHTML = filtered.length ? "" : "<p>Keine Videos gefunden.</p>";
+        grid.innerHTML = filtered.length ? "" : `<p style='grid-column: 1/-1; text-align:center;'>Keine Videos in '${value}' gefunden.</p>`;
         filtered.forEach(v => {
-            const fileId = v.link.split('/d/')[1].split('/')[0];
-            grid.innerHTML += `<div class="v-card" onclick="openNormalPlayer('${fileId}', '${v.title}')">
+            const id = v.link.split('/d/')[1].split('/')[0];
+            grid.innerHTML += `<div class="v-card" onclick="openNormalPlayer('${id}', '${v.title}')">
                 <small>${v.category}</small><h3>${v.title}</h3>
             </div>`;
         });
     }
+
+    function openNormalPlayer(id, title) {
+        document.getElementById('modal-iframe').src = `https://drive.google.com/file/d/${id}/preview`;
+        document.getElementById('modal-title').innerText = title;
+        document.getElementById('videoModal').style.display = 'block';
+        document.getElementById('btn-goto-analyse').onclick = () => window.location.href=`analyze.html?id=${id}`;
+        listenForComments(id);
+    }
+
+    function listenForComments(videoId) {
+        if(commentUnsubscribe) commentUnsubscribe();
+        commentUnsubscribe = db.collection("comments").where("videoId", "==", videoId).orderBy("createdAt", "asc")
+            .onSnapshot(snap => {
+                const display = document.getElementById('modal-comment-display');
+                display.innerHTML = snap.empty ? "<p style='color:#555; padding:10px;'>Kein Feedback vorhanden.</p>" : "";
+                snap.forEach(doc => {
+                    const c = doc.data();
+                    const text = c.text.replace(/(@\d+ \([^)]+\)|@\d+)/g, '<span class="mention">$1</span>');
+                    display.innerHTML += `<div class="mini-comment"><small>${c.author} (#${c.authorNr})</small><div>${text}</div></div>`;
+                });
+                display.scrollTop = display.scrollHeight;
+            });
+    }
+
+    function closePlayer() { document.getElementById('videoModal').style.display='none'; document.getElementById('modal-iframe').src=''; if(commentUnsubscribe) commentUnsubscribe(); }
 
     startHub();
 </script>
