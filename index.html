@@ -228,37 +228,51 @@
         listenForComments(id);
     }
 
-        // Suche in deiner index.html die Funktion listenForComments(videoId) und ersetze sie:
-        
-        function listenForComments(videoId) {
-            if(commentUnsubscribe) commentUnsubscribe();
-        
-            // Admin Check für das Modal
-            const isAdmin = (currentUser.nr === "22"); // Erweitere dies um die Admin-DB Abfrage falls nötig
-        
-            commentUnsubscribe = db.collection("comments")
-                .where("videoId", "==", videoId)
-                .onSnapshot((snapshot) => {
-                    const display = document.getElementById('modal-comment-display');
-                    display.innerHTML = "";
-                    
-                    let docs = [];
-                    snapshot.forEach(d => docs.push({id: d.id, ...d.data()}));
-                    docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-        
-                    docs.forEach(c => {
-                        const formattedText = c.text.replace(/(@\d+ | @\d+|@\d+\|[^ ]+)/g, '<span class="mention">$1</span>');
-                        const delBtn = (currentUser.nr === "22" || currentUser.nr === c.authorNr) 
-                            ? `<button onclick="deleteCommentFromHub('${c.id}')" style="background:none; border:none; color:#555; cursor:pointer; float:right;">🗑</button>` 
-                            : '';
-        
-                        display.innerHTML += `
-                            <div class="mini-comment">
-                                <small>${c.author} (#${c.authorNr}) ${delBtn}</small>
-                                <div>${formattedText}</div>
-                            </div>`;
-                    });
-                    display.scrollTop = display.scrollHeight;
+                // Suche in der index.html die Funktion listenForComments(videoId) und ersetze sie:
+                
+                function listenForComments(videoId) {
+                    if(commentUnsubscribe) commentUnsubscribe();
+                
+                    commentUnsubscribe = db.collection("comments")
+                        .where("videoId", "==", videoId)
+                        .onSnapshot((snapshot) => {
+                            const display = document.getElementById('modal-comment-display');
+                            display.innerHTML = "";
+                            
+                            let docs = [];
+                            snapshot.forEach(d => docs.push({id: d.id, ...d.data()}));
+                            docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                
+                            docs.forEach(c => {
+                                // Ganzen Block @19 | Name blau machen
+                                const formattedText = c.text.replace(/(@\d+ \| [^!\?\.,\n]+|@\d+)/g, '<span class="mention">$1</span>');
+                                const delBtn = (currentUser.nr === "22" || currentUser.nr === c.authorNr) 
+                                    ? `<button onclick="deleteCommentFromHub('${c.id}')" style="background:none; border:none; color:#555; cursor:pointer; float:right;">🗑</button>` 
+                                    : '';
+                
+                                display.innerHTML += `
+                                    <div class="mini-comment">
+                                        <small>${c.author} (#${c.authorNr}) ${delBtn}</small>
+                                        <div>${formattedText}</div>
+                                    </div>`;
+                            });
+                            display.scrollTop = display.scrollHeight;
+                        });
+                }
+                
+                async function deleteCommentFromHub(cid) {
+                    if(confirm("Kommentar löschen?")) await db.collection("comments").doc(cid).delete();
+                }
+                
+                // FIX FÜR FILTERUNG (in filterVideos einfügen):
+                const filtered = driveVideos.filter(v => {
+                    const fileId = v.link.split('/d/')[1].split('/')[0];
+                    if(type === 'cat') {
+                        // Ignoriert Leerzeichen und Großschreibung
+                        return v.category.toLowerCase().trim() === value.toLowerCase().trim();
+                    } else {
+                        return meta[fileId] === value || meta[fileId] === 'Alle';
+                    }
                 });
         }
         
