@@ -1,167 +1,109 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <title>Frankfurt Falcons | Video Hub</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <meta charset="UTF-8"><title>Falcons Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --text: #ffffff; }
-        body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; }
+        body { font-family: 'Montserrat'; background: var(--bg); color: white; margin: 0; }
+        header { background: #000; padding: 20px; text-align: center; border-bottom: 4px solid var(--red); }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         
-        header { background: #000; padding: 25px; text-align: center; border-bottom: 4px solid var(--red); position: sticky; top: 0; z-index: 100; }
-        .logo { font-size: 2rem; font-weight: 900; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; }
-        .logo span { color: var(--red); }
-
-        .container { max-width: 1200px; margin: 0 auto; padding: 30px; }
+        /* Login Overlay */
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        #login-overlay input { padding: 15px; font-size: 1.5rem; width: 100px; text-align: center; border-radius: 10px; border: 2px solid var(--red); background: #222; color: white; }
         
-        /* Navigation & Buttons */
-        .top-nav { display: flex; justify-content: center; gap: 15px; margin-bottom: 40px; }
-        .btn-pro { background: transparent; border: 2px solid var(--red); color: white; padding: 12px 24px; border-radius: 50px; cursor: pointer; font-weight: bold; text-decoration: none; transition: 0.3s; font-size: 0.9rem; }
-        .btn-pro:hover { background: var(--red); box-shadow: 0 0 15px rgba(227, 6, 19, 0.4); }
-
-        /* Lobby Grid */
-        .section-title { text-transform: uppercase; font-size: 1.1rem; letter-spacing: 1px; color: var(--red); margin: 40px 0 20px; border-left: 4px solid var(--red); padding-left: 15px; }
-        .grid-lobby { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+        .section-title { color: var(--red); text-transform: uppercase; margin-top: 40px; border-left: 4px solid var(--red); padding-left: 15px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; cursor: pointer; border: 1px solid #333; }
+        .card:hover { border-color: var(--red); transform: translateY(-5px); transition: 0.3s; }
         
-        .card-cat { 
-            background: var(--card); height: 140px; display: flex; align-items: center; justify-content: center; 
-            border-radius: 15px; cursor: pointer; transition: 0.3s; border: 1px solid #333; position: relative; overflow: hidden;
-        }
-        .card-cat:hover { transform: translateY(-5px); border-color: var(--red); background: #222; }
-        .card-cat h3 { text-transform: uppercase; font-size: 1rem; z-index: 2; }
-        .card-cat::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background: var(--red); }
-
-        /* Homework Section */
-        .homework-box { background: linear-gradient(90deg, #1a1a1a, #2a0a0a); padding: 25px; border-radius: 15px; border-left: 8px solid orange; margin-bottom: 40px; display: none; }
-
-        /* Video Grid */
-        .video-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
-        .video-card { background: var(--card); border-radius: 12px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); transition: 0.3s; }
-        .video-card:hover { background: #252525; transform: scale(1.02); }
-        .video-card small { color: var(--red); font-weight: bold; text-transform: uppercase; font-size: 0.7rem; }
-
-        #main-loader { text-align: center; padding: 100px; color: #888; }
-        .back-btn { display: none; margin-bottom: 20px; background: none; border: 1px solid white; color: white; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; }
+        .mention-badge { background: var(--red); color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<header><div class="logo" onclick="location.reload()">FRANKFURT <span>FALCONS</span></div></header>
+<div id="login-overlay">
+    <h1 style="margin-bottom:10px;">FRANKFURT <span>FALCONS</span></h1>
+    <p>Bitte gib deine Trikotnummer ein:</p>
+    <input type="number" id="login-nr" oninput="checkLogin()">
+</div>
 
-<div class="container">
-    <div class="top-nav">
-        <a href="tactic.html" class="btn-pro">📋 TAKTIK-BOARD</a>
-        <a href="admin.html" class="btn-pro">⚙️ ADMIN PANEL</a>
+<header><div class="logo">FALCONS <span>VIDEO HUB</span></div></header>
+
+<div class="container" id="hub-content" style="display:none;">
+    <h2 id="welcome-msg">Willkommen</h2>
+    
+    <h2 class="section-title">Für dich markiert</h2>
+    <div id="personal-grid" class="grid"></div>
+
+    <h2 class="section-title">Kategorien</h2>
+    <div class="grid" id="cat-grid">
+        <div class="card" onclick="openCat('Offense')"><h3>Offense</h3></div>
+        <div class="card" onclick="openCat('Defense')"><h3>Defense</h3></div>
+        <div class="card" onclick="openCat('Powerplay')"><h3>Powerplay</h3></div>
+        <div class="card" onclick="openCat('Penalty Kill')"><h3>Penalty Kill</h3></div>
     </div>
-
-    <div id="main-loader">SYSTEM WIRD INITIALISIERT...</div>
-
-    <!-- Homework -->
-    <div id="homework-section" class="homework-box">
-        <h2 style="margin-top:0; color: orange;">⚠️ HAUSAUFGABEN</h2>
-        <div id="homework-grid" class="grid-lobby"></div>
-    </div>
-
-    <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK</button>
-
-    <!-- Lobby -->
-    <div id="lobby-area">
-        <h2 class="section-title">Nach Situation</h2>
-        <div class="grid-lobby">
-            <div class="card-cat" onclick="showCategory('Offense')"><h3>Offense</h3></div>
-            <div class="card-cat" onclick="showCategory('Defense')"><h3>Defense</h3></div>
-            <div class="card-cat" onclick="showCategory('Powerplay')"><h3>Powerplay</h3></div>
-            <div class="card-cat" onclick="showCategory('Penalty Kill')"><h3>Penalty Kill</h3></div>
-            <div class="card-cat" onclick="showCategory('Setplays')"><h3>Setplays</h3></div>
-        </div>
-
-        <h2 class="section-title">Nach Position</h2>
-        <div class="grid-lobby">
-            <div class="card-cat" onclick="showPosition('Angriff')"><h3>Angriff</h3></div>
-            <div class="card-cat" onclick="showPosition('Center')"><h3>Center</h3></div>
-            <div class="card-cat" onclick="showPosition('Verteidigung')"><h3>Verteidigung</h3></div>
-            <div class="card-cat" onclick="showPosition('Goalie')"><h3>Goalie</h3></div>
-        </div>
-    </div>
-
-    <!-- Video Grid -->
-    <div id="video-grid" class="video-grid"></div>
 </div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU",
-        authDomain: "falcons-video-tool.firebaseapp.com",
-        projectId: "falcons-video-tool",
-        storageBucket: "falcons-video-tool.firebasestorage.app",
-        messagingSenderId: "306689889088",
-        appId: "1:306689889088:web:ad525fecd0682069c6e0a5"
-    };
+    const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const DRIVE_API = 'https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec';
 
-    let allVideos = [];
+    let currentUser = null;
 
-    async function init() {
-        const [driveRes, metaSnap] = await Promise.all([
-            fetch(DRIVE_API).then(r => r.json()),
-            db.collection("video_metadata").get()
-        ]);
-
-        let metaData = {};
-        metaSnap.forEach(doc => { metaData[doc.id] = doc.data(); });
-
-        allVideos = driveRes.map(v => {
-            const id = v.link.split('/d/')[1].split('/')[0];
-            const m = metaData[id] || {};
-            return { ...v, id, position: m.position || "Alle", homework: m.homework || false };
-        });
-
-        document.getElementById('main-loader').style.display = 'none';
-        renderHomework();
-    }
-
-    function renderHomework() {
-        const hwGrid = document.getElementById('homework-grid');
-        const hwVideos = allVideos.filter(v => v.homework);
-        if(hwVideos.length > 0) {
-            document.getElementById('homework-section').style.display = 'block';
-            hwVideos.forEach(v => {
-                hwGrid.innerHTML += `<div class="card-cat" style="height:100px; background:#333;" onclick="openAnalyze('${v.id}')"><h4>${v.title}</h4></div>`;
-            });
+    async function checkLogin() {
+        const nr = document.getElementById('login-nr').value;
+        if(nr.length < 1) return;
+        
+        const doc = await db.collection("players").doc(nr).get();
+        if(doc.exists) {
+            currentUser = doc.data();
+            localStorage.setItem('falcons_user', JSON.stringify(currentUser));
+            startHub();
         }
     }
 
-    function showCategory(cat) {
-        renderGrid(allVideos.filter(v => v.category === cat), cat);
+    function startHub() {
+        if(!currentUser) {
+            const saved = localStorage.getItem('falcons_user');
+            if(saved) currentUser = JSON.parse(saved);
+            else return;
+        }
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('hub-content').style.display = 'block';
+        document.getElementById('welcome-msg').innerText = `Servus, ${currentUser.name} (#${currentUser.nr})`;
+        loadPersonalClips();
     }
 
-    function showPosition(pos) {
-        renderGrid(allVideos.filter(v => v.position === pos || v.position === 'Alle'), "Position: " + pos);
-    }
+    async function loadPersonalClips() {
+        // Suche nach Kommentaren mit @Nummer
+        const snap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
+        const personalGrid = document.getElementById('personal-grid');
+        
+        // Hole alle Video-Infos von Drive
+        const driveRes = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
+        const driveData = await driveRes.json();
 
-    function renderGrid(list, title) {
-        document.getElementById('lobby-area').style.display = 'none';
-        document.getElementById('video-grid').style.display = 'grid';
-        document.getElementById('back-btn').style.display = 'block';
-        const grid = document.getElementById('video-grid');
-        grid.innerHTML = "";
-        list.forEach(v => {
-            grid.innerHTML += `
-                <div class="video-card" onclick="openAnalyze('${v.id}')">
-                    <small>${v.category} | ${v.position}</small>
-                    <h3 style="margin:10px 0;">${v.title}</h3>
-                    <p style="color:#888; font-size:0.8rem;">▶ ANALYSE STARTEN</p>
-                </div>`;
+        snap.forEach(doc => {
+            const c = doc.data();
+            const v = driveData.find(item => item.link.includes(c.videoId));
+            if(v) {
+                personalGrid.innerHTML += `
+                    <div class="card" onclick="location.href='analyze.html?id=${c.videoId}'">
+                        <span class="mention-badge">ERWÄHNUNG</span>
+                        <h3>${v.title}</h3>
+                        <p style="font-size:0.8rem; color:#888;">"${c.text}"</p>
+                    </div>`;
+            }
         });
     }
 
-    function openAnalyze(id) { window.location.href = `analyze.html?id=${id}`; }
-
-    init();
+    function openCat(cat) { location.href = `index.html?cat=${cat}`; } // Hier Logik für Filter einbauen
+    window.onload = startHub;
 </script>
 </body>
 </html>
