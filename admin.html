@@ -1,211 +1,287 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8"><title>Falcons Admin | Management</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8"><title>Falcons Hub | Admin Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; }
-        body { font-family: 'Montserrat'; background: var(--bg); color: white; padding: 20px; display: none; }
-        .section { background: var(--card); padding: 20px; border-radius: 10px; margin-bottom: 30px; border: 1px solid #333; }
-        input, select, button { padding: 10px; margin: 5px; border-radius: 4px; border: 1px solid #444; background: #222; color: white; font-family: 'Montserrat'; }
-        button { background: var(--red); border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        button:hover { background: #ff1a1a; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #333; padding: 10px; text-align: left; }
-        th { background: var(--red); }
-        .yt-box { border: 1px dashed #555; padding: 15px; margin-top: 10px; border-radius: 8px; }
-        .time-input { width: 50px; text-align: center; }
+        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --border: #333; }
+        body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: none; }
+        
+        /* HEADER */
+        header { background: #000; padding: 20px 40px; border-bottom: 4px solid var(--red); display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-weight: 900; letter-spacing: 2px; text-transform: uppercase; font-size: 1.2rem; }
+        .btn-hub { text-decoration: none; color: #888; font-size: 0.8rem; font-weight: bold; border: 1px solid #444; padding: 8px 15px; border-radius: 5px; transition: 0.2s; }
+        .btn-hub:hover { color: white; border-color: white; }
+
+        .container { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
+
+        /* TABS NAVIGATION */
+        .tab-nav { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .tab-btn { background: none; border: none; color: #666; padding: 10px 20px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; transition: 0.3s; }
+        .tab-btn.active { color: var(--red); border-bottom: 2px solid var(--red); }
+
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CARDS & FORMS */
+        .admin-card { background: var(--card); border-radius: 12px; padding: 25px; border: 1px solid var(--border); margin-bottom: 20px; }
+        h3 { margin-top: 0; text-transform: uppercase; font-size: 1rem; color: var(--red); letter-spacing: 1px; margin-bottom: 20px; }
+        
+        .form-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: bold; }
+        
+        input, select { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; font-family: inherit; }
+        input:focus { border-color: var(--red); outline: none; }
+        
+        .btn-action { background: var(--red); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; }
+        .btn-action:hover { background: #ff1a1a; }
+
+        /* TABLES */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; font-size: 0.7rem; color: #555; text-transform: uppercase; padding: 10px; border-bottom: 1px solid var(--border); }
+        td { padding: 12px 10px; border-bottom: 1px solid #222; font-size: 0.9rem; }
+        .delete-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 1rem; }
+        .delete-btn:hover { color: var(--red); }
+        
+        .badge { font-size: 0.7rem; padding: 3px 7px; border-radius: 3px; font-weight: bold; background: #333; color: #aaa; }
     </style>
 </head>
 <body>
-    <a href="index.html" style="color:white; text-decoration:none; font-size:0.8rem; font-weight: bold;">← ZURÜCK ZUM HUB</a>
-    <h1>Falcons Admin Zentrale</h1>
 
-    <!-- YOUTUBE CLIP HINZUFÜGEN -->
-    <div class="section">
-        <h3>🎥 YouTube Clip hinzufügen</h3>
-        <div class="yt-box">
-            <input type="text" id="yt-title" placeholder="Clip Titel (z.B. Highlight-Tor)" style="width:250px;">
-            <input type="text" id="yt-url" placeholder="YouTube Link einfügen" style="width:250px;">
-            <select id="yt-cat">
-                <option value="Offense">Offense</option>
-                <option value="Defense">Defense</option>
-                <option value="Powerplay">Powerplay</option>
-                <option value="Penalty Kill">Penalty Kill</option>
-                <option value="Setplays">Setplays</option>
-            </select>
-            <select id="yt-pos">
-                <option value="Alle">Alle Positionen</option>
-                <option value="Angriff">Angriff</option>
-                <option value="Center">Center</option>
-                <option value="Verteidigung">Verteidigung</option>
-                <option value="Goalie">Goalie</option>
-            </select>
-            <div style="margin-top:15px; background: #222; padding: 10px; border-radius: 5px; display: inline-block;">
-                Startzeit bei: 
-                <input type="number" id="yt-hr" class="time-input" placeholder="Std" min="0" value="0"> :
-                <input type="number" id="yt-min" class="time-input" placeholder="Min" min="0" max="59" value="0"> :
-                <input type="number" id="yt-sec" class="time-input" placeholder="Sek" min="0" max="59" value="0">
-                <button onclick="addYoutubeClip()" style="margin-left: 15px;">HINZUFÜGEN</button>
+<header>
+    <div class="logo">Admin <span>Zentrale</span></div>
+    <a href="index.html" class="btn-hub">← ZURÜCK ZUM HUB</a>
+</header>
+
+<div class="container">
+    <nav class="tab-nav">
+        <button class="tab-btn active" onclick="openTab('yt')">YouTube Clips</button>
+        <button class="tab-btn" onclick="openTab('drive')">Drive Zuordnung</button>
+        <button class="tab-btn" onclick="openTab('kader')">Kader</button>
+        <button class="tab-btn" onclick="openTab('rechte')">Admin-Rechte</button>
+    </nav>
+
+    <!-- TAB: YOUTUBE -->
+    <div id="yt" class="tab-content active">
+        <div class="admin-card">
+            <h3>🎥 Neuen YouTube Clip hinzufügen</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Titel</label>
+                    <input type="text" id="yt-title" placeholder="z.B. Powerplay Tor" style="width: 200px;">
+                </div>
+                <div class="form-group">
+                    <label>YouTube Link</label>
+                    <input type="text" id="yt-url" placeholder="URL einfügen" style="width: 200px;">
+                </div>
+                <div class="form-group">
+                    <label>Startzeit (Std : Min : Sek)</label>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <input type="number" id="yt-hr" class="time-input" value="0" style="width:45px;"> :
+                        <input type="number" id="yt-min" class="time-input" value="0" style="width:45px;"> :
+                        <input type="number" id="yt-sec" class="time-input" value="0" style="width:45px;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Kategorie</label>
+                    <select id="yt-cat">
+                        <option value="Offense">Offense</option>
+                        <option value="Defense">Defense</option>
+                        <option value="Powerplay">Powerplay</option>
+                        <option value="Penalty Kill">Penalty Kill</option>
+                        <option value="Setplays">Setplays</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Position</label>
+                    <select id="yt-pos">
+                        <option value="Alle">Alle</option>
+                        <option value="Angriff">Angriff</option>
+                        <option value="Center">Center</option>
+                        <option value="Verteidigung">Verteidigung</option>
+                        <option value="Goalie">Goalie</option>
+                    </select>
+                </div>
+                <button class="btn-action" onclick="addYoutubeClip()">Speichern</button>
             </div>
         </div>
+        <div class="admin-card">
+            <h3>Liste der YouTube Clips</h3>
+            <table id="yt-table">
+                <thead><tr><th>Titel</th><th>Kategorie</th><th>Startzeit</th><th>Aktion</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: DRIVE -->
+    <div id="drive" class="tab-content">
+        <div class="admin-card">
+            <h3>📂 Drive Videos Positionen zuweisen</h3>
+            <p style="font-size:0.8rem; color:#666; margin-bottom:20px;">Hinweis: Die Kategorie wird automatisch durch den Google Drive Ordner bestimmt.</p>
+            <table id="video-table">
+                <thead><tr><th>Video Name</th><th>Position</th><th>Aktion</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: KADER -->
+    <div id="kader" class="tab-content">
+        <div class="admin-card">
+            <h3>👥 Spieler hinzufügen</h3>
+            <div class="form-row">
+                <div class="form-group"><label>Nr.</label><input type="number" id="p-nr" style="width:60px;"></div>
+                <div class="form-group"><label>Vollständiger Name</label><input type="text" id="p-name" style="width:250px;"></div>
+                <button class="btn-action" onclick="addPlayer()">Hinzufügen</button>
+            </div>
+        </div>
+        <div class="admin-card">
+            <h3>Aktueller Kader</h3>
+            <table id="player-table">
+                <thead><tr><th>Nr.</th><th>Name</th><th>Löschen</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: RECHTE -->
+    <div id="rechte" class="tab-content">
+        <div class="admin-card">
+            <h3>🔑 Admin-Status vergeben</h3>
+            <p style="font-size:0.8rem; color:#666; margin-bottom:20px;">Gekoppelt an die Trikotnummer. Nummer 22 ist permanent Admin.</p>
+            <div class="form-row">
+                <div class="form-group"><label>Trikotnummer</label><input type="number" id="admin-nr" style="width:100px;"></div>
+                <button class="btn-action" onclick="addAdmin()">Admin-Rechte geben</button>
+            </div>
+        </div>
+        <div class="admin-card">
+            <h3>Zusätzliche Admins</h3>
+            <table id="admin-table">
+                <thead><tr><th>Trikotnummer</th><th>Status</th><th>Entziehen</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
+
+    async function checkAuth() {
+        const adminDoc = await db.collection("admins").doc(user.nr || "0").get();
+        if (user.nr === "22" || adminDoc.exists) { 
+            document.body.style.display = "block"; 
+            loadYT(); loadKader(); loadDrive(); loadAdmins();
+        } else { 
+            alert("Zugriff verweigert!"); window.location.href = "index.html"; 
+        }
+    }
+
+    function openTab(id) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    // --- YOUTUBE LOGIK ---
+    async function addYoutubeClip() {
+        const title = document.getElementById('yt-title').value;
+        const url = document.getElementById('yt-url').value;
+        const cat = document.getElementById('yt-cat').value;
+        const pos = document.getElementById('yt-pos').value;
+        const totalSec = (parseInt(document.getElementById('yt-hr').value)||0)*3600 + (parseInt(document.getElementById('yt-min').value)||0)*60 + (parseInt(document.getElementById('yt-sec').value)||0);
         
-        <h4 style="margin-top:20px;">Gespeicherte YouTube Clips:</h4>
-        <table id="yt-table">
-            <thead><tr><th>YouTube Titel</th><th>Kategorie</th><th>Startzeit</th><th>Aktion</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </div>
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        const ytId = (match && match[2].length == 11) ? match[2] : null;
 
-    <!-- SPIELER VERWALTUNG -->
-    <div class="section">
-        <h3>👥 Kader pflegen</h3>
-        <input type="number" id="p-nr" placeholder="Nr." style="width:60px;">
-        <input type="text" id="p-name" placeholder="Name des Spielers">
-        <button onclick="addPlayer()">SPIELER SPEICHERN</button>
-        <table id="player-table">
-            <thead><tr><th>Nr.</th><th>Name</th><th>Aktion</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </div>
+        if(!ytId || !title) return alert("Daten unvollständig!");
+        await db.collection("youtube_clips").add({ title, ytId, category: cat, position: pos, startTime: totalSec, createdAt: new Date() });
+        location.reload();
+    }
 
-    <!-- DRIVE ZUORDNUNG -->
-    <div class="section">
-        <h3>📂 Google Drive Clips zuweisen</h3>
-        <p style="font-size:0.8rem; color:#888;">Hier weist du den Drive-Videos eine Position zu (Drive-Ordner = Kategorie).</p>
-        <table id="video-table">
-            <thead><tr><th>Drive Video Name</th><th>Zugeordnete Position</th><th>Aktion</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </div>
+    async function loadYT() {
+        const snap = await db.collection("youtube_clips").orderBy("createdAt", "desc").get();
+        const tbody = document.querySelector("#yt-table tbody");
+        snap.forEach(doc => {
+            const d = doc.data();
+            const time = `${Math.floor(d.startTime/3600)}h ${Math.floor((d.startTime%3600)/60)}m ${d.startTime%60}s`;
+            tbody.innerHTML += `<tr><td>${d.title}</td><td><span class="badge">${d.category}</span></td><td>${time}</td><td><button class="delete-btn" onclick="deleteDoc('youtube_clips','${doc.id}')">🗑</button></td></tr>`;
+        });
+    }
 
-    <script>
-        const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
+    // --- DRIVE LOGIK ---
+    async function loadDrive() {
+        const res = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
+        const driveData = await res.json();
+        const metaSnap = await db.collection("video_metadata").get();
+        let meta = {}; metaSnap.forEach(d => meta[d.id] = d.data().position);
 
-        // AUTH CHECK
-        async function checkAuth() {
-            const adminDoc = await db.collection("admins").doc(user.nr || "0").get();
-            if (user.nr === "22" || adminDoc.exists) { 
-                document.body.style.display = "block"; 
-                loadData(); 
-            } else { 
-                alert("Zugriff verweigert! Nur für Admins."); 
-                window.location.href = "index.html"; 
-            }
-        }
+        const tbody = document.querySelector("#video-table tbody");
+        driveData.forEach(v => {
+            const id = v.link.split('/d/')[1].split('/')[0];
+            tbody.innerHTML += `<tr>
+                <td>${v.title} <br><small style="color:#555">${v.category}</small></td>
+                <td><select id="v-${id}"><option value="Alle" ${meta[id]==='Alle'?'selected':''}>Alle</option><option value="Angriff" ${meta[id]==='Angriff'?'selected':''}>Angriff</option><option value="Center" ${meta[id]==='Center'?'selected':''}>Center</option><option value="Verteidigung" ${meta[id]==='Verteidigung'?'selected':''}>Verteidigung</option><option value="Goalie" ${meta[id]==='Goalie'?'selected':''}>Goalie</option></select></td>
+                <td><button class="btn-action" style="padding:5px 10px;" onclick="saveVideoMeta('${id}')">Save</button></td>
+            </tr>`;
+        });
+    }
 
-        // YOUTUBE ID EXTRACTION
-        function extractYTId(url) {
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            return (match && match[2].length == 11) ? match[2] : null;
-        }
+    async function saveVideoMeta(id) {
+        const pos = document.getElementById('v-'+id).value;
+        await db.collection("video_metadata").doc(id).set({ position: pos });
+        alert("Gespeichert!");
+    }
 
-        // YOUTUBE CLIP HINZUFÜGEN
-        async function addYoutubeClip() {
-            const title = document.getElementById('yt-title').value;
-            const url = document.getElementById('yt-url').value;
-            const cat = document.getElementById('yt-cat').value;
-            const pos = document.getElementById('yt-pos').value;
-            const hr = parseInt(document.getElementById('yt-hr').value) || 0;
-            const min = parseInt(document.getElementById('yt-min').value) || 0;
-            const sec = parseInt(document.getElementById('yt-sec').value) || 0;
-            
-            const ytId = extractYTId(url);
-            if(!ytId || !title) return alert("Fehler: Ungültiger Link oder Titel!");
+    // --- KADER LOGIK ---
+    async function addPlayer() {
+        const nr = document.getElementById('p-nr').value;
+        const name = document.getElementById('p-name').value;
+        if(!nr || !name) return;
+        await db.collection("players").doc(nr).set({ name, nr });
+        location.reload();
+    }
 
-            // Umrechnung in Sekunden für YouTube Embeds
-            const totalSeconds = (hr * 3600) + (min * 60) + sec;
+    async function loadKader() {
+        const snap = await db.collection("players").get();
+        const tbody = document.querySelector("#player-table tbody");
+        snap.forEach(doc => {
+            const p = doc.data();
+            tbody.innerHTML += `<tr><td>#${p.nr}</td><td>${p.name}</td><td><button class="delete-btn" onclick="deleteDoc('players','${p.nr}')">🗑</button></td></tr>`;
+        });
+    }
 
-            await db.collection("youtube_clips").add({
-                title, ytId, category: cat, position: pos, startTime: totalSeconds, createdAt: new Date()
-            });
-            alert("YouTube Clip erfolgreich hinzugefügt!");
-            location.reload();
-        }
+    // --- ADMIN RECHTE ---
+    async function addAdmin() {
+        const nr = document.getElementById('admin-nr').value;
+        if(!nr) return;
+        await db.collection("admins").doc(nr).set({ active: true });
+        location.reload();
+    }
 
-        // SPIELER HINZUFÜGEN
-        async function addPlayer() {
-            const nr = document.getElementById('p-nr').value;
-            const name = document.getElementById('p-name').value;
-            if(!nr || !name) return alert("Nr. und Name angeben!");
-            await db.collection("players").doc(nr).set({ name, nr });
-            location.reload();
-        }
+    async function loadAdmins() {
+        const snap = await db.collection("admins").get();
+        const tbody = document.querySelector("#admin-table tbody");
+        snap.forEach(doc => {
+            tbody.innerHTML += `<tr><td>#${doc.id}</td><td><span class="badge" style="background:green; color:white;">AKTIV</span></td><td><button class="delete-btn" onclick="deleteDoc('admins','${doc.id}')">🗑</button></td></tr>`;
+        });
+    }
 
-        // DATEN LADEN
-        async function loadData() {
-            // 1. YouTube Clips laden
-            const ytSnap = await db.collection("youtube_clips").orderBy("createdAt", "desc").get();
-            const ytBody = document.querySelector("#yt-table tbody");
-            ytSnap.forEach(doc => {
-                const d = doc.data();
-                // Sekunden zurück in H:MM:SS verwandeln
-                const hrs = Math.floor(d.startTime / 3600);
-                const mins = Math.floor((d.startTime % 3600) / 60);
-                const secs = d.startTime % 60;
-                const timeString = `${hrs}h ${mins}m ${secs}s`;
+    async function deleteDoc(col, id) { 
+        if(confirm("Löschen?")) { await db.collection(col).doc(id).delete(); location.reload(); } 
+    }
 
-                ytBody.innerHTML += `<tr>
-                    <td>${d.title}</td>
-                    <td><small>${d.category}</small></td>
-                    <td>${timeString}</td>
-                    <td><button onclick="deleteDoc('youtube_clips','${doc.id}')">Löschen</button></td>
-                </tr>`;
-            });
-
-            // 2. Spieler laden
-            const pSnap = await db.collection("players").get();
-            const pBody = document.querySelector("#player-table tbody");
-            pSnap.forEach(doc => {
-                const p = doc.data();
-                pBody.innerHTML += `<tr><td>${p.nr}</td><td>${p.name}</td><td><button onclick="deleteDoc('players','${p.nr}')">Entfernen</button></td></tr>`;
-            });
-
-            // 3. Drive Videos laden & Metadaten abgleichen
-            const driveRes = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec');
-            const driveData = await driveRes.json();
-            const metaSnap = await db.collection("video_metadata").get();
-            let meta = {}; metaSnap.forEach(d => meta[d.id] = d.data().position);
-
-            const vBody = document.querySelector("#video-table tbody");
-            driveData.forEach(v => {
-                const id = v.link.split('/d/')[1].split('/')[0];
-                vBody.innerHTML += `<tr>
-                    <td>${v.title}</td>
-                    <td>
-                        <select id="v-${id}">
-                            <option value="Alle" ${meta[id]==='Alle'?'selected':''}>Alle</option>
-                            <option value="Angriff" ${meta[id]==='Angriff'?'selected':''}>Angriff</option>
-                            <option value="Center" ${meta[id]==='Center'?'selected':''}>Center</option>
-                            <option value="Verteidigung" ${meta[id]==='Verteidigung'?'selected':''}>Verteidigung</option>
-                            <option value="Goalie" ${meta[id]==='Goalie'?'selected':''}>Goalie</option>
-                        </select>
-                    </td>
-                    <td><button onclick="saveVideoMeta('${id}')">SPEICHERN</button></td>
-                </tr>`;
-            });
-        }
-
-        async function saveVideoMeta(id) {
-            const pos = document.getElementById('v-'+id).value;
-            await db.collection("video_metadata").doc(id).set({ position: pos });
-            alert("Position für Drive-Clip aktualisiert!");
-        }
-
-        async function deleteDoc(col, id) { 
-            if(confirm("Diesen Eintrag wirklich löschen?")) { 
-                await db.collection(col).doc(id).delete(); 
-                location.reload(); 
-            } 
-        }
-
-        checkAuth();
-    </script>
+    checkAuth();
+</script>
 </body>
 </html>
