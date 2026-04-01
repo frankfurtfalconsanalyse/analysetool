@@ -232,12 +232,29 @@
     async function loadMentions() {
         const snap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
         const pGrid = document.getElementById('personal-grid');
-        let uniqueVids = [...new Set(snap.docs.map(d => d.data().videoId))];
-        pGrid.innerHTML = uniqueVids.length ? "" : "<p style='color:#555; font-size:0.8rem;'>Keine Markierungen.</p>";
-        uniqueVids.forEach(vidId => {
-            const v = combinedVideos.find(item => item.id === vidId);
-            if(v) pGrid.innerHTML += `<div class="v-card" onclick="openPlayer('${v.id}')"><small>MARKIERUNG</small><h3>${v.title}</h3></div>`;
+        pGrid.innerHTML = "";
+
+        let count = 0;
+        snap.forEach(doc => {
+            const c = doc.data();
+            const readBy = c.readBy || [];
+            
+            // NUR ANZEIGEN WENN NOCH NICHT GELESEN
+            if (!readBy.includes(currentUser.nr)) {
+                const v = combinedVideos.find(item => item.id === c.videoId);
+                if(v) {
+                    count++;
+                    pGrid.innerHTML += `
+                        <div class="v-card" onclick="openPlayer('${v.id}')">
+                            <small>NEUE MARKIERUNG</small>
+                            <h3>${v.title}</h3>
+                            <p style="font-size:0.7rem; color:#888; margin-top:5px;">"${c.text.replace(/\*/g, '')}"</p>
+                        </div>`;
+                }
+            }
         });
+
+        if(count === 0) pGrid.innerHTML = "<p style='color:#555;'>Alles erledigt! Keine neuen Markierungen.</p>";
     }
 
     function filterVideos(type, value) {
