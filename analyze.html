@@ -10,24 +10,26 @@
         :root { --red: #e30613; --bg: #0d0d0d; --panel: #1a1a1a; --border: #333; --mention: #5dade2; --text-gray: #aaaaaa; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
 
-        /* VIDEO AREA */
-        .viewer { flex: 3; position: relative; display: flex; flex-direction: column; background: #000; }
-        .video-box { position: relative; flex: 1; background: #000; overflow: hidden; }
+        /* LINKER BEREICH: VIDEO & CANVAS */
+        .viewer-container { flex: 3; position: relative; display: flex; flex-direction: column; background: #000; }
         
-        /* WICHTIG: Iframe muss die ganze Box füllen */
-        iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; }
+        .video-box { position: relative; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         
-        /* CANVAS LAYER */
+        /* Das Video muss absolut positioniert sein, um den Raum zu füllen */
+        #main-frame { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; }
+        
+        /* Die Zeichenfläche liegt darüber */
         #draw-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         #draw-canvas.active { pointer-events: auto; cursor: crosshair; }
 
-        /* TOOLBAR */
+        /* TOOLBAR UNTEN */
         .toolbar { background: var(--panel); padding: 15px; display: flex; gap: 10px; align-items: center; border-top: 2px solid var(--border); z-index: 10; }
         .btn { background: #333; color: white; border: 1px solid #444; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.8rem; transition: 0.2s; }
+        .btn:hover { border-color: var(--red); }
         .btn.active { background: var(--red); border-color: white; box-shadow: 0 0 10px var(--red); }
-        .btn-hub { background: transparent; border: 1px solid white; margin-left: auto; }
+        .btn-hub { background: transparent; border: 1px solid white; margin-left: auto; text-decoration: none; display: flex; align-items: center; }
 
-        /* SIDEBAR */
+        /* RECHTER BEREICH: KOMMENTARE */
         .sidebar { flex: 1; background: var(--panel); border-left: 2px solid var(--border); display: flex; flex-direction: column; min-width: 350px; }
         .sidebar-header { padding: 20px; border-bottom: 2px solid var(--red); background: #000; }
         
@@ -36,44 +38,53 @@
         .comment-item.is-read { opacity: 0.3; filter: grayscale(1); }
 
         .comment-meta { font-size: 0.65rem; color: var(--red); font-weight: 900; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* TEXTFARBEN LOGIK */
         .comment-text { font-size: 0.9rem; color: var(--text-gray); line-height: 1.4; }
         .mention { color: var(--mention) !important; font-weight: bold !important; }
         
-        /* AKTIONEN */
-        .action-btns { display: flex; gap: 8px; align-items: center; }
+        .action-btns { display: flex; gap: 8px; }
         .check-btn { background: #28a745; color: white; border: none; border-radius: 3px; padding: 4px 8px; cursor: pointer; font-weight: bold; font-size: 0.7rem; }
         .delete-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 1rem; }
 
         .input-area { padding: 15px; background: #000; border-top: 1px solid var(--border); }
         textarea { width: 100%; height: 70px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 10px; resize: none; font-family: inherit; box-sizing: border-box; }
+        
         .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div class="viewer">
-        <div class="video-box" id="v-box">
+    <div class="viewer-container">
+        <div class="video-box">
+            <!-- Das Video-Element -->
             <iframe id="main-frame" src="" allow="autoplay; fullscreen"></iframe>
+            <!-- Die Zeichen-Fläche -->
             <canvas id="draw-canvas"></canvas>
         </div>
+
         <div class="toolbar">
-            <button class="btn" id="btn-draw" onclick="toggleDrawing()">✏️ ZEICHNEN AKTIVIEREN</button>
-            <button class="btn" onclick="clearDraw()">🗑 LÖSCHEN</button>
+            <button class="btn" id="btn-draw-mode" onclick="toggleDrawingMode()">✏️ ZEICHNEN AKTIVIEREN</button>
+            <button class="btn" onclick="clearCanvas()">🗑 LÖSCHEN</button>
+            
             <div style="display: flex; gap: 8px; margin-left: 10px;">
                 <div class="color-dot" style="background: #e30613;" onclick="setPenColor('#e30613')"></div>
                 <div class="color-dot" style="background: #ffff00;" onclick="setPenColor('#ffff00')"></div>
                 <div class="color-dot" style="background: #00ffff;" onclick="setPenColor('#00ffff')"></div>
             </div>
-            <button class="btn btn-hub" onclick="window.location.href='index.html'">HUB</button>
+
+            <a href="index.html" class="btn btn-hub">HUB BEENDEN</a>
         </div>
     </div>
 
     <div class="sidebar">
-        <div class="sidebar-header"><h3 style="margin:0;">ANALYSE FEEDBACK</h3></div>
+        <div class="sidebar-header"><h3 style="margin:0; letter-spacing: 1px;">ANALYSE FEEDBACK</h3></div>
+        
         <div class="comment-list" id="comment-display"></div>
+
         <div class="input-area">
             <textarea id="com-input" placeholder="Feedback @Nr (z.B. @19)..."></textarea>
-            <button class="btn" style="width:100%; background:var(--red); border:none; margin-top:10px;" onclick="sendComment()">SENDEN</button>
+            <button class="btn" style="width:100%; background:var(--red); border:none; margin-top:10px; padding: 12px;" onclick="sendComment()">SENDEN</button>
         </div>
     </div>
 
@@ -93,19 +104,21 @@
         async function init() {
             if(!videoId) return location.href='index.html';
 
-            // 1. Team & Admin Check
-            const [pSnap, adminDoc] = await Promise.all([
-                db.collection("players").get(),
-                db.collection("admins").doc(user.nr).get()
-            ]);
+            // 1. Spielerdaten laden
+            const pSnap = await db.collection("players").get();
             pSnap.forEach(doc => { playerMap[doc.id] = doc.data().name; });
+
+            // 2. Admin Check
+            const adminDoc = await db.collection("admins").doc(user.nr).get();
             if(user.nr === "22" || adminDoc.exists) isAdmin = true;
 
-            // 2. Video laden
+            // 3. Video-URL setzen
             const frame = document.getElementById('main-frame');
             if(videoType === 'youtube') {
                 const ytDoc = await db.collection("youtube_clips").doc(videoId).get();
-                if(ytDoc.exists) frame.src = `https://www.youtube.com/embed/${ytDoc.data().ytId}?start=${ytDoc.data().startTime}&autoplay=1`;
+                if(ytDoc.exists) {
+                    frame.src = `https://www.youtube.com/embed/${ytDoc.data().ytId}?start=${ytDoc.data().startTime}&autoplay=1&rel=0`;
+                }
             } else {
                 frame.src = `https://drive.google.com/file/d/${videoId}/preview`;
             }
@@ -114,7 +127,7 @@
             resizeCanvas();
         }
 
-        // KOMMENTAR SENDEN
+        // KOMMENTAR-FUNKTIONEN
         async function sendComment() {
             const input = document.getElementById('com-input');
             let text = input.value.trim();
@@ -133,13 +146,12 @@
             input.value = "";
         }
 
-        // LIVE-KOMMENTARE & HAKEN LOGIK
         function listenForComments() {
-            db.collection("comments").where("videoId", "==", videoId).onSnapshot(snap => {
+            db.collection("comments").where("videoId", "==", videoId).onSnapshot(snapshot => {
                 const display = document.getElementById('comment-display');
                 display.innerHTML = "";
                 let docs = [];
-                snap.forEach(d => docs.push({id: d.id, ...d.data()}));
+                snapshot.forEach(d => docs.push({id: d.id, ...d.data()}));
                 docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
 
                 docs.forEach(c => {
@@ -149,7 +161,7 @@
                     
                     let actionHtml = '';
                     if(isAdmin || user.nr === c.authorNr) actionHtml += `<button class="delete-btn" onclick="deleteCom('${c.id}')">🗑</button>`;
-                    if(isMentioned && !isRead) actionHtml += `<button class="check-btn" onclick="markAsRead('${c.id}')">Gelesen ✓</button>`;
+                    if(isMentioned && !isRead) actionHtml += `<button class="check-btn" onclick="markAsRead('${c.id}')">✓</button>`;
 
                     display.innerHTML += `
                         <div class="comment-item ${isRead ? 'is-read' : ''}">
@@ -170,16 +182,18 @@
             });
         }
 
-        async function deleteCom(cid) { if(confirm("Löschen?")) await db.collection("comments").doc(cid).delete(); }
+        async function deleteCom(cid) {
+            if(confirm("Löschen?")) await db.collection("comments").doc(cid).delete();
+        }
 
         // ZEICHEN-FUNKTIONEN
-        const canvas = document.getElementById('draw-layer');
+        const canvas = document.getElementById('draw-canvas');
         const ctx = canvas.getContext('2d');
         let isDrawingMode = false, isPainting = false, penColor = "#e30613";
 
         function toggleDrawingMode() {
             isDrawingMode = !isDrawingMode;
-            document.getElementById('btn-draw').classList.toggle('active', isDrawingMode);
+            document.getElementById('btn-draw-mode').classList.toggle('active', isDrawingMode);
             canvas.classList.toggle('active', isDrawingMode);
             if(isDrawingMode) resizeCanvas();
         }
@@ -190,7 +204,7 @@
         }
 
         function setPenColor(c) { penColor = c; }
-        function clearDraw() { ctx.clearRect(0,0,canvas.width,canvas.height); }
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
         canvas.onmousedown = (e) => {
             if(!isDrawingMode) return;
