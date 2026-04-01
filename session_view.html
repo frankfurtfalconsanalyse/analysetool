@@ -173,28 +173,34 @@
     }
 
     function listenForComments(videoId) {
-        if(commentUnsubscribe) commentUnsubscribe();
+    if(commentUnsubscribe) commentUnsubscribe();
 
-        commentUnsubscribe = db.collection("comments")
-            .where("videoId", "==", videoId)
-            .onSnapshot(snap => {
-                const display = document.getElementById('session-comment-display');
-                display.innerHTML = "";
-                let docs = [];
-                snap.forEach(d => docs.push(d.data()));
-                docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+    commentUnsubscribe = db.collection("comments")
+        .where("videoId", "==", videoId)
+        .onSnapshot(snap => {
+            const display = document.getElementById('session-comment-display');
+            display.innerHTML = "";
+            let docs = [];
+            snap.forEach(d => docs.push({id: d.id, ...d.data()}));
+            docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
 
-                docs.forEach(c => {
-                    const formatted = c.text.replace(/(@\d+ \| [^,!\?\.\n\r]+|@\d+)/g, '<span class="mention">$1</span>');
-                    display.innerHTML += `
-                        <div class="mini-comment">
-                            <small>${c.author} (#${c.authorNr})</small>
-                            <div>${formatted}</div>
-                        </div>`;
-                });
-                display.scrollTop = display.scrollHeight;
+            docs.forEach(c => {
+                const readBy = c.readBy || [];
+                const isRead = readBy.includes(user.nr);
+                const isMentioned = (c.mentions || []).includes(user.nr);
+                const formatted = c.text.replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
+                
+                let checkBtn = (isMentioned && !isRead) ? `<button onclick="markAsRead('${c.id}')" style="background:#28a745; color:white; border:none; padding:2px 5px; border-radius:3px; cursor:pointer; font-size:0.6rem; float:right;">✓</button>` : '';
+
+                display.innerHTML += `
+                    <div class="mini-comment ${isRead ? 'is-read' : ''}" style="${isRead ? 'opacity:0.4; filter:grayscale(1);' : ''}">
+                        <small>${c.author} (#${c.authorNr}) ${checkBtn}</small>
+                        <div style="color:#aaa;">${formatted}</div>
+                    </div>`;
             });
-    }
+            display.scrollTop = display.scrollHeight;
+        });
+}
 
     async function updateProgress() {
         if(!user.nr) return;
@@ -206,6 +212,13 @@
     function prevClip() { if(currentIdx > 0) playClip(currentIdx-1); }
 
     init();
+
+    async function markAsRead(cid) {
+    if(!user.nr) return;
+    await db.collection("comments").doc(cid).update({
+        readBy: firebase.firestore.FieldValue.arrayUnion(user.nr)
+    });
+}
 </script>
 </body>
 </html>
