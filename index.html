@@ -6,47 +6,28 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --blue: #5dade2; }
+        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --blue: #5dade2; --gray: #aaaaaa; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; overflow-x: hidden; }
         
-        /* HEADER */
-        header { 
-            background: #000; padding: 15px 25px; border-bottom: 4px solid var(--red); 
-            display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 100;
-        }
-        .header-right { display: flex; align-items: center; gap: 15px; }
+        header { background: #000; padding: 15px 25px; border-bottom: 4px solid var(--red); display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 100; }
+        .logo { font-weight:900; letter-spacing:2px; cursor:pointer; text-transform: uppercase; font-size: 1.3rem; }
+        .header-right { display: flex; gap: 10px; align-items: center; }
         #admin-link { background: var(--red); color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; display: none; font-size: 0.75rem; }
         .logout-btn { background: transparent; border: 1px solid #444; color: #888; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 0.75rem; font-weight: bold; }
 
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-
-        /* SESSIONS HERO */
-        .hero-session { background: linear-gradient(45deg, #1a1a1a, #000); border: 2px solid var(--red); border-radius: 15px; padding: 40px; margin-bottom: 50px; display: none; position: relative; overflow: hidden; }
-        .hero-session h1 { font-size: 2.5rem; margin: 0; text-transform: uppercase; }
-        .hero-session p { color: #aaa; margin: 15px 0 25px; max-width: 600px; }
-        .btn-start-session { background: var(--red); color: white; border: none; padding: 15px 30px; border-radius: 50px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
-
-        /* SEKTIONEN & GRIDS */
-        .section-title { color: var(--red); text-transform: uppercase; margin-top: 50px; border-left: 4px solid var(--red); padding-left: 15px; font-size: 1.2rem; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
-        
-        /* SESSION CARDS */
-        .s-card { background: var(--card); border-radius: 12px; border: 1px solid #333; padding: 20px; cursor: pointer; transition: 0.3s; position: relative; }
-        .s-card:hover { border-color: var(--red); transform: translateY(-5px); }
-        /* Dezente Markierung für "Gesehen" */
-        .watched-dot { position: absolute; top: 15px; right: 15px; width: 10px; height: 10px; background: var(--red); border-radius: 50%; box-shadow: 0 0 10px var(--red); display: none; }
-
-        /* LOBBY CARDS */
-        .card { background: var(--card); padding: 30px; border-radius: 12px; cursor: pointer; border: 1px solid #333; transition: 0.3s; text-align: center; }
-        .card:hover { border-color: var(--red); background: #222; }
-        .card h3 { margin: 0; font-size: 1rem; text-transform: uppercase; }
-
-        /* LOGIN OVERLAY */
-        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 5000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         #login-overlay input { padding: 15px; font-size: 1.5rem; width: 120px; text-align: center; border-radius: 10px; border: 2px solid var(--red); background: #222; color: white; margin-top: 20px; }
-        
+
+        .section-title { color: var(--red); text-transform: uppercase; margin-top: 40px; border-left: 4px solid var(--red); padding-left: 15px; font-size: 1.2rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 15px; }
+        .card { background: var(--card); padding: 30px; border-radius: 12px; cursor: pointer; border: 1px solid #333; transition: 0.3s; text-align: center; }
+        .card:hover { border-color: var(--red); transform: translateY(-5px); background: #222; }
+
         .video-list-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
-        .v-card { background: var(--card); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); }
+        .v-card { background: var(--card); border-radius: 10px; padding: 20px; cursor: pointer; border-left: 5px solid var(--red); position: relative; }
+        .v-card h3 { margin: 10px 0 0; font-size: 1rem; }
+        .v-card small { color: var(--red); font-weight: bold; text-transform: uppercase; font-size: 0.7rem; }
         .back-btn { background: #333; border: 1px solid #444; color: white; padding: 10px 20px; cursor: pointer; display: none; margin-bottom: 20px; font-weight: bold; border-radius: 5px; }
 
         /* MODAL */
@@ -56,14 +37,16 @@
         .video-side { flex: 2; min-width: 300px; background: #000; position: relative; padding-bottom: 37.25%; height: 0; }
         .video-side iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:none; }
         .comment-side { flex: 1; min-width: 300px; background: #1a1a1a; display: flex; flex-direction: column; max-height: 500px; border-left: 1px solid #333; }
+        .comment-side h4 { padding: 15px; margin: 0; background: #000; border-bottom: 2px solid var(--red); font-size: 0.8rem; text-transform: uppercase; }
         .modal-comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .mini-comment { background: #252525; padding: 10px; border-radius: 8px; border-left: 3px solid var(--red); font-size: 0.85rem; color: white; }
+        
+        .mini-comment { background: #252525; padding: 12px; border-radius: 8px; border-left: 3px solid var(--red); font-size: 0.85rem; color: white; }
+        .mini-comment.is-read { opacity: 0.4; filter: grayscale(1); }
         .mini-comment small { color: var(--red); font-weight: bold; font-size: 0.65rem; display: block; margin-bottom: 5px; }
         .mention { color: var(--blue) !important; font-weight: bold !important; }
         
         .modal-footer { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #000; border-top: 1px solid #333; }
         .btn-analyse { background: var(--red); color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-weight: 900; text-transform: uppercase; }
-        .btn-close-modal { color: white; font-size: 35px; cursor: pointer; margin-left: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -77,34 +60,22 @@
 <header>
     <div class="logo" onclick="location.reload()">FALCONS <span style="color:var(--red);">HUB</span></div>
     <div class="header-right">
-        <span id="user-display" style="font-size: 0.8rem; color: #ccc;"></span>
+        <span id="user-display" style="font-size: 0.8rem; color: #ccc; margin-right:5px;"></span>
         <a href="admin.html" id="admin-link">ADMIN PANEL</a>
         <button class="logout-btn" onclick="logout()">LOGOUT</button>
     </div>
 </header>
 
 <div class="container" id="hub-content" style="display:none;">
-    
-    <!-- TOP SESSION HERO -->
-    <div id="hero-area" class="hero-session">
-        <small style="color:var(--red); font-weight:900;">AKTUELLE SESSION</small>
-        <h1 id="hero-title"></h1>
-        <p id="hero-desc"></p>
-        <button class="btn-start-session" id="hero-btn">Session starten</button>
-    </div>
-
     <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK</button>
 
     <div id="lobby-view">
-        <!-- SESSIONS -->
         <h2 class="section-title">Sessions</h2>
         <div id="session-grid" class="grid"></div>
 
-        <!-- MENTIONS -->
         <h2 class="section-title">Für dich markiert</h2>
         <div id="personal-grid" class="grid"></div>
 
-        <!-- SPIELSITUATIONEN -->
         <h2 class="section-title">Spielsituation</h2>
         <div class="grid">
             <div class="card" onclick="filterVideos('cat', 'Offense')"><h3>Offense</h3></div>
@@ -114,7 +85,6 @@
             <div class="card" onclick="filterVideos('cat', 'Setplays')"><h3>Setplays</h3></div>
         </div>
 
-        <!-- POSITIONEN -->
         <h2 class="section-title">Positionen</h2>
         <div class="grid">
             <div class="card" onclick="filterVideos('pos', 'Angriff')"><h3>Angriff</h3></div>
@@ -132,16 +102,13 @@
         <div class="modal-main">
             <div class="video-side"><iframe id="modal-iframe" src="" allowfullscreen></iframe></div>
             <div class="comment-side">
-                <h4 style="padding:15px; margin:0; border-bottom:1px solid #333;">Feedback</h4>
+                <h4>Feedback</h4>
                 <div class="modal-comment-list" id="modal-comment-display"></div>
             </div>
         </div>
         <div class="modal-footer">
-            <h3 id="modal-title" style="margin:0; font-size:0.9rem;">Clip</h3>
-            <div style="display:flex; align-items:center;">
-                <button class="btn-analyse" id="btn-goto-analyse">ZUR ANALYSE</button>
-                <span class="btn-close-modal" onclick="closePlayer()">&times;</span>
-            </div>
+            <h3 id="modal-title" style="margin:0; font-size: 0.9rem;">Clip</h3>
+            <button class="btn-analyse" id="btn-goto-analyse">ZUR ANALYSE</button>
         </div>
     </div>
 </div>
@@ -153,7 +120,7 @@
 
     let currentUser = null;
     let combinedVideos = [];
-    let isSyncing = false;
+    let commentUnsubscribe = null;
 
     async function checkLogin() {
         const nr = document.getElementById('login-nr').value;
@@ -181,80 +148,48 @@
     }
 
     async function loadAllData() {
-        const [driveRes, ytSnap, metaSnap] = await Promise.all([
+        const [driveRes, ytSnap, metaSnap, sessSnap] = await Promise.all([
             fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json()),
             db.collection("youtube_clips").get(),
-            db.collection("video_metadata").get()
+            db.collection("video_metadata").get(),
+            db.collection("sessions").orderBy("createdAt", "desc").get()
         ]);
 
         let meta = {}; metaSnap.forEach(d => meta[d.id] = d.data().position);
         const processedDrive = driveRes.map(v => {
-            const id = v.link.split('/d/')[1].split('/')[0];
-            return { id, title: v.title, category: v.category, type: 'drive', position: meta[id] || 'Alle', link: `https://drive.google.com/file/d/${id}/preview` };
+            const fid = v.link.split('/d/')[1].split('/')[0];
+            return { id: fid, title: v.title, category: v.category, type: 'drive', position: meta[fid] || 'Alle', link: `https://drive.google.com/file/d/${fid}/preview` };
         });
         const ytData = ytSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'youtube', link: `https://www.youtube.com/embed/${doc.data().ytId}?start=${doc.data().startTime}&autoplay=1` }));
         combinedVideos = [...processedDrive, ...ytData];
 
-        loadSessions();
-        loadMentions();
-    }
-
-    async function loadSessions() {
-        const snap = await db.collection("sessions").orderBy("createdAt", "desc").get();
-        const grid = document.getElementById('session-grid');
-        const hero = document.getElementById('hero-area');
-        const progSnap = await db.collection("progress").doc(currentUser.nr).get();
-        const progress = progSnap.exists ? progSnap.data() : {};
-
-        grid.innerHTML = snap.empty ? "<p style='color:#555;'>Keine Sessions verfügbar.</p>" : "";
-
-        snap.docs.forEach((doc, index) => {
+        // Sessions rendern
+        const sGrid = document.getElementById('session-grid');
+        sGrid.innerHTML = "";
+        sessSnap.forEach(doc => {
             const s = doc.data();
-            const hasStarted = progress[doc.id] > 0;
-            const cardHtml = `
-                <div class="s-card" onclick="location.href='session_view.html?id=${doc.id}'">
-                    <div class="watched-dot" style="display:${hasStarted ? 'block' : 'none'}"></div>
-                    <small style="color:var(--red)">${new Date(s.createdAt.seconds*1000).toLocaleDateString()}</small>
-                    <h3 style="margin:10px 0;">${s.title}</h3>
-                    <p style="font-size:0.7rem; color:#666;">${s.videoIds.length} Clips • ${s.targetGroup}</p>
-                </div>`;
-            
-            if(index === 0) {
-                hero.style.display = 'block';
-                document.getElementById('hero-title').innerText = s.title;
-                document.getElementById('hero-desc').innerText = s.description;
-                document.getElementById('hero-btn').onclick = () => location.href=`session_view.html?id=${doc.id}`;
-            }
-            grid.innerHTML += cardHtml;
+            sGrid.innerHTML += `<div class="card" onclick="location.href='session_view.html?id=${doc.id}'"><h3>${s.title}</h3><small>${s.videoIds.length} Clips</small></div>`;
         });
+
+        loadMentions();
     }
 
     async function loadMentions() {
         const snap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
         const pGrid = document.getElementById('personal-grid');
         pGrid.innerHTML = "";
-
         let count = 0;
         snap.forEach(doc => {
             const c = doc.data();
-            const readBy = c.readBy || [];
-            
-            // NUR ANZEIGEN WENN NOCH NICHT GELESEN
-            if (!readBy.includes(currentUser.nr)) {
+            if(!(c.readBy || []).includes(currentUser.nr)) {
                 const v = combinedVideos.find(item => item.id === c.videoId);
                 if(v) {
                     count++;
-                    pGrid.innerHTML += `
-                        <div class="v-card" onclick="openPlayer('${v.id}')">
-                            <small>NEUE MARKIERUNG</small>
-                            <h3>${v.title}</h3>
-                            <p style="font-size:0.7rem; color:#888; margin-top:5px;">"${c.text.replace(/\*/g, '')}"</p>
-                        </div>`;
+                    pGrid.innerHTML += `<div class="v-card" onclick="openPlayer('${v.id}')"><small>NEU</small><h3>${v.title}</h3></div>`;
                 }
             }
         });
-
-        if(count === 0) pGrid.innerHTML = "<p style='color:#555;'>Alles erledigt! Keine neuen Markierungen.</p>";
+        if(count === 0) pGrid.innerHTML = "<p style='color:#444;'>Keine offenen Markierungen.</p>";
     }
 
     function filterVideos(type, value) {
@@ -263,52 +198,34 @@
         document.getElementById('back-btn').style.display = 'block';
         const grid = document.getElementById('video-list-view');
         grid.innerHTML = "";
-        const filtered = combinedVideos.filter(v => type === 'cat' ? v.category.toLowerCase().trim() === value.toLowerCase().trim() : v.position === value || v.position === 'Alle');
-        filtered.forEach(v => { grid.innerHTML += `<div class="v-card" onclick="openPlayer('${v.id}')"><h3>${v.title}</h3><small>${v.category}</small></div>`; });
+        const filtered = combinedVideos.filter(v => type === 'cat' ? v.category.toLowerCase().trim() === value.toLowerCase().trim() : (v.position === value || v.position === 'Alle'));
+        filtered.forEach(v => { grid.innerHTML += `<div class="v-card" onclick="openPlayer('${v.id}')"><small>${v.category}</small><h3>${v.title}</h3></div>`; });
     }
 
-function openPlayer(id) {
+    function openPlayer(id) {
         const v = combinedVideos.find(item => item.id === id);
-        if (!v) return; // Sicherheits-Check
-
-        // 1. UI-Elemente befüllen
         document.getElementById('modal-iframe').src = v.link;
         document.getElementById('modal-title').innerText = v.title;
         document.getElementById('videoModal').style.display = 'block';
         document.getElementById('btn-goto-analyse').onclick = () => location.href=`analyze.html?id=${id}&type=${v.type}`;
         
-        // 2. NEU: Video-Tracking (Speichert, dass dieser Spieler das Video geöffnet hat)
-        if(currentUser && currentUser.nr) {
-            db.collection("video_views").doc(currentUser.nr).set({ [id]: true }, { merge: true });
-        }
-
-        // 3. Kommentare laden
-        if(commentUnsubscribe) commentUnsubscribe(); // Verhindert doppelte Listener
+        if(commentUnsubscribe) commentUnsubscribe();
         commentUnsubscribe = db.collection("comments").where("videoId", "==", id).onSnapshot(snap => {
             const display = document.getElementById('modal-comment-display');
             display.innerHTML = "";
             let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
-            
-            // Sortieren nach Zeit
             docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-            
             docs.forEach(c => {
-                // Nur @Nr | Name blau färben
-                const formatted = c.text.replace(/(@\d+ \| [^,!\?\.\n\r]+|@\d+)/g, '<span class="mention">$1</span>');
-                
-                // Mülleimer-Button für Admins oder Verfasser
-                const delBtn = (currentUser.nr === "22" || currentUser.nr === c.authorNr) 
-                    ? `<button onclick="deleteComment('${c.id}')" style="float:right; background:none; border:none; color:#555; cursor:pointer;">🗑</button>` : '';
-
-                display.innerHTML += `<div class="mini-comment"><small>${c.author} (#${c.authorNr})${delBtn}</small><div>${formatted}</div></div>`;
+                const isRead = (c.readBy || []).includes(currentUser.nr);
+                const formatted = c.text.replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
+                display.innerHTML += `<div class="mini-comment ${isRead ? 'is-read' : ''}"><small>${c.author}</small><div>${formatted}</div></div>`;
             });
-            display.scrollTop = display.scrollHeight; // Zum neuesten Kommentar scrollen
+            display.scrollTop = display.scrollHeight;
         });
     }
-    function closePlayer() { document.getElementById('videoModal').style.display='none'; document.getElementById('modal-iframe').src=''; }
-    function logout() { localStorage.removeItem('falcons_user'); location.reload(); }
-    function showLobby() { location.reload(); }
 
+    function closePlayer() { document.getElementById('videoModal').style.display='none'; document.getElementById('modal-iframe').src=''; if(commentUnsubscribe) commentUnsubscribe(); }
+    function logout() { localStorage.removeItem('falcons_user'); location.reload(); }
     window.onload = startHub;
 </script>
 </body>
