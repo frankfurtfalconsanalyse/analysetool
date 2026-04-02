@@ -8,37 +8,27 @@
     <style>
         :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --border: #333; --green: #28a745; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: none; }
-        
         header { background: #000; padding: 20px 40px; border-bottom: 4px solid var(--red); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
         .logo { font-weight: 900; letter-spacing: 2px; text-transform: uppercase; font-size: 1.2rem; }
         .btn-hub { text-decoration: none; color: white; background: #333; padding: 8px 15px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; }
-
         .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
-
-        /* TABS (Icons entfernt) */
         .tab-nav { display: flex; gap: 5px; margin-bottom: 30px; border-bottom: 1px solid var(--border); overflow-x: auto; padding-bottom: 5px; }
         .tab-btn { background: none; border: none; color: #666; padding: 12px 20px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.75rem; white-space: nowrap; transition: 0.3s; }
         .tab-btn.active { color: var(--red); border-bottom: 3px solid var(--red); }
-
         .tab-content { display: none; animation: fadeIn 0.3s ease; }
         .tab-content.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
         .admin-card { background: var(--card); border-radius: 12px; padding: 25px; border: 1px solid var(--border); margin-bottom: 25px; }
         h3 { margin-top: 0; text-transform: uppercase; font-size: 0.9rem; color: var(--red); letter-spacing: 1px; margin-bottom: 20px; border-left: 3px solid var(--red); padding-left: 10px; }
-        
         .form-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 15px; }
         input, select, textarea { background: #222; border: 1px solid #444; color: white; padding: 12px; border-radius: 5px; font-family: inherit; }
         .btn-action { background: var(--red); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.75rem; }
-
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; font-size: 0.65rem; color: #555; text-transform: uppercase; padding: 12px 10px; border-bottom: 1px solid var(--border); }
         td { padding: 12px 10px; border-bottom: 1px solid #222; font-size: 0.85rem; }
-        
         .admin-badge { background: var(--red); color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 3px; font-weight: 900; margin-left: 10px; }
         .delete-btn { background: none; border: none; color: #444; cursor: pointer; transition: 0.2s; }
         .delete-btn:hover { color: var(--red); }
-
         .status-row { background: #111; margin-bottom: 10px; border-radius: 8px; border: 1px solid #222; overflow: hidden; }
         .status-header { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .status-content { display: none; padding: 20px; background: #0a0a0a; border-top: 1px solid #222; }
@@ -63,18 +53,17 @@
         <button class="tab-btn active" onclick="openTab('status')">Status-Check</button>
         <button class="tab-btn" onclick="openTab('sessions')">Sessions Editor</button>
         <button class="tab-btn" onclick="openTab('yt')">YouTube Clips</button>
-        <button class="tab-btn" onclick="openTab('games')">Spiele Hub</button>
+        <button class="tab-btn" onclick="openTab('games')">Game Hub Admin</button>
         <button class="tab-btn" onclick="openTab('drive')">Drive Zuordnung</button>
         <button class="tab-btn" onclick="openTab('kader')">Kader & Rechte</button>
     </nav>
 
-    <!-- TABS INHALT -->
     <div id="status" class="tab-content active">
         <div class="admin-card">
-            <h3>Video-Konsum prüfen</h3>
+            <h3>📈 Video-Konsum prüfen</h3>
             <div style="display:flex; gap:10px; margin-bottom:20px;">
                 <button class="btn-action" onclick="loadStatusData('sessions')" id="btn-stat-s">Sessions</button>
-                <button class="btn-action" style="background:#444" onclick="loadStatusData('videos')" id="btn-stat-v">Einzelvideos</button>
+                <button class="btn-action" style="background:#444" onclick="loadStatusData('videos')" id="btn-stat-v">Einzelclips</button>
             </div>
             <div id="status-list-container">Lade Daten...</div>
         </div>
@@ -82,21 +71,21 @@
 
     <div id="sessions" class="tab-content">
         <div class="admin-card">
-            <h3>Neue Session erstellen</h3>
+            <h3>🆕 Neue Session erstellen</h3>
             <input type="text" id="s-title" placeholder="Titel der Session" style="width:100%; margin-bottom:10px;">
             <textarea id="s-desc" placeholder="Anweisungen..." style="width:100%; height:60px; margin-bottom:15px;"></textarea>
             <button class="btn-action" onclick="saveSession()">Session Veröffentlichen</button>
             <div style="margin-top:20px;"><div class="video-selector" id="s-video-list"></div></div>
         </div>
-        <div class="admin-card"><table id="session-table"><thead><tr><th>Titel</th><th>Aktion</th></tr></thead><tbody></tbody></table></div>
+        <div class="admin-card"><table id="session-table"><thead><tr><th>Session Titel</th><th>Aktion</th></tr></thead><tbody></tbody></table></div>
     </div>
 
     <div id="yt" class="tab-content">
         <div class="admin-card">
-            <h3>YouTube Clip hinzufügen</h3>
+            <h3>🎥 YouTube Clip hinzufügen</h3>
             <div class="form-row">
-                <input type="text" id="yt-title" placeholder="Clip Titel" style="width:180px;">
-                <input type="text" id="yt-url" placeholder="YouTube Link (auch Live-Links)" style="width:180px;">
+                <input type="text" id="yt-title" placeholder="Titel" style="width:180px;">
+                <input type="text" id="yt-url" placeholder="Link (auch Live/Shorts)" style="width:180px;">
                 <div class="form-group"><label>Start (H:M:S)</label><div style="display:flex; gap:3px;">
                     <input type="number" id="yt-hr" value="0" style="width:40px;">:
                     <input type="number" id="yt-min" value="0" style="width:40px;">:
@@ -106,15 +95,15 @@
                 <button class="btn-action" onclick="addYT()">Speichern</button>
             </div>
         </div>
-        <div class="admin-card"><table id="yt-table"><thead><tr><th>Titel</th><th>Aktion</th></tr></thead><tbody></tbody></table></div>
+        <div class="admin-card"><table id="yt-table"><thead><tr><th>Titel</th><th>Kat</th><th>Aktion</th></tr></thead><tbody></tbody></table></div>
     </div>
 
     <div id="games" class="tab-content">
         <div class="admin-card">
-            <h3>Neues Spiel hinzufügen</h3>
+            <h3>🏟 Spiel im Game Hub veröffentlichen</h3>
             <div class="form-row">
-                <input type="text" id="g-title" placeholder="Gegner / Titel">
-                <input type="text" id="g-url" placeholder="YouTube Link (auch Live-Links)">
+                <input type="text" id="g-title" placeholder="z.B. Falcons vs Kassel">
+                <input type="text" id="g-url" placeholder="YouTube Link">
                 <input type="date" id="g-date">
                 <button class="btn-action" onclick="addGame()">Spiel Speichern</button>
             </div>
@@ -123,28 +112,28 @@
     </div>
 
     <div id="drive" class="tab-content">
-        <div class="admin-card"><h3>Drive Positionen zuweisen</h3><table id="drive-table"><thead><tr><th>Video</th><th>Position</th><th>Aktion</th></tr></thead><tbody></tbody></table></div>
+        <div class="admin-card"><h3>📂 Drive Positionen zuweisen</h3><table id="drive-table"><thead><tr><th>Video</th><th>Position</th><th>Aktion</th></tr></thead><tbody></tbody></table></div>
     </div>
 
     <div id="kader" class="tab-content">
         <div class="admin-card">
-            <h3>Mitglied zum Kader hinzufügen</h3>
+            <h3>👤 Mitglied zum Kader hinzufügen</h3>
             <div class="form-row">
                 <input type="number" id="p-nr" placeholder="Nr." style="width:70px;">
                 <input type="text" id="p-name" placeholder="Vollständiger Name" style="width:250px;">
-                <button class="btn-action" onclick="addPlayer()">Speichern</button>
+                <button class="btn-action" onclick="addMember()">Speichern</button>
             </div>
         </div>
         <div class="admin-card">
-            <h3>Admin-Rechte vergeben</h3>
+            <h3>🔑 Admin-Rechte geben</h3>
             <div class="form-row">
-                <input type="number" id="admin-nr" placeholder="Trikot Nr.">
-                <button class="btn-action" onclick="grantAdmin()">Rechte geben</button>
+                <input type="number" id="admin-nr" placeholder="Nr.">
+                <button class="btn-action" onclick="grantAdmin()">Admin freischalten</button>
             </div>
         </div>
         <div class="admin-card">
-            <h3>Mitgliederliste</h3>
-            <table id="full-member-table"><thead><tr><th>Nr</th><th>Name</th><th style="text-align:right;">Löschen</th></tr></thead><tbody></tbody></table>
+            <h3>📋 Mitgliederliste</h3>
+            <table id="full-member-table"><thead><tr><th>Nr</th><th>Name</th><th style="text-align:right;">Aktion</th></tr></thead><tbody></tbody></table>
         </div>
     </div>
 </div>
@@ -169,20 +158,10 @@
         event.currentTarget.classList.add('active');
     }
 
-    // Verbesserte YouTube ID Erkennung (Inklusive Live-Links)
-    function getYTId(url) {
-        const regExp = /^.*(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/|shorts\/)([^#&?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[1].length === 11) ? match[1] : null;
-    }
-
     async function loadBaseData() {
         const [pSnap, aSnap, ytSnap, gSnap, metaSnap, driveRes] = await Promise.all([
-            db.collection("players").get(),
-            db.collection("admins").get(),
-            db.collection("youtube_clips").get(),
-            db.collection("games").orderBy("date", "desc").get(),
-            db.collection("video_metadata").get(),
+            db.collection("players").get(), db.collection("admins").get(), db.collection("youtube_clips").get(),
+            db.collection("games").orderBy("date", "desc").get(), db.collection("video_metadata").get(),
             fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json())
         ]);
 
@@ -194,7 +173,7 @@
         const mTable = document.querySelector("#full-member-table tbody"); mTable.innerHTML = "";
         allPlayers.sort((a,b)=>a.id-b.id).forEach(p => {
             const isAdmin = (p.id === "22" || allAdmins.includes(p.id));
-            mTable.innerHTML += `<tr><td>#${p.id}</td><td>${p.name} ${isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}</td><td style="text-align:right;"><button class="delete-btn" onclick="deleteMember('${p.id}')">🗑</button></td></tr>`;
+            mTable.innerHTML += `<tr><td><strong>#${p.id}</strong></td><td>${p.name} ${isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}</td><td style="text-align:right;"><button class="delete-btn" onclick="deleteDoc('players','${p.id}')">🗑</button></td></tr>`;
         });
 
         const sList = document.getElementById('s-video-list'); sList.innerHTML = "";
@@ -210,68 +189,57 @@
                 ytTable.innerHTML += `<tr><td>${v.title}</td><td>${v.category}</td><td><button class="delete-btn" onclick="deleteDoc('youtube_clips','${v.id}')">🗑</button></td></tr>`;
             }
         });
-        gSnap.forEach(doc => { const g = doc.data(); gTable.innerHTML += `<tr><td>${g.title}</td><td>${g.date}</td><td><button class="delete-btn" onclick="deleteDoc('games','${doc.id}')">🗑</button></td></tr>`; });
+        gSnap.forEach(doc => gTable.innerHTML += `<tr><td>${doc.data().title}</td><td>${doc.data().date}</td><td><button class="delete-btn" onclick="deleteDoc('games','${doc.id}')">🗑</button></td></tr>`);
         loadSessions(); loadStatusData('sessions');
+    }
+
+    async function addMember() {
+        let nr = document.getElementById('p-nr').value, name = document.getElementById('p-name').value;
+        if(!nr || !name) return alert("Fehler: Daten fehlen.");
+        if(nr.length === 1) nr = "0" + nr;
+        await db.collection("players").doc(nr).set({ name, nr });
+        document.getElementById('p-nr').value = ""; document.getElementById('p-name').value = "";
+        alert("Spieler #" + nr + " hinzugefügt!"); loadBaseData();
+    }
+
+    async function grantAdmin() {
+        let nr = document.getElementById('admin-nr').value;
+        if(!nr) return alert("Nr. fehlt.");
+        if(nr.length === 1) nr = "0" + nr;
+        await db.collection("admins").doc(nr).set({ active: true });
+        document.getElementById('admin-nr').value = "";
+        alert("Admin freigeschaltet!"); loadBaseData();
     }
 
     async function addYT() {
         const t = document.getElementById('yt-title'), u = document.getElementById('yt-url'), hr = document.getElementById('yt-hr'), min = document.getElementById('yt-min'), sec = document.getElementById('yt-sec');
-        if(!t.value) return alert("Fehler: Titel fehlt.");
-        const ytId = getYTId(u.value);
-        if(!ytId) return alert("Fehler: YouTube-Link ungültig (Checke ob es ein /live/ Link ist).");
+        const ytId = u.value.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1];
+        if(!ytId || !t.value) return alert("Fehler: Link oder Titel falsch.");
         const total = (parseInt(hr.value)||0)*3600 + (parseInt(min.value)||0)*60 + (parseInt(sec.value)||0);
         await db.collection("youtube_clips").add({ title: t.value, ytId, category: document.getElementById('yt-cat').value, position: "Alle", startTime: total, createdAt: new Date() });
         t.value = ""; u.value = ""; hr.value = 0; min.value = 0; sec.value = 0;
-        alert("Erfolg: Clip gespeichert."); loadBaseData();
+        alert("YouTube Clip gespeichert!"); loadBaseData();
     }
 
     async function addGame() {
         const t = document.getElementById('g-title'), u = document.getElementById('g-url'), d = document.getElementById('g-date');
-        if(!t.value) return alert("Fehler: Name des Spiels fehlt.");
-        if(!d.value) return alert("Fehler: Datum fehlt.");
-        const ytId = getYTId(u.value);
-        if(!ytId) return alert("Fehler: YouTube-Link ungültig.");
+        const ytId = u.value.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1];
+        if(!ytId || !t.value || !d.value) return alert("Fehler: Unvollständig.");
         await db.collection("games").add({ title: t.value, ytId, date: d.value, createdAt: new Date() });
         t.value = ""; u.value = ""; d.value = "";
-        alert("Erfolg: Spiel hinzugefügt."); loadBaseData();
+        alert("Spiel veröffentlicht!"); loadBaseData();
     }
 
     async function saveSession() {
         const t = document.getElementById('s-title'), d = document.getElementById('s-desc');
-        if(!t.value) return alert("Fehler: Titel fehlt.");
-        if(selectedForSession.length === 0) return alert("Fehler: Wähle mindestens ein Video.");
+        if(!t.value || selectedForSession.length === 0) return alert("Titel & Videos fehlen!");
         await db.collection("sessions").add({ title: t.value, description: d.value, videoIds: selectedForSession, createdAt: new Date() });
         t.value = ""; d.value = ""; selectedForSession = [];
-        alert("Erfolg: Session erstellt."); loadBaseData();
-    }
-
-    async function addPlayer() {
-        const n = document.getElementById('p-nr'), nm = document.getElementById('p-name');
-        if(!n.value || !nm.value) return alert("Nr. und Name fehlen.");
-        await db.collection("players").doc(n.value).set({ name: nm.value, nr: n.value });
-        n.value = ""; nm.value = "";
-        alert("Erfolg: Spieler im Kader."); loadBaseData();
-    }
-
-    async function grantAdmin() {
-        const n = document.getElementById('admin-nr');
-        if(!n.value) return alert("Nr. fehlt.");
-        await db.collection("admins").doc(n.value).set({ active: true });
-        n.value = "";
-        alert("Erfolg: Admin freigeschaltet."); loadBaseData();
-    }
-
-    async function deleteMember(nr) {
-        if(nr === "22") return alert("Haupt-Admin geschützt.");
-        if(confirm("Spieler #" + nr + " löschen?")) {
-            await db.collection("players").doc(nr).delete();
-            await db.collection("admins").doc(nr).delete();
-            loadBaseData();
-        }
+        alert("Session erstellt!"); loadBaseData();
     }
 
     function toggleVideoSelection(id) { const i = selectedForSession.indexOf(id); if(i > -1) selectedForSession.splice(i,1); else selectedForSession.push(id); }
-    async function saveMeta(id) { await db.collection("video_metadata").doc(id).set({ position: document.getElementById('pos-' + id).value }); alert("Gespeichert."); }
+    async function saveMeta(id) { await db.collection("video_metadata").doc(id).set({ position: document.getElementById('pos-' + id).value }); alert("Saved!"); }
     async function loadSessions() { const snap = await db.collection("sessions").get(); const tbody = document.querySelector("#session-table tbody"); tbody.innerHTML = ""; snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td><button class="delete-btn" onclick="deleteDoc('sessions','${d.id}')">🗑</button></td></tr>`); }
     async function deleteDoc(col, id) { if(confirm("Löschen?")) { await db.collection(col).doc(id).delete(); loadBaseData(); } }
     
@@ -296,7 +264,6 @@
         div.innerHTML = `<div class="status-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display==='block'?'none':'block'"><span>${title}</span><span>${watched.length}/${allPlayers.length} ▼</span></div><div class="status-content"><p style="color:var(--green); font-size:0.7rem;">GESEHEN</p><div class="player-status-grid">${watched.join('')}</div><p style="color:var(--red); font-size:0.7rem; margin-top:15px;">OFFEN</p><div class="player-status-grid">${open.join('')}</div></div>`;
         container.appendChild(div);
     }
-
     checkAuth();
 </script>
 </body>
