@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8"><title>Falcons Hub | Hilfe</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --border: #333; }
+        body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; line-height: 1.6; }
+        header { background: #000; padding: 20px 40px; border-bottom: 4px solid var(--red); display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 100; }
+        .logo { font-weight: 900; letter-spacing: 2px; text-transform: uppercase; font-size: 1.2rem; }
+        .btn-back { text-decoration: none; color: white; background: #333; padding: 10px 20px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; }
+        
+        .container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+        .help-section { background: var(--card); border-radius: 15px; padding: 30px; border: 1px solid var(--border); margin-bottom: 30px; }
+        h2 { color: var(--red); text-transform: uppercase; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        h3 { margin-top: 25px; color: #fff; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 10px; }
+        .admin-only { border: 2px dashed var(--red); display: none; }
+        .badge-player { background: #444; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; vertical-align: middle; }
+        .badge-admin { background: var(--red); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; vertical-align: middle; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">FALCONS <span>HILFE</span></div>
+    <a href="index.html" class="btn-back">ZURÜCK ZUM HUB</a>
+</header>
+
+<div class="container">
+    <div class="help-section">
+        <h2>Willkommen im Falcons Video Hub</h2>
+        <p>Dieses Tool hilft uns als Team, Spielszenen zu analysieren, Feedback zu geben und uns taktisch zu verbessern. Hier ist alles erklärt, was du wissen musst.</p>
+    </div>
+
+    <!-- SPIELER BEREICH -->
+    <div class="help-section">
+        <h2>Anleitung für Spieler <span class="badge-player">SPIELER</span></h2>
+        
+        <h3>1. Login & Dashboard</h3>
+        <p>Logge dich mit deiner Trikotnummer ein. Auf deinem Dashboard siehst du:</p>
+        <ul>
+            <li><strong>Sessions:</strong> Vom Trainer zusammengestellte Playlists zu bestimmten Themen.</li>
+            <li><strong>Für dich markiert:</strong> Clips, in denen dein Name oder deine Nummer erwähnt wurde.</li>
+        </ul>
+
+        <h3>2. Videos ansehen & Kommentieren</h3>
+        <p>Klicke auf einen Clip, um ihn zu öffnen. Rechts siehst du das Feedback der Trainer. Wenn du jemanden erwähnen willst, schreibe einfach <strong>@Nummer</strong> (z.B. @19). Das System setzt automatisch den Namen ein.</p>
+
+        <h3>3. Markierungen "Abhaken"</h3>
+        <p>Wenn du in einem Kommentar markiert wurdest, erscheint ein <strong>grüner Haken ✓</strong>. Klicke darauf, wenn du das Feedback gelesen und verstanden hast. Der Kommentar wird blass und verschwindet von deiner Startseite.</p>
+
+        <h3>4. Die Analyse-Seite</h3>
+        <p>Klicke im Videoplayer auf "ZUR ANALYSE". Hier kannst du das Video in Zeitlupe schauen oder den <strong>Zeichnen-Modus</strong> aktivieren, um Linien oder Kreise direkt auf das Video zu malen.</p>
+
+        <h3>5. Game Hub</h3>
+        <p>Im Game Hub findest du ganze Spiele. Hier gibt es oft privates Feedback vom Trainer, das nur du sehen kannst.</p>
+    </div>
+
+    <!-- ADMIN BEREICH (Wird per JS eingeblendet) -->
+    <div id="admin-help" class="help-section admin-only">
+        <h2>Trainer & Admin Funktionen <span class="badge-admin">ADMIN</span></h2>
+        
+        <h3>1. Sessions (Playlists) erstellen</h3>
+        <p>Im Sessions Editor kannst du einen Titel vergeben und beliebig viele Videos aus Google Drive oder YouTube zu einer Playlist zusammenfügen.</p>
+
+        <h3>2. Status-Check</h3>
+        <p>Hier siehst du ganz genau, welcher Spieler welches Video oder welche Session bereits angesehen hat. Spieler werden automatisch in "Gesehen" und "Offen" sortiert.</p>
+
+        <h3>3. Game Hub Feedback</h3>
+        <p>Wenn du ein Spiel im Game Hub analysierst, wähle im Dropdown den Spieler aus. Dein Feedback ist dann <strong>privat</strong> und nur für diesen Spieler sichtbar. Nutze Zeitstempel im Format <strong>H:M:S</strong> (z.B. 0:12:45), damit diese automatisch blau und klickbar werden.</p>
+
+        <h3>4. Kader & Rechte</h3>
+        <p>Hier fügst du neue Spieler hinzu oder gibst anderen Trainern Admin-Rechte über ihre Trikotnummer.</p>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
+
+    async function checkAdmin() {
+        if(!user.nr) return;
+        const adminDoc = await db.collection("admins").doc(user.nr).get();
+        if(user.nr === "22" || adminDoc.exists) {
+            document.getElementById('admin-help').style.display = "block";
+        }
+    }
+    checkAdmin();
+</script>
+</body>
+</html>
