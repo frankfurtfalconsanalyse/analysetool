@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8"><title>Falcons Hub | Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --blue: #5dade2; }
+        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --blue: #5dade2; --gray: #aaaaaa; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; overflow-x: hidden; }
         
         header { background: #000; padding: 15px 25px; border-bottom: 4px solid var(--red); display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 100; }
@@ -16,66 +15,80 @@
         .nav-btn { background: #333; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 0.75rem; border: none; cursor: pointer; transition: 0.2s; }
         #admin-link { background: var(--red); display: none; }
         
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .container { max-width: 1300px; margin: 0 auto; padding: 20px; }
 
         /* HERO AREA */
         .hero-session { background: linear-gradient(45deg, #1a1a1a, #000); border: 2px solid var(--red); border-radius: 15px; padding: 40px; margin-bottom: 50px; display: none; position: relative; overflow: hidden; }
         .hero-session::after { content: "AKTUELL"; position: absolute; top: 20px; right: -30px; background: var(--red); padding: 5px 40px; transform: rotate(45deg); font-weight: 900; font-size: 0.7rem; }
         .hero-session h1 { font-size: 2.5rem; margin: 0; text-transform: uppercase; }
-        .hero-session p { color: #aaa; margin: 15px 0 25px; max-width: 600px; }
 
-        /* GRIDS & TITLES */
+        /* SEKTIONS TITEL */
         .section-title { color: var(--red); text-transform: uppercase; margin-top: 50px; border-left: 4px solid var(--red); padding-left: 15px; font-size: 1.2rem; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
         
-        /* CARDS */
+        /* GRIDS */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-top: 20px; }
+
+        /* LOBBY KARTEN (SESSIONS & FILTER) */
         .card, .s-card { background: var(--card); padding: 30px; border-radius: 12px; cursor: pointer; border: 1px solid #333; transition: 0.3s; text-align: center; position: relative; }
         .card:hover, .s-card:hover { border-color: var(--red); transform: translateY(-5px); background: #222; }
         .watched-dot { position: absolute; top: 15px; right: 15px; width: 10px; height: 10px; background: var(--red); border-radius: 50%; box-shadow: 0 0 10px var(--red); }
 
-        /* VIDEO CARDS WITH THUMBNAILS */
-        .video-list-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
-        .v-card { background: var(--card); border-radius: 12px; overflow: hidden; cursor: pointer; border: 1px solid #333; transition: 0.3s; position: relative; display: flex; flex-direction: column; }
-        .v-card:hover { border-color: var(--red); transform: translateY(-5px); }
-        .v-thumb { width: 100%; height: 150px; background-size: cover; background-position: center; background-color: #000; }
-        .v-info { padding: 15px; }
-        .v-info h3 { margin: 5px 0 0; font-size: 0.95rem; line-height: 1.3; }
-        .v-info small { color: var(--red); font-weight: bold; text-transform: uppercase; font-size: 0.65rem; }
-        .yt-badge { position: absolute; top: 10px; right: 10px; background: #ff0000; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 3px; font-weight: bold; z-index: 2; }
+        /* VIDEO KARTEN (GROSS & 16:9) */
+        .video-list-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 30px; margin-top: 20px; }
+        .v-card { background: var(--card); border-radius: 15px; overflow: hidden; cursor: pointer; border: 1px solid #333; transition: 0.3s; position: relative; display: flex; flex-direction: column; }
+        .v-card:hover { border-color: var(--red); transform: translateY(-8px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        
+        /* Thumbnail Fix: 16:9 ohne Verzerrung */
+        .v-thumb { 
+            width: 100%; 
+            aspect-ratio: 16 / 9; 
+            background-size: cover; 
+            background-position: center; 
+            background-color: #000; 
+        }
+        
+        .v-info { padding: 20px; }
+        .v-info h3 { margin: 0; font-size: 1.1rem; line-height: 1.3; color: #fff; }
+        .v-info small { color: var(--red); font-weight: 900; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 1px; display: block; margin-bottom: 8px; }
+        
+        .yt-badge { position: absolute; top: 15px; right: 15px; background: #ff0000; color: white; font-size: 0.65rem; padding: 3px 7px; border-radius: 4px; font-weight: 900; z-index: 2; }
 
-        /* LOGIN */
-        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        #login-overlay input { padding: 15px; font-size: 2rem; width: 100px; text-align: center; border-radius: 10px; border: 2px solid var(--red); background: #222; color: white; margin-top: 20px; outline: none; }
-        .back-btn { background: #333; border: 1px solid #444; color: white; padding: 10px 20px; cursor: pointer; display: none; margin-bottom: 20px; font-weight: bold; border-radius: 5px; }
+        /* BACK BUTTON */
+        .back-btn { background: #333; border: 1px solid #444; color: white; padding: 12px 25px; cursor: pointer; display: none; margin-bottom: 20px; font-weight: bold; border-radius: 5px; text-transform: uppercase; font-size: 0.8rem; }
+        .back-btn:hover { background: #444; border-color: #fff; }
 
         /* MODAL */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); }
-        .modal-content { max-width: 1100px; width: 95%; margin: 20px auto; background: #111; border-radius: 10px; overflow: hidden; border: 1px solid #333; }
+        .modal-content { max-width: 1200px; width: 95%; margin: 20px auto; background: #111; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #333; }
         .modal-main { display: flex; flex-wrap: wrap; }
         .video-side { flex: 2; min-width: 300px; background: #000; position: relative; padding-bottom: 37.25%; height: 0; }
         .video-side iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:none; }
-        .comment-side { flex: 1; min-width: 300px; background: #1a1a1a; display: flex; flex-direction: column; max-height: 500px; border-left: 1px solid #333; }
-        .comment-side h4 { padding: 15px; margin: 0; background: #000; border-bottom: 2px solid var(--red); font-size: 0.8rem; text-transform: uppercase; }
-        .modal-comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .mini-comment { background: #252525; padding: 12px; border-radius: 8px; border-left: 3px solid var(--red); font-size: 0.85rem; color: #aaa; }
+        .comment-side { flex: 1; min-width: 300px; background: #1a1a1a; display: flex; flex-direction: column; max-height: 600px; border-left: 1px solid #333; }
+        .modal-comment-list { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .mini-comment { background: #252525; padding: 15px; border-radius: 8px; border-left: 4px solid var(--red); font-size: 0.9rem; color: var(--gray); }
         .mini-comment.is-read { opacity: 0.3; filter: grayscale(1); }
-        .mini-comment small { color: var(--red); font-weight: bold; font-size: 0.65rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .mini-comment small { color: var(--red); font-weight: 900; font-size: 0.7rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .mention { color: var(--blue) !important; font-weight: bold !important; }
-        .hub-check-btn { background: #28a745; color: white; border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer; font-size: 0.65rem; }
+        .timestamp { background: var(--blue); color: white; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .hub-check-btn { background: #28a745; color: white; border: none; border-radius: 4px; padding: 3px 8px; cursor: pointer; font-size: 0.7rem; font-weight: 900; }
+
+        /* LOGIN */
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        #login-overlay input { padding: 15px; font-size: 2.5rem; width: 120px; text-align: center; border: 2px solid var(--red); background: #222; color: white; border-radius: 10px; margin-top: 20px; outline: none; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
-    <h1 style="font-size: 3rem; margin:0;">FRANKFURT <span style="color:var(--red);">FALCONS</span></h1>
-    <p>TRIKOTNUMMER ZUM LOGIN (ZWEISTELLIG)</p>
+    <h1 style="font-size: 3rem; margin:0; letter-spacing: 2px;">FRANKFURT <span style="color:var(--red);">FALCONS</span></h1>
+    <p style="color:#888; font-weight: bold;">TRIKOTNUMMER (ZWEISTELLIG)</p>
     <input type="text" id="login-nr" placeholder="00" maxlength="2" oninput="this.value = this.value.replace(/[^0-9]/g, ''); checkLogin();">
 </div>
 
 <header>
     <div class="logo" onclick="location.reload()">FALCONS <span style="color:var(--red);">HUB</span></div>
     <div class="header-right">
-        <span id="user-display" style="font-size: 0.7rem; color: #888; margin-right:5px;"></span>
+        <span id="user-display" style="font-size: 0.75rem; color: #888; margin-right:5px;"></span>
         <a href="games.html" class="nav-btn">GAME HUB</a>
         <a href="help.html" class="nav-btn">HELP</a>
         <a href="admin.html" id="admin-link" class="nav-btn" style="background:var(--red);">ADMIN</a>
@@ -85,12 +98,12 @@
 
 <div class="container" id="hub-content" style="display:none;">
     <div id="hero-area" class="hero-session">
-        <small style="color:var(--red); font-weight:900;">NEUESTE SESSION</small>
-        <h1 id="hero-title"></h1><p id="hero-desc"></p>
-        <button class="nav-btn" id="hero-btn" style="background:var(--red); padding:15px 30px; border-radius:30px;">SESSION STARTEN</button>
+        <small style="color:var(--red); font-weight:900; letter-spacing: 1px;">NEUESTE ANALYSE-SESSION</small>
+        <h1 id="hero-title" style="margin-top:10px;"></h1><p id="hero-desc"></p>
+        <button class="nav-btn" id="hero-btn" style="background:var(--red); padding:15px 35px; border-radius:30px; font-weight: 900; font-size: 0.9rem;">SESSION STARTEN</button>
     </div>
 
-    <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK</button>
+    <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK ZUR ÜBERSICHT</button>
 
     <div id="lobby-view">
         <h2 class="section-title">Analyse Sessions</h2><div id="session-grid" class="grid"></div>
@@ -121,12 +134,13 @@
         <div class="modal-main">
             <div class="video-side"><iframe id="modal-iframe" src="" allowfullscreen></iframe></div>
             <div class="comment-side">
-                <h4>Feedback</h4><div class="modal-comment-list" id="modal-comment-display"></div>
+                <h4 style="padding:15px; margin:0; border-bottom:1px solid #333; background:#000;">Feedback & Analyse</h4>
+                <div class="modal-comment-list" id="modal-comment-display"></div>
             </div>
         </div>
         <div style="padding:15px; background:#000; display:flex; justify-content:space-between; align-items:center; border-top:1px solid #333;">
             <h3 id="modal-title" style="margin:0; font-size:0.9rem;">Clip</h3>
-            <button class="nav-btn" id="btn-goto-analyse" style="background:var(--red);">ZUR ANALYSE</button>
+            <button class="nav-btn" id="btn-goto-analyse" style="background:var(--red);">ZUR PRO-ANALYSE</button>
         </div>
     </div>
 </div>
@@ -136,17 +150,13 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let currentUser = null, combinedVideos = [], commentUnsubscribe = null;
+    let currentUser = null, combinedVideos = [], commentUnsubscribe = null, currentV = null;
 
     async function checkLogin() {
         const nr = document.getElementById('login-nr').value;
         if(nr.length !== 2) return;
         const doc = await db.collection("players").doc(nr).get();
-        if(doc.exists) {
-            currentUser = doc.data();
-            localStorage.setItem('falcons_user', JSON.stringify(currentUser));
-            startHub();
-        }
+        if(doc.exists) { currentUser = doc.data(); localStorage.setItem('falcons_user', JSON.stringify(currentUser)); startHub(); }
     }
 
     async function startHub() {
@@ -156,7 +166,6 @@
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('hub-content').style.display = 'block';
         document.getElementById('user-display').innerText = `${currentUser.name} (#${currentUser.nr})`;
-
         const adminDoc = await db.collection("admins").doc(currentUser.nr).get();
         if(currentUser.nr === "22" || adminDoc.exists) document.getElementById('admin-link').style.display = 'block';
         loadAllData();
@@ -170,28 +179,23 @@
             db.collection("sessions").orderBy("createdAt", "desc").get(),
             db.collection("progress").doc(currentUser.nr).get()
         ]);
-
         let meta = {}; metaSnap.forEach(d => meta[d.id] = d.data().position);
         combinedVideos = [
-            ...driveRes.map(v => { 
-                const fid = v.link.split('/d/')[1].split('/')[0]; 
-                return { id: fid, title: v.title, category: v.category, type: 'drive', position: meta[fid] || 'Alle', link: `https://drive.google.com/file/d/${fid}/preview`, ytId: null }; 
-            }),
-            ...ytSnap.docs.map(doc => ({ 
-                id: doc.id, ...doc.data(), type: 'youtube', 
-                link: `https://www.youtube.com/embed/${doc.data().ytId}?start=${doc.data().startTime}&autoplay=1`,
-                ytId: doc.data().ytId 
-            }))
+            ...driveRes.map(v => { const fid = v.link.split('/d/')[1].split('/')[0]; return { id: fid, title: v.title, category: v.category, type: 'drive', position: meta[fid] || 'Alle', link: `https://drive.google.com/file/d/${fid}/preview`, ytId: null }; }),
+            ...ytSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'youtube' }))
         ];
+        renderSessions(sessSnap, progSnap);
+        loadMentions();
+    }
 
+    function renderSessions(sessSnap, progSnap) {
         const sGrid = document.getElementById('session-grid'), hero = document.getElementById('hero-area'), progress = progSnap.exists ? progSnap.data() : {};
         sGrid.innerHTML = "";
         sessSnap.docs.forEach((doc, index) => {
             const s = doc.data(), sid = doc.id, hasStarted = progress[sid] > 0;
             if(index === 0) { hero.style.display = 'block'; document.getElementById('hero-title').innerText = s.title; document.getElementById('hero-desc').innerText = s.description || ""; document.getElementById('hero-btn').onclick = () => location.href=`session_view.html?id=${sid}`; }
-            else { sGrid.innerHTML += `<div class="s-card" onclick="location.href='session_view.html?id=${sid}'">${hasStarted ? '<div class="watched-dot"></div>' : ''}<small style="color:var(--red); font-weight:900;">${s.videoIds.length} CLIPS</small><h3>${s.title}</h3></div>`; }
+            else { sGrid.innerHTML += `<div class="s-card" onclick="location.href='session_view.html?id=${sid}'">${hasStarted ? '<div class="watched-dot"></div>' : ''}<small style="color:var(--red); font-weight:900;">${s.videoIds.length} CLIPS</small><h3 style="margin:10px 0;">${s.title}</h3></div>`; }
         });
-        loadMentions();
     }
 
     async function loadMentions() {
@@ -201,52 +205,47 @@
             const c = doc.data();
             if(!(c.readBy || []).includes(currentUser.nr)) {
                 const v = combinedVideos.find(item => item.id === c.videoId);
-                if(v) pGrid.innerHTML += createVideoCard(v, "NEUE MARKIERUNG");
+                if(v) pGrid.innerHTML += createVideoCard(v, "MARKIERUNG");
             }
         });
-        if(pGrid.innerHTML === "") pGrid.innerHTML = "<p style='color:#444; font-size:0.8rem;'>Keine offenen Markierungen.</p>";
+        if(pGrid.innerHTML === "") pGrid.innerHTML = "<p style='color:#444; font-size:0.8rem;'>Keine Markierungen.</p>";
     }
 
-    function createVideoCard(v, badgeText) {
-        const thumb = v.type === 'youtube' 
-            ? `https://img.youtube.com/vi/${v.ytId}/mqdefault.jpg` 
-            : `https://via.placeholder.com/300x170/1a1a1a/e30613?text=Falcons+Clip`;
-        
-        return `
-            <div class="v-card" onclick="openPlayer('${v.id}')">
-                ${v.type==='youtube'?'<span class="yt-badge">YT</span>':''}
-                <div class="v-thumb" style="background-image: url('${thumb}')"></div>
-                <div class="v-info">
-                    <small>${badgeText || v.category}</small>
-                    <h3>${v.title}</h3>
-                </div>
-            </div>`;
+    function createVideoCard(v, badge) {
+        const thumb = v.ytId ? `https://img.youtube.com/vi/${v.ytId}/mqdefault.jpg` : `https://via.placeholder.com/640x360/111/e30613?text=Falcons+Clip`;
+        return `<div class="v-card" onclick="openPlayer('${v.id}')">
+            ${v.type==='youtube'?'<span class="yt-badge">YT</span>':''}
+            <div class="v-thumb" style="background-image:url('${thumb}')"></div>
+            <div class="v-info">
+                <small>${badge || v.category}</small>
+                <h3>${v.title}</h3>
+            </div>
+        </div>`;
     }
 
-    function filterVideos(type, val) {
-        document.getElementById('lobby-view').style.display = 'none'; document.getElementById('video-list-view').style.display = 'grid'; document.getElementById('back-btn').style.display = 'block'; document.getElementById('hero-area').style.display = 'none';
-        const grid = document.getElementById('video-list-view'); grid.innerHTML = "";
-        combinedVideos.filter(v => type==='cat' ? v.category.toLowerCase().trim() === val.toLowerCase().trim() : (v.position === val || v.position === 'Alle')).forEach(v => {
-            grid.innerHTML += createVideoCard(v);
-        });
+    function getSec(txt) {
+        const m = txt.match(/(\d{1,2}):(\d{2}):(\d{2})/);
+        return m ? (parseInt(m[1])*3600)+(parseInt(m[2])*60)+parseInt(m[3]) : 0;
     }
 
     function openPlayer(id) {
-        const v = combinedVideos.find(item => item.id === id);
-        if(!v) return;
-        document.getElementById('modal-iframe').src = v.link;
-        document.getElementById('modal-title').innerText = v.title;
+        currentV = combinedVideos.find(item => item.id === id);
+        if(!currentV) return;
+        const link = currentV.type === 'youtube' ? `https://www.youtube.com/embed/${currentV.ytId}?start=${currentV.startTime}&autoplay=1` : currentV.link;
+        document.getElementById('modal-iframe').src = link;
+        document.getElementById('modal-title').innerText = currentV.title;
         document.getElementById('videoModal').style.display = 'block';
-        document.getElementById('btn-goto-analyse').onclick = () => location.href=`analyze.html?id=${id}&type=${v.type}`;
+        document.getElementById('btn-goto-analyse').onclick = () => location.href=`analyze.html?id=${id}&type=${currentV.type}`;
         
         if(commentUnsubscribe) commentUnsubscribe();
         commentUnsubscribe = db.collection("comments").where("videoId", "==", id).onSnapshot(snap => {
             const display = document.getElementById('modal-comment-display'); display.innerHTML = "";
             let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
-            docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+            docs.sort((a,b) => getSec(a.text) - getSec(b.text));
             docs.forEach(c => {
                 const isRead = (c.readBy || []).includes(currentUser.nr), isMentioned = (c.mentions || []).includes(currentUser.nr);
-                const formatted = c.text.replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
+                const formatted = c.text.replace(/(\d{1,2}:\d{2}:\d{2})/g, '<span class="timestamp" onclick="jumpTo(\'$1\')">$1</span>')
+                                        .replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
                 let checkBtn = (isMentioned && !isRead) ? `<button class="hub-check-btn" onclick="markAsRead('${c.id}')">✓</button>` : '';
                 display.innerHTML += `<div class="mini-comment ${isRead ? 'is-read' : ''}"><small>${c.author} ${checkBtn}</small><div>${formatted}</div></div>`;
             });
@@ -255,9 +254,21 @@
         db.collection("video_views").doc(currentUser.nr).set({ [id]: true }, { merge: true });
     }
 
+    function jumpTo(ts) {
+        if(currentV.type === 'youtube') document.getElementById('modal-iframe').src = `https://www.youtube.com/embed/${currentV.ytId}?start=${getSec(ts)}&autoplay=1`;
+    }
+
     async function markAsRead(cid) { await db.collection("comments").doc(cid).update({ readBy: firebase.firestore.FieldValue.arrayUnion(currentUser.nr) }); }
-    function closePlayer() { document.getElementById('videoModal').style.display='none'; document.getElementById('modal-iframe').src=''; if(commentUnsubscribe) commentUnsubscribe(); }
+    function closePlayer() { document.getElementById('videoModal').style.display='none'; document.getElementById('modal-iframe').src=''; }
     function logout() { localStorage.removeItem('falcons_user'); location.reload(); }
+    
+    function filterVideos(t, v) {
+        document.getElementById('lobby-view').style.display='none'; document.getElementById('video-list-view').style.display='grid'; document.getElementById('back-btn').style.display='block';
+        const grid = document.getElementById('video-list-view'); grid.innerHTML = "";
+        combinedVideos.filter(x => t==='cat' ? x.category.toLowerCase().trim() === v.toLowerCase().trim() : (x.position === v || x.position === 'Alle')).forEach(x => {
+            grid.innerHTML += createVideoCard(x);
+        });
+    }
     window.onload = startHub;
 </script>
 </body>
