@@ -30,19 +30,20 @@
         
         .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; background: #111; }
         .comment-item { background: #1e1e1e; padding: 15px; border-radius: 8px; border-left: 4px solid var(--red); position: relative; transition: 0.3s; }
-        .comment-item.is-read { opacity: 0.3; filter: grayscale(1); }
+        
+        /* GELESEN STYLE */
+        .comment-item.is-read { opacity: 0.3; filter: grayscale(1); border-left-color: #555; }
 
         .comment-meta { font-size: 0.65rem; color: var(--red); font-weight: 900; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* TEXT STYLING */
         .comment-text { font-size: 0.9rem; color: var(--text-gray); line-height: 1.4; }
         .mention { color: var(--mention) !important; font-weight: bold !important; }
         .timestamp { background: var(--mention); color: white; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem; margin-right: 5px; }
 
-        /* ACTIONS */
+        /* ACTION BUTTONS */
         .action-btns { display: flex; gap: 8px; align-items: center; }
         .check-btn { background: #28a745; color: white; border: none; border-radius: 3px; padding: 4px 8px; cursor: pointer; font-weight: bold; font-size: 0.7rem; }
         .delete-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 1rem; }
+        .delete-btn:hover { color: var(--red); }
 
         .input-area { padding: 15px; background: #000; border-top: 1px solid var(--border); }
         textarea { width: 100%; height: 70px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 10px; resize: none; font-family: inherit; box-sizing: border-box; }
@@ -91,7 +92,6 @@
         let isAdmin = false;
         let currentYtId = "";
 
-        // 1. INITIALISIERUNG
         async function init() {
             if(!videoId) return location.href='index.html';
 
@@ -117,7 +117,6 @@
             resizeCanvas();
         }
 
-        // ZEITSTAMP LOGIK
         function getSec(txt) {
             const m = txt.match(/(\d{1,2}):(\d{2}):(\d{2})/);
             return m ? (parseInt(m[1])*3600)+(parseInt(m[2])*60)+parseInt(m[3]) : 0;
@@ -129,7 +128,6 @@
             }
         }
 
-        // KOMMENTAR LOGIK
         async function sendComment() {
             const input = document.getElementById('com-input');
             let text = input.value.trim();
@@ -159,21 +157,19 @@
                 display.innerHTML = "";
                 let docs = [];
                 snap.forEach(d => docs.push({id: d.id, ...d.data()}));
-                
-                // Sortierung nach Spielzeit (H:M:S)
                 docs.sort((a,b) => getSec(a.text) - getSec(b.text));
 
                 docs.forEach(c => {
-                    const isRead = (c.readBy || []).includes(user.nr);
+                    const readBy = c.readBy || [];
+                    const isRead = readBy.includes(user.nr);
                     const isMentioned = (c.mentions || []).includes(user.nr);
                     
-                    // Markierung Blau, Rest Grau
                     const formatted = c.text.replace(/(\d{1,2}:\d{2}:\d{2})/g, '<span class="timestamp" onclick="jumpTo(\'$1\')">$1</span>')
                                             .replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
                     
                     let actionHtml = '';
                     if(isAdmin || user.nr === c.authorNr) actionHtml += `<button class="delete-btn" onclick="deleteCom('${c.id}')">🗑</button>`;
-                    if(isMentioned && !isRead) actionHtml += `<button class="check-btn" onclick="markAsRead('${c.id}')">✓</button>`;
+                    if(isMentioned && !isRead) actionHtml += `<button class="check-btn" onclick="markAsRead('${c.id}')">Gelesen ✓</button>`;
 
                     display.innerHTML += `
                         <div class="comment-item ${isRead ? 'is-read' : ''}">
@@ -196,7 +192,6 @@
 
         async function deleteCom(cid) { if(confirm("Löschen?")) await db.collection("comments").doc(cid).delete(); }
 
-        // ZEICHNEN
         const canvas = document.getElementById('draw-canvas');
         const ctx = canvas.getContext('2d');
         let isDrawingMode = false, isPainting = false, penColor = "#e30613";
