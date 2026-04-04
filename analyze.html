@@ -24,7 +24,7 @@
         .comment-text { font-size: 0.9rem; color: var(--gray); line-height: 1.4; }
         .mention { color: var(--mention) !important; font-weight: bold !important; }
         .timestamp { background: var(--mention); color: white; padding: 2px 5px; border-radius: 3px; cursor: pointer; font-weight: bold; }
-        .check-btn { background: #28a745; color: white; border: none; border-radius: 3px; padding: 4px 8px; cursor: pointer; font-weight: bold; font-size: 0.7rem; }
+        .check-btn { background: #28a745; color: white; border: none; border-radius: 3px; padding: 4px 8px; cursor: pointer; font-size: 0.7rem; font-weight: bold; }
         .delete-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 1rem; }
         .input-area { padding: 15px; background: #000; border-top: 1px solid var(--border); }
         textarea { width: 100%; height: 70px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 10px; resize: none; font-family: inherit; box-sizing: border-box; }
@@ -81,8 +81,7 @@
         }
 
         function jumpTo(ts) {
-            const s = getSec(ts);
-            if(type === 'youtube') document.getElementById('main-frame').src = `https://www.youtube.com/embed/${currentYtId}?start=${s}&autoplay=1`;
+            if(type === 'youtube') document.getElementById('main-frame').src = `https://www.youtube.com/embed/${currentYtId}?start=${getSec(ts)}&autoplay=1`;
         }
 
         async function sendComment() {
