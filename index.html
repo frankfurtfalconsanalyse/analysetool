@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8"><title>Falcons Hub | Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
@@ -17,24 +18,35 @@
         
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
 
-        /* LOGIN OVERLAY */
-        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align:center; }
-        #login-overlay input { padding: 15px; font-size: 2rem; width: 100px; text-align: center; border-radius: 10px; border: 2px solid var(--red); background: #222; color: white; margin-top: 20px; outline: none; }
-
-        /* HERO & GRIDS */
+        /* HERO AREA */
         .hero-session { background: linear-gradient(45deg, #1a1a1a, #000); border: 2px solid var(--red); border-radius: 15px; padding: 40px; margin-bottom: 50px; display: none; position: relative; overflow: hidden; }
         .hero-session::after { content: "AKTUELL"; position: absolute; top: 20px; right: -30px; background: var(--red); padding: 5px 40px; transform: rotate(45deg); font-weight: 900; font-size: 0.7rem; }
         .hero-session h1 { font-size: 2.5rem; margin: 0; text-transform: uppercase; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
+        .hero-session p { color: #aaa; margin: 15px 0 25px; max-width: 600px; }
+
+        /* GRIDS & TITLES */
         .section-title { color: var(--red); text-transform: uppercase; margin-top: 50px; border-left: 4px solid var(--red); padding-left: 15px; font-size: 1.2rem; }
-        .card, .s-card, .v-card { background: var(--card); padding: 25px; border-radius: 12px; cursor: pointer; border: 1px solid #333; transition: 0.3s; position: relative; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
+        
+        /* CARDS */
+        .card, .s-card { background: var(--card); padding: 30px; border-radius: 12px; cursor: pointer; border: 1px solid #333; transition: 0.3s; text-align: center; position: relative; }
         .card:hover, .s-card:hover { border-color: var(--red); transform: translateY(-5px); background: #222; }
-        .v-card { text-align: left; border-left: 5px solid var(--red); }
         .watched-dot { position: absolute; top: 15px; right: 15px; width: 10px; height: 10px; background: var(--red); border-radius: 50%; box-shadow: 0 0 10px var(--red); }
 
-        /* VIDEO VIEW */
-        .video-list-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
-        .yt-badge { position: absolute; top: 10px; right: 10px; background: #ff0000; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 3px; font-weight: bold; }
+        /* VIDEO CARDS WITH THUMBNAILS */
+        .video-list-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
+        .v-card { background: var(--card); border-radius: 12px; overflow: hidden; cursor: pointer; border: 1px solid #333; transition: 0.3s; position: relative; display: flex; flex-direction: column; }
+        .v-card:hover { border-color: var(--red); transform: translateY(-5px); }
+        .v-thumb { width: 100%; height: 150px; background-size: cover; background-position: center; background-color: #000; }
+        .v-info { padding: 15px; }
+        .v-info h3 { margin: 5px 0 0; font-size: 0.95rem; line-height: 1.3; }
+        .v-info small { color: var(--red); font-weight: bold; text-transform: uppercase; font-size: 0.65rem; }
+        .yt-badge { position: absolute; top: 10px; right: 10px; background: #ff0000; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 3px; font-weight: bold; z-index: 2; }
+
+        /* LOGIN */
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        #login-overlay input { padding: 15px; font-size: 2rem; width: 100px; text-align: center; border-radius: 10px; border: 2px solid var(--red); background: #222; color: white; margin-top: 20px; outline: none; }
+        .back-btn { background: #333; border: 1px solid #444; color: white; padding: 10px 20px; cursor: pointer; display: none; margin-bottom: 20px; font-weight: bold; border-radius: 5px; }
 
         /* MODAL */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); }
@@ -42,24 +54,22 @@
         .modal-main { display: flex; flex-wrap: wrap; }
         .video-side { flex: 2; min-width: 300px; background: #000; position: relative; padding-bottom: 37.25%; height: 0; }
         .video-side iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:none; }
-        .comment-side { flex: 1; min-width: 300px; background: #1a1a1a; display: flex; flex-direction: column; max-height: 550px; border-left: 1px solid #333; }
+        .comment-side { flex: 1; min-width: 300px; background: #1a1a1a; display: flex; flex-direction: column; max-height: 500px; border-left: 1px solid #333; }
         .comment-side h4 { padding: 15px; margin: 0; background: #000; border-bottom: 2px solid var(--red); font-size: 0.8rem; text-transform: uppercase; }
         .modal-comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .mini-comment { background: #252525; padding: 12px; border-radius: 8px; border-left: 3px solid var(--red); font-size: 0.85rem; color: #aaa; transition: 0.3s; }
+        .mini-comment { background: #252525; padding: 12px; border-radius: 8px; border-left: 3px solid var(--red); font-size: 0.85rem; color: #aaa; }
         .mini-comment.is-read { opacity: 0.3; filter: grayscale(1); }
         .mini-comment small { color: var(--red); font-weight: bold; font-size: 0.65rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
         .mention { color: var(--blue) !important; font-weight: bold !important; }
         .hub-check-btn { background: #28a745; color: white; border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer; font-size: 0.65rem; }
-        .back-btn { background: #333; border: 1px solid #444; color: white; padding: 10px 20px; cursor: pointer; display: none; margin-bottom: 20px; font-weight: bold; border-radius: 5px; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <h1 style="font-size: 3rem; margin:0;">FRANKFURT <span style="color:var(--red);">FALCONS</span></h1>
-    <p>BITTE NUMMER ZWEISTELLIG EINGEBEN (z.B. 01)</p>
+    <p>TRIKOTNUMMER ZUM LOGIN (ZWEISTELLIG)</p>
     <input type="text" id="login-nr" placeholder="00" maxlength="2" oninput="this.value = this.value.replace(/[^0-9]/g, ''); checkLogin();">
-    <p id="login-status" style="margin-top:15px; font-size:0.8rem; color: #555;"></p>
 </div>
 
 <header>
@@ -68,7 +78,7 @@
         <span id="user-display" style="font-size: 0.7rem; color: #888; margin-right:5px;"></span>
         <a href="games.html" class="nav-btn">GAME HUB</a>
         <a href="help.html" class="nav-btn">HELP</a>
-        <a href="admin.html" id="admin-link" class="nav-btn">ADMIN</a>
+        <a href="admin.html" id="admin-link" class="nav-btn" style="background:var(--red);">ADMIN</a>
         <button class="nav-btn" onclick="logout()">LOGOUT</button>
     </div>
 </header>
@@ -83,8 +93,9 @@
     <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK</button>
 
     <div id="lobby-view">
-        <h2 class="section-title">Sessions</h2><div id="session-grid" class="grid"></div>
+        <h2 class="section-title">Analyse Sessions</h2><div id="session-grid" class="grid"></div>
         <h2 class="section-title">Für dich markiert</h2><div id="personal-grid" class="grid"></div>
+        
         <h2 class="section-title">Spielsituation</h2>
         <div class="grid">
             <div class="card" onclick="filterVideos('cat', 'Offense')"><h3>Offense</h3></div>
@@ -93,6 +104,7 @@
             <div class="card" onclick="filterVideos('cat', 'Penalty Kill')"><h3>Penalty Kill</h3></div>
             <div class="card" onclick="filterVideos('cat', 'Setplays')"><h3>Setplays</h3></div>
         </div>
+
         <h2 class="section-title">Positionen</h2>
         <div class="grid">
             <div class="card" onclick="filterVideos('pos', 'Angriff')"><h3>Angriff</h3></div>
@@ -112,7 +124,7 @@
                 <h4>Feedback</h4><div class="modal-comment-list" id="modal-comment-display"></div>
             </div>
         </div>
-        <div style="padding:15px; background:#000; display:flex; justify-content:space-between; align-items:center;">
+        <div style="padding:15px; background:#000; display:flex; justify-content:space-between; align-items:center; border-top:1px solid #333;">
             <h3 id="modal-title" style="margin:0; font-size:0.9rem;">Clip</h3>
             <button class="nav-btn" id="btn-goto-analyse" style="background:var(--red);">ZUR ANALYSE</button>
         </div>
@@ -134,8 +146,6 @@
             currentUser = doc.data();
             localStorage.setItem('falcons_user', JSON.stringify(currentUser));
             startHub();
-        } else {
-            document.getElementById('login-status').innerText = "Nummer #" + nr + " unbekannt.";
         }
     }
 
@@ -163,8 +173,15 @@
 
         let meta = {}; metaSnap.forEach(d => meta[d.id] = d.data().position);
         combinedVideos = [
-            ...driveRes.map(v => { const fid = v.link.split('/d/')[1].split('/')[0]; return { id: fid, title: v.title, category: v.category, type: 'drive', position: meta[fid] || 'Alle', link: `https://drive.google.com/file/d/${fid}/preview` }; }),
-            ...ytSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'youtube', link: `https://www.youtube.com/embed/${doc.data().ytId}?start=${doc.data().startTime}&autoplay=1` }))
+            ...driveRes.map(v => { 
+                const fid = v.link.split('/d/')[1].split('/')[0]; 
+                return { id: fid, title: v.title, category: v.category, type: 'drive', position: meta[fid] || 'Alle', link: `https://drive.google.com/file/d/${fid}/preview`, ytId: null }; 
+            }),
+            ...ytSnap.docs.map(doc => ({ 
+                id: doc.id, ...doc.data(), type: 'youtube', 
+                link: `https://www.youtube.com/embed/${doc.data().ytId}?start=${doc.data().startTime}&autoplay=1`,
+                ytId: doc.data().ytId 
+            }))
         ];
 
         const sGrid = document.getElementById('session-grid'), hero = document.getElementById('hero-area'), progress = progSnap.exists ? progSnap.data() : {};
@@ -184,8 +201,33 @@
             const c = doc.data();
             if(!(c.readBy || []).includes(currentUser.nr)) {
                 const v = combinedVideos.find(item => item.id === c.videoId);
-                if(v) pGrid.innerHTML += `<div class="v-card" onclick="openPlayer('${v.id}')"><small>MARKIERUNG</small><h3>${v.title}</h3></div>`;
+                if(v) pGrid.innerHTML += createVideoCard(v, "NEUE MARKIERUNG");
             }
+        });
+        if(pGrid.innerHTML === "") pGrid.innerHTML = "<p style='color:#444; font-size:0.8rem;'>Keine offenen Markierungen.</p>";
+    }
+
+    function createVideoCard(v, badgeText) {
+        const thumb = v.type === 'youtube' 
+            ? `https://img.youtube.com/vi/${v.ytId}/mqdefault.jpg` 
+            : `https://via.placeholder.com/300x170/1a1a1a/e30613?text=Falcons+Clip`;
+        
+        return `
+            <div class="v-card" onclick="openPlayer('${v.id}')">
+                ${v.type==='youtube'?'<span class="yt-badge">YT</span>':''}
+                <div class="v-thumb" style="background-image: url('${thumb}')"></div>
+                <div class="v-info">
+                    <small>${badgeText || v.category}</small>
+                    <h3>${v.title}</h3>
+                </div>
+            </div>`;
+    }
+
+    function filterVideos(type, val) {
+        document.getElementById('lobby-view').style.display = 'none'; document.getElementById('video-list-view').style.display = 'grid'; document.getElementById('back-btn').style.display = 'block'; document.getElementById('hero-area').style.display = 'none';
+        const grid = document.getElementById('video-list-view'); grid.innerHTML = "";
+        combinedVideos.filter(v => type==='cat' ? v.category.toLowerCase().trim() === val.toLowerCase().trim() : (v.position === val || v.position === 'Alle')).forEach(v => {
+            grid.innerHTML += createVideoCard(v);
         });
     }
 
@@ -208,20 +250,13 @@
                 let checkBtn = (isMentioned && !isRead) ? `<button class="hub-check-btn" onclick="markAsRead('${c.id}')">✓</button>` : '';
                 display.innerHTML += `<div class="mini-comment ${isRead ? 'is-read' : ''}"><small>${c.author} ${checkBtn}</small><div>${formatted}</div></div>`;
             });
+            display.scrollTop = display.scrollHeight;
         });
         db.collection("video_views").doc(currentUser.nr).set({ [id]: true }, { merge: true });
     }
 
     async function markAsRead(cid) { await db.collection("comments").doc(cid).update({ readBy: firebase.firestore.FieldValue.arrayUnion(currentUser.nr) }); }
-
-    function filterVideos(type, val) {
-        document.getElementById('lobby-view').style.display = 'none'; document.getElementById('video-list-view').style.display = 'grid'; document.getElementById('back-btn').style.display = 'block'; document.getElementById('hero-area').style.display = 'none';
-        const grid = document.getElementById('video-list-view'); grid.innerHTML = "";
-        combinedVideos.filter(v => type==='cat' ? v.category.toLowerCase().trim() === val.toLowerCase().trim() : (v.position === val || v.position === 'Alle')).forEach(v => {
-            grid.innerHTML += `<div class="v-card" onclick="openPlayer('${v.id}')">${v.type==='youtube'?'<span class="yt-badge">YT</span>':''}<small>${v.category}</small><h3>${v.title}</h3></div>`;
-        });
-    }
-
+    function closePlayer() { document.getElementById('videoModal').style.display='none'; document.getElementById('modal-iframe').src=''; if(commentUnsubscribe) commentUnsubscribe(); }
     function logout() { localStorage.removeItem('falcons_user'); location.reload(); }
     window.onload = startHub;
 </script>
