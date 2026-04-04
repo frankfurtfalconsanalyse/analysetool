@@ -11,54 +11,62 @@
         :root { --red: #e30613; --bg: #0d0d0d; --panel: #161616; --blue: #3498db; }
         body { font-family: 'Montserrat'; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
+        /* VIDEO BEREICH */
         .video-side { flex: 2.5; background: #000; position: relative; display: flex; flex-direction: column; }
         #yt-player { width: 100%; height: 100%; border: none; }
-        
-        /* Warnmeldung falls blockiert */
-        #block-warning { display: none; background: orange; color: black; padding: 10px; text-align: center; font-weight: bold; font-size: 0.8rem; }
+        #block-warning { display: none; background: #d35400; color: white; padding: 10px; text-align: center; font-weight: bold; font-size: 0.8rem; }
 
-        .comment-side { flex: 1; min-width: 350px; background: var(--panel); border-left: 2px solid #333; display: flex; flex-direction: column; }
+        /* SEITENLEISTE */
+        .comment-side { flex: 1; min-width: 360px; background: var(--panel); border-left: 2px solid #333; display: flex; flex-direction: column; }
         .header { padding: 20px; border-bottom: 2px solid var(--red); background: #000; }
-        .btn-back-main { background: #333; color: #aaa; border: 1px solid #444; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.7rem; text-transform: uppercase; margin-bottom: 15px; }
-        .player-select { width: 100%; padding: 10px; background: #222; color: white; border: 1px solid var(--red); border-radius: 5px; margin-bottom: 10px; font-family: inherit; }
-        
-        .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .game-comment { background: #222; padding: 12px; border-radius: 8px; border-left: 4px solid var(--red); position: relative; font-size: 0.9rem; }
-        .game-comment small { color: var(--red); font-weight: bold; font-size: 0.65rem; display: block; margin-bottom: 5px; text-transform: uppercase; }
-        
-        /* ZEITSTEMPEL DESIGN */
-        .timestamp { background: var(--blue); color: white; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
-        .timestamp:hover { background: #2980b9; }
+        .btn-back { background: #333; color: #ccc; border: 1px solid #444; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.7rem; text-transform: uppercase; margin-bottom: 15px; transition: 0.2s; }
+        .btn-back:hover { color: white; border-color: white; }
 
-        .input-area { padding: 15px; border-top: 1px solid #333; background: #000; }
-        textarea { width: 100%; height: 60px; background: #111; border: 1px solid #444; color: white; border-radius: 5px; padding: 10px; box-sizing: border-box; resize: none; }
-        .btn-send { background: var(--red); color: white; border: none; width: 100%; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 8px; text-transform: uppercase; }
-        .del-com { position: absolute; right: 10px; top: 10px; color: #444; cursor: pointer; border:none; background:none; }
+        .player-select { width: 100%; padding: 12px; background: #222; color: white; border: 1px solid var(--red); border-radius: 5px; margin-bottom: 15px; font-family: inherit; font-weight: bold; }
+        
+        /* KOMMENTAR LISTE */
+        .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; background: #111; }
+        .game-comment { background: #1e1e1e; padding: 15px; border-radius: 10px; border-left: 4px solid var(--red); position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .game-comment small { color: var(--red); font-weight: 900; font-size: 0.65rem; display: block; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* ZEITSTEMPEL */
+        .timestamp { background: var(--blue); color: white; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: 900; font-size: 0.8rem; margin-right: 5px; display: inline-block; transition: 0.2s; }
+        .timestamp:hover { background: white; color: var(--blue); }
+
+        .comment-text { color: #bbb; font-size: 0.9rem; line-height: 1.5; }
+
+        /* INPUT AREA */
+        .input-area { padding: 20px; border-top: 1px solid #333; background: #000; }
+        textarea { width: 100%; height: 70px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 12px; box-sizing: border-box; resize: none; font-family: inherit; margin-bottom: 10px; }
+        .btn-send { background: var(--red); color: white; border: none; width: 100%; padding: 12px; border-radius: 5px; font-weight: 900; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .del-com { position: absolute; right: 12px; top: 12px; color: #444; cursor: pointer; border:none; background:none; font-size: 1rem; }
+        .del-com:hover { color: var(--red); }
     </style>
 </head>
 <body>
 
 <div class="video-side">
-    <div id="block-warning">⚠️ Dieses Video erlaubt kein Einbetten. Zeitstempel öffnen sich in neuem Tab.</div>
+    <div id="block-warning">⚠️ Einbetten deaktiviert. Zeitstempel öffnen YouTube im neuen Tab.</div>
     <div id="yt-player"></div>
 </div>
 
 <div class="comment-side">
     <div class="header">
-        <button class="btn-back-main" onclick="location.href='games.html'">← ZURÜCK</button>
-        <h3 id="game-title" style="margin:0 0 10px 0; font-size:1.1rem; text-transform: uppercase;">Spiel-Analyse</h3>
+        <button class="btn-back" onclick="location.href='games.html'">← Zurück zum Hub</button>
+        <h3 id="game-title" style="margin:0 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">Spiel-Analyse</h3>
         
         <select id="admin-player-select" class="player-select" style="display:none;" onchange="loadGameComments()">
-            <option value="">Spieler wählen...</option>
+            <option value="">Spieler auswählen...</option>
         </select>
-        <div id="player-info-view" style="font-size: 0.8rem; color: #888;"></div>
+        <div id="player-info-view" style="font-size: 0.8rem; color: #888; font-weight: bold;"></div>
     </div>
 
     <div class="comment-list" id="comment-display"></div>
 
     <div class="input-area" id="admin-input-area" style="display:none;">
-        <textarea id="com-text" placeholder="Privates Feedback... (Tippe Zeiten wie 0:12:05)"></textarea>
-        <button class="btn-send" onclick="sendGameComment()">Senden</button>
+        <textarea id="com-text" placeholder="Privates Feedback... Nutze H:M:S (z.B. 0:45:12)"></textarea>
+        <button class="btn-send" onclick="sendGameComment()">Feedback senden</button>
     </div>
 </div>
 
@@ -76,12 +84,13 @@
     let isVideoBlocked = false;
 
     async function init() {
+        if(!gameId) return location.href='games.html';
+
         const gameDoc = await db.collection("games").doc(gameId).get();
         const gd = gameDoc.data();
         currentYtId = gd.ytId;
         document.getElementById('game-title').innerText = gd.title;
 
-        // Admin Check
         const adminDoc = await db.collection("admins").doc(user.nr).get();
         if(user.nr === "22" || adminDoc.exists) {
             isAdmin = true;
@@ -94,11 +103,9 @@
             loadGameComments();
         }
 
-        // YouTube Player initialisieren
         onYouTubeIframeAPIReady();
     }
 
-    // YOUTUBE API SETUP
     function onYouTubeIframeAPIReady() {
         if(!currentYtId) return;
         ytPlayer = new YT.Player('yt-player', {
@@ -106,7 +113,6 @@
             playerVars: { 'autoplay': 0, 'rel': 0, 'enablejsapi': 1 },
             events: {
                 'onError': (e) => {
-                    // Fehler 101 & 150 bedeuten "Inhaber verbietet Einbetten"
                     if(e.data == 101 || e.data == 150) {
                         isVideoBlocked = true;
                         document.getElementById('block-warning').style.display = 'block';
@@ -116,12 +122,17 @@
         });
     }
 
+    // Zeitstempel aus Text in Sekunden umwandeln für Sortierung
+    function getSecondsFromText(text) {
+        const match = text.match(/(\d{1,2}):(\d{2}):(\d{2})/);
+        if(!match) return 0;
+        return (parseInt(match[1]) * 3600) + (parseInt(match[2]) * 60) + parseInt(match[3]);
+    }
+
     function jumpTo(sec) {
         if(isVideoBlocked) {
-            // Falls blockiert: Neuen Tab öffnen
             window.open(`https://www.youtube.com/watch?v=${currentYtId}&t=${sec}s`, '_blank');
         } else {
-            // Falls ok: Im Player springen
             ytPlayer.seekTo(sec, true);
             ytPlayer.playVideo();
         }
@@ -130,7 +141,8 @@
     async function sendGameComment() {
         const targetNr = document.getElementById('admin-player-select').value;
         const text = document.getElementById('com-text').value.trim();
-        if(!targetNr || !text) return alert("Fehler!");
+        if(!targetNr || !text) return alert("Spieler und Text fehlen!");
+
         await db.collection("game_comments").add({
             gameId, targetNr, text, author: user.name, authorNr: user.nr, createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -139,31 +151,34 @@
 
     function loadGameComments() {
         const targetNr = isAdmin ? document.getElementById('admin-player-select').value : user.nr;
-        if(!targetNr) return;
+        const display = document.getElementById('comment-display');
+        if(!targetNr) return display.innerHTML = "";
 
         db.collection("game_comments")
           .where("gameId", "==", gameId)
           .where("targetNr", "==", targetNr)
           .onSnapshot(snap => {
-              const display = document.getElementById('comment-display');
               display.innerHTML = "";
-              let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
-              docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+              let docs = [];
+              snap.forEach(d => docs.push({id: d.id, ...d.data()}));
+
+              // SORTIERUNG NACH ZEITSTEMPEL (Chronologisch)
+              docs.sort((a, b) => getSecondsFromText(a.text) - getSecondsFromText(b.text));
 
               docs.forEach(c => {
-                  const formatted = c.text.replace(/(\d{1,2}):(\d{2}):(\d{2})/g, (match, h, min, s) => {
-                      const sec = (parseInt(h)*3600)+(parseInt(min)*60)+parseInt(s);
-                      return `<span class="timestamp" onclick="jumpTo(${sec})">${match}</span>`;
+                  const formatted = c.text.replace(/(\d{1,2}):(\d{2}):(\d{2})/g, (match, h, m, s) => {
+                      const totalSec = (parseInt(h)*3600) + (parseInt(m)*60) + parseInt(s);
+                      return `<span class="timestamp" onclick="jumpTo(${totalSec})">${match}</span>`;
                   });
                   const del = isAdmin ? `<button class="del-com" onclick="deleteComment('${c.id}')">🗑</button>` : '';
+                  
                   display.innerHTML += `
                     <div class="game-comment">
                         <small>VON: ${c.author} (#${c.authorNr})</small>
-                        <div>${formatted}</div>
+                        <div class="comment-text">${formatted}</div>
                         ${del}
                     </div>`;
               });
-              display.scrollTop = display.scrollHeight;
           });
     }
 
