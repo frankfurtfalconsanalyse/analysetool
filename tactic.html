@@ -1,51 +1,212 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <title>Falcons Taktik-Board</title>
+    <meta charset="UTF-8"><title>Falcons Hub | Taktik Board</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        body { background: #0d0d0d; color: white; font-family: sans-serif; margin: 0; text-align: center; }
-        .rink { 
-            width: 900px; height: 450px; background: #222; border: 4px solid #fff; 
-            margin: 40px auto; position: relative; border-radius: 20px; 
-            background-image: radial-gradient(circle at 50% 50%, transparent 60px, white 60px, white 62px, transparent 62px);
+        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --blue: #3498db; }
+        body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+
+        header { background: #000; padding: 15px 25px; border-bottom: 2px solid var(--red); display: flex; justify-content: space-between; align-items: center; }
+        
+        .main-layout { display: flex; flex: 1; overflow: hidden; }
+
+        /* TOOLBAR */
+        .toolbar { width: 80px; background: #111; border-right: 1px solid #333; display: flex; flex-direction: column; align-items: center; padding: 15px 0; gap: 20px; }
+        .tool { width: 50px; height: 50px; background: #222; border: 1px solid #444; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; font-size: 1.2rem; }
+        .tool:hover, .tool.active { border-color: var(--red); background: #2a2a2a; }
+        .color-dot { width: 25px; height: 25px; border-radius: 50%; border: 2px solid white; cursor: pointer; }
+
+        /* RINK BEREICH */
+        .rink-container { flex: 1; position: relative; padding: 20px; display: flex; align-items: center; justify-content: center; background: #050505; }
+        
+        #hockey-rink { 
+            width: 900px; height: 450px; background: #eee; border: 5px solid #222; border-radius: 40px; position: relative; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.5); overflow: hidden;
         }
-        .center-line { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: white; }
+
+        /* RINK MARKIERUNGEN (EISHOCKEY) */
+        .line { position: absolute; background: rgba(0,0,0,0.2); }
+        .center-line { width: 4px; height: 100%; background: red; left: 50%; transform: translateX(-50%); }
+        .blue-line { width: 4px; height: 100%; background: blue; position: absolute; }
+        .goal-line { width: 2px; height: 100%; background: red; position: absolute; }
+        .crease { position: absolute; width: 60px; height: 40px; border: 2px solid red; border-bottom: none; border-radius: 30px 30px 0 0; background: rgba(173, 216, 230, 0.4); }
+
+        /* SPIELER */
         .player { 
-            width: 35px; height: 35px; border-radius: 50%; position: absolute; z-index: 10;
-            cursor: move; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid #000;
+            width: 34px; height: 34px; border-radius: 50%; position: absolute; z-index: 100; 
+            display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.8rem;
+            cursor: move; border: 2px solid #000; user-select: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        .falcons { background: #e30613; color: white; }
-        .opponent { background: #fff; color: #000; }
-        .controls { padding: 20px; background: #1a1a1a; }
-        .btn { background: #e30613; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 0 5px; }
+        .p-falcons { background: var(--red); color: white; }
+        .p-opponent { background: white; color: black; }
+        .p-ball { width: 15px; height: 15px; background: orange; border: 2px solid black; }
+
+        /* CANVAS */
+        #draw-canvas { position: absolute; top: 0; left: 0; z-index: 50; pointer-events: none; }
+        #draw-canvas.active { pointer-events: auto; }
+
+        /* SAVE OVERLAY */
+        .save-panel { position: fixed; right: 20px; top: 100px; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 15px; border: 1px solid var(--red); z-index: 1000; }
+        input { background: #222; border: 1px solid #444; color: white; padding: 8px; border-radius: 5px; margin-bottom: 10px; width: 100%; box-sizing: border-box; }
+        .btn-red { background: var(--red); color: white; border: none; padding: 10px 15px; border-radius: 5px; font-weight: 900; cursor: pointer; width: 100%; }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <h2 style="margin:0 0 15px 0;">📋 FLOORBALL TAKTIK-BOARD</h2>
-        <button class="btn" onclick="addP('falcons')">+ FALCONS</button>
-        <button class="btn" onclick="addP('opponent')">+ GEGNER</button>
-        <button class="btn" style="background:#555;" onclick="location.href='index.html'">ZURÜCK</button>
-    </div>
-    <div class="rink" id="rink"><div class="center-line"></div></div>
 
-    <script>
-        function addP(team) {
-            const p = document.createElement('div');
-            p.className = 'player ' + team;
-            p.innerHTML = team === 'falcons' ? 'F' : 'G';
-            p.style.left = "50px"; p.style.top = "50px";
-            p.onmousedown = (e) => {
-                let el = e.target;
-                document.onmousemove = (e) => {
-                    el.style.left = e.pageX - 17 + 'px';
-                    el.style.top = e.pageY - 120 + 'px';
-                };
-                document.onmouseup = () => document.onmousemove = null;
-            };
-            document.getElementById('rink').appendChild(p);
-        }
-    </script>
+<header>
+    <div class="logo">FALCONS <span>TACTIC PRO</span></div>
+    <button class="btn-red" style="width:auto; padding: 10px 25px;" onclick="window.location.href='index.html'">HUB BEENDEN</button>
+</header>
+
+<div class="main-layout">
+    <div class="toolbar">
+        <div class="tool active" id="tool-move" onclick="setTool('move')" title="Spieler bewegen">🖐️</div>
+        <div class="tool" id="tool-draw" onclick="setTool('draw')" title="Zeichnen">✏️</div>
+        <div class="tool" onclick="clearCanvas()" title="Löschen">🗑</div>
+        <hr style="width: 50%; border: 0.5px solid #333;">
+        <div class="color-dot" style="background: red;" onclick="setColor('red')"></div>
+        <div class="color-dot" style="background: blue;" onclick="setColor('blue')"></div>
+        <div class="color-dot" style="background: black;" onclick="setColor('black')"></div>
+    </div>
+
+    <div class="rink-container" id="capture-area">
+        <div id="hockey-rink">
+            <!-- Rink Design -->
+            <div class="center-line line"></div>
+            <div class="blue-line line" style="left: 33%;"></div>
+            <div class="blue-line line" style="right: 33%;"></div>
+            <div class="goal-line line" style="left: 10%;"></div>
+            <div class="goal-line line" style="right: 10%;"></div>
+            <div class="crease" style="left: 10%; top: 50%; transform: translate(-50%, -50%) rotate(90deg);"></div>
+            <div class="crease" style="right: 10%; top: 50%; transform: translate(50%, -50%) rotate(-90deg);"></div>
+            
+            <!-- Canvas -->
+            <canvas id="draw-canvas"></canvas>
+
+            <!-- Spieler (6 Falcons, 6 Gegner, 1 Ball) -->
+            <div id="players-layer"></div>
+        </div>
+    </div>
+</div>
+
+<div class="save-panel">
+    <h3>TAKTIK SPEICHERN</h3>
+    <input type="text" id="tactic-name" placeholder="Name (z.B. Breakout L1)">
+    <button class="btn-red" onclick="saveTactic()">IN CLIPS SPEICHERN</button>
+</div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const rink = document.getElementById('hockey-rink');
+    const canvas = document.getElementById('draw-canvas');
+    const ctx = canvas.getContext('2d');
+    let currentTool = 'move';
+    let isDrawing = false;
+    let currentColor = 'red';
+
+    // 1. Initialisiere Spieler
+    function initPlayers() {
+        const layer = document.getElementById('players-layer');
+        // Falcons
+        for(let i=1; i<=6; i++) createPlayer(layer, 'p-falcons', i, 50, i*60);
+        // Opponents
+        for(let i=1; i<=6; i++) createPlayer(layer, 'p-opponent', i, 820, i*60);
+        // Ball
+        createPlayer(layer, 'p-ball', '', 440, 220);
+    }
+
+    function createPlayer(parent, team, label, x, y) {
+        const p = document.createElement('div');
+        p.className = `player ${team}`;
+        p.innerHTML = label;
+        p.style.left = x + 'px';
+        p.style.top = y + 'px';
+        
+        p.onmousedown = (e) => {
+            if(currentTool !== 'move') return;
+            let shiftX = e.clientX - p.getBoundingClientRect().left;
+            let shiftY = e.clientY - p.getBoundingClientRect().top;
+            
+            function moveAt(pageX, pageY) {
+                let rect = rink.getBoundingClientRect();
+                p.style.left = (pageX - rect.left - shiftX) + 'px';
+                p.style.top = (pageY - rect.top - shiftY) + 'px';
+            }
+            
+            function onMouseMove(e) { moveAt(e.pageX, e.pageY); }
+            document.addEventListener('mousemove', onMouseMove);
+            p.onmouseup = () => { document.removeEventListener('mousemove', onMouseMove); p.onmouseup = null; };
+        };
+        p.ondragstart = () => false;
+        parent.appendChild(p);
+    }
+
+    // 2. Zeichen-Logik
+    function setTool(t) {
+        currentTool = t;
+        document.querySelectorAll('.tool').forEach(el => el.classList.remove('active'));
+        document.getElementById('tool-' + t).classList.add('active');
+        canvas.classList.toggle('active', t === 'draw');
+    }
+
+    function setColor(c) { currentColor = c; }
+
+    canvas.onmousedown = (e) => {
+        if(currentTool !== 'draw') return;
+        isDrawing = true;
+        ctx.beginPath();
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = 3;
+        const rect = canvas.getBoundingClientRect();
+        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    };
+
+    canvas.onmousemove = (e) => {
+        if(!isDrawing) return;
+        const rect = canvas.getBoundingClientRect();
+        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+        ctx.stroke();
+    };
+
+    canvas.onmouseup = () => isDrawing = false;
+    function clearCanvas() { ctx.clearRect(0,0,canvas.width, canvas.height); }
+
+    // 3. Speichern Logik
+    async function saveTactic() {
+        const name = document.getElementById('tactic-name').value;
+        if(!name) return alert("Bitte Namen eingeben!");
+
+        // Wir speichern die Positionen und die Zeichnung als JSON
+        const players = [];
+        document.querySelectorAll('.player').forEach(p => {
+            players.push({ left: p.style.left, top: p.style.top, class: p.className, html: p.innerHTML });
+        });
+
+        const drawing = canvas.toDataURL(); // Bild der Zeichnung
+
+        await db.collection("tactics").add({
+            title: name,
+            players: players,
+            drawing: drawing,
+            category: "Taktik",
+            createdAt: new Date()
+        });
+
+        alert("Taktik erfolgreich gespeichert! Du findest sie nun im Admin Panel unter Clips.");
+        location.reload();
+    }
+
+    window.onload = () => {
+        canvas.width = rink.offsetWidth;
+        canvas.height = rink.offsetHeight;
+        initPlayers();
+    };
+</script>
 </body>
 </html>
