@@ -16,7 +16,7 @@
 
         .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
 
-        /* TABS */
+        /* TABS NAVIGATION */
         .tab-nav { display: flex; gap: 5px; margin-bottom: 30px; border-bottom: 1px solid var(--border); overflow-x: auto; padding-bottom: 5px; }
         .tab-btn { background: none; border: none; color: #666; padding: 12px 20px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.75rem; white-space: nowrap; transition: 0.3s; }
         .tab-btn.active { color: var(--red); border-bottom: 3px solid var(--red); }
@@ -36,12 +36,20 @@
         th { text-align: left; font-size: 0.65rem; color: #555; text-transform: uppercase; padding: 12px 10px; border-bottom: 1px solid var(--border); }
         td { padding: 12px 10px; border-bottom: 1px solid #222; font-size: 0.85rem; }
         
-        .delete-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 1.1rem; }
+        .delete-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 1.1rem; margin: 0 5px; }
         .edit-btn { background: none; border: none; color: #aaa; cursor: pointer; font-size: 1.1rem; margin-right: 10px; }
 
-        /* SAVE BAR */
+        /* GLOBAL SAVE BAR */
         #save-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #000; border-top: 3px solid var(--green); padding: 20px; display: none; justify-content: center; gap: 20px; align-items: center; z-index: 1000; box-shadow: 0 -10px 30px rgba(0,0,0,0.8); }
         .btn-global-save { background: var(--green); color: white; border: none; padding: 12px 30px; border-radius: 5px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+
+        /* STATUS CHECK ACCORDION */
+        .status-row { background: #111; margin-bottom: 10px; border-radius: 8px; border: 1px solid #222; overflow: hidden; }
+        .status-header { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .status-header:hover { background: #1a1a1a; }
+        .status-content { display: none; padding: 20px; background: #0a0a0a; border-top: 1px solid #222; }
+        .player-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .player-tag { background: #1a1a1a; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; border: 1px solid #333; font-size: 0.8rem; }
 
         .video-selector { max-height: 300px; overflow-y: auto; background: #111; padding: 10px; border-radius: 5px; border: 1px solid #333; }
         .video-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #222; font-size: 0.8rem; }
@@ -75,7 +83,7 @@
         <button class="tab-btn" onclick="openTab('kader')">Kader & Rechte</button>
     </nav>
 
-    <!-- TAB: STATUS -->
+    <!-- TAB: STATUS-CHECK -->
     <div id="status" class="tab-content active">
         <div class="admin-card">
             <h3>Video-Konsum prüfen</h3>
@@ -83,7 +91,7 @@
                 <button class="btn-action" onclick="loadStatusData('sessions')" id="btn-stat-s">Sessions</button>
                 <button class="btn-action" style="background:#444" onclick="loadStatusData('videos')" id="btn-stat-v">Einzelclips</button>
             </div>
-            <div id="status-list-container">Lade Daten...</div>
+            <div id="status-list-container">Wähle einen Modus...</div>
         </div>
     </div>
 
@@ -99,7 +107,7 @@
             </div>
             <div style="margin-top:20px;"><label>VIDEOS WÄHLEN:</label><div class="video-selector" id="s-video-list"></div></div>
         </div>
-        <div class="admin-card"><table id="session-table"><tbody></tbody></table></div>
+        <div class="admin-card"><table id="session-table"><thead><tr><th>Titel</th><th>Aktion</th></tr></thead><tbody></tbody></table></div>
     </div>
 
     <!-- TAB: YOUTUBE -->
@@ -115,13 +123,14 @@
                     <input type="number" id="yt-sec" value="0" style="width:40px;">
                 </div></div>
                 <select id="yt-cat-in"><option value="Offense">Offense</option><option value="Defense">Defense</option><option value="Powerplay">Powerplay</option><option value="Penalty Kill">Penalty Kill</option><option value="Setplays">Setplays</option></select>
+                <select id="yt-pos-in"><option value="Alle">Alle</option><option value="Angriff">Angriff</option><option value="Center">Center</option><option value="Verteidigung">Verteidigung</option><option value="Goalie">Goalie</option></select>
                 <button class="btn-action" onclick="addYT()">Hinzufügen</button>
             </div>
         </div>
         <div class="admin-card"><table id="yt-table"><thead><tr><th>Clip</th><th>Kategorie</th><th>Position</th><th>Löschen</th></tr></thead><tbody></tbody></table></div>
     </div>
 
-    <!-- TAB: GAMES HUB -->
+    <!-- TAB: GAMES -->
     <div id="games" class="tab-content">
         <div class="admin-card">
             <h3>Neues Spiel hinzufügen</h3>
@@ -148,12 +157,12 @@
     <!-- TAB: KADER -->
     <div id="kader" class="tab-content">
         <div class="admin-card">
-            <h3>Mitglied / Admin hinzufügen</h3>
+            <h3>Mitglied hinzufügen</h3>
             <div class="form-row">
                 <input type="number" id="p-nr" placeholder="Nr." style="width:70px;">
                 <input type="text" id="p-name" placeholder="Name" style="width:200px;">
-                <button class="btn-action" onclick="addMember()">Hinzufügen</button>
-                <button class="btn-action" style="background:#444" onclick="grantAdmin()">Admin-Rechte geben</button>
+                <button class="btn-action" onclick="addMember()">Spieler Speichern</button>
+                <button class="btn-action" style="background:#444" onclick="grantAdmin()">Admin Rechte geben</button>
             </div>
         </div>
         <div class="admin-card"><table id="full-member-table"><tbody></tbody></table></div>
@@ -208,6 +217,7 @@
         loadStatusData('sessions');
     }
 
+    // --- RENDER FUNKTIONEN ---
     function renderKader() {
         const tbody = document.querySelector("#full-member-table"); tbody.innerHTML = "";
         allPlayers.sort((a,b)=>a.id-b.id).forEach(p => {
@@ -256,7 +266,7 @@
         allVideos.forEach(v => list.innerHTML += `<div class="video-item"><input type="checkbox" class="session-cb" value="${v.id}" onchange="toggleVideoSelection('${v.id}')"> [${v.type}] ${v.title}</div>`);
     }
 
-    // --- LOGIK ---
+    // --- LOGIK FUNKTIONEN ---
     function trackChange(type, id, field, val) {
         if(!pendingChanges[type][id]) pendingChanges[type][id] = {};
         pendingChanges[type][id][field] = val;
@@ -271,30 +281,13 @@
         await batch.commit(); location.reload();
     }
 
-    async function addYT() {
-        const t = document.getElementById('yt-title'), u = document.getElementById('yt-url'), hr = document.getElementById('yt-hr'), min = document.getElementById('yt-min'), sec = document.getElementById('yt-sec');
-        const ytId = u.value.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1];
-        if(!ytId || !t.value) return alert("Titel oder Link fehlt!");
-        const total = (parseInt(hr.value)||0)*3600 + (parseInt(min.value)||0)*60 + (parseInt(sec.value)||0);
-        await db.collection("youtube_clips").add({ title: t.value, ytId, category: document.getElementById('yt-cat-in').value, position: "Alle", startTime: total, createdAt: new Date() });
-        t.value = ""; u.value = ""; alert("Gespeichert!"); loadBaseData();
-    }
-
-    async function addGame() {
-        const t = document.getElementById('g-title'), u = document.getElementById('g-url'), d = document.getElementById('g-date');
-        const ytId = u.value.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1];
-        if(!ytId || !t.value) return alert("Eingabe prüfen!");
-        await db.collection("games").add({ title: t.value, ytId, date: d.value, createdAt: new Date() });
-        t.value = ""; u.value = ""; alert("Spiel hinzugefügt!"); loadBaseData();
-    }
-
     async function saveSession() {
         const t = document.getElementById('s-title').value, d = document.getElementById('s-desc').value;
         if(!t || selectedForSession.length === 0) return alert("Daten fehlen!");
         const data = { title: t, description: d, videoIds: selectedForSession, createdAt: new Date() };
         if(editSessionId) await db.collection("sessions").doc(editSessionId).update(data);
         else await db.collection("sessions").add(data);
-        alert("Erfolg!"); location.reload();
+        location.reload();
     }
 
     async function editSession(id) {
@@ -307,31 +300,21 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    async function addMember() {
-        let nr = document.getElementById('p-nr').value; const name = document.getElementById('p-name').value;
-        if(!nr || !name) return alert("Daten fehlen.");
-        if(nr.length === 1) nr = "0" + nr;
-        await db.collection("players").doc(nr).set({ name, nr });
-        alert("Mitglied hinzugefügt!"); loadBaseData();
-    }
-
-    async function grantAdmin() {
-        let nr = document.getElementById('admin-nr').value; if(nr.length === 1) nr = "0" + nr;
-        await db.collection("admins").doc(nr).set({ active: true });
-        alert("Admin aktiviert!"); loadBaseData();
-    }
-
-    function toggleVideoSelection(id) { const i = selectedForSession.indexOf(id); if(i > -1) selectedForSession.splice(i,1); else selectedForSession.push(id); }
-    async function deleteDoc(col, id) { if(confirm("Löschen?")) { await db.collection(col).doc(id).delete(); loadBaseData(); } }
-    
     async function loadStatusData(mode) {
         const container = document.getElementById('status-list-container'); container.innerHTML = "Lade...";
         const [sSnap, progSnap, viewSnap] = await Promise.all([db.collection("sessions").get(), db.collection("progress").get(), db.collection("video_views").get()]);
         let progress = {}; progSnap.forEach(d => progress[d.id] = d.data());
         let views = {}; viewSnap.forEach(d => views[d.id] = d.data());
         container.innerHTML = "";
-        if(mode === 'sessions') sSnap.forEach(doc => renderStatusAccordion(container, doc.data().title, doc.id, doc.data().videoIds.length, progress, 'session'));
-        else allVideos.forEach(v => renderStatusAccordion(container, v.title, v.id, 1, views, 'video'));
+        
+        document.getElementById('btn-stat-s').style.background = mode==='sessions'?'var(--red)':'#444';
+        document.getElementById('btn-stat-v').style.background = mode==='videos'?'var(--red)':'#444';
+
+        if(mode === 'sessions') {
+            sSnap.forEach(doc => renderStatusAccordion(container, doc.data().title, doc.id, doc.data().videoIds.length, progress, 'session'));
+        } else {
+            allVideos.forEach(v => renderStatusAccordion(container, v.title, v.id, 1, views, 'video'));
+        }
     }
 
     function renderStatusAccordion(container, title, id, target, dataMap, type) {
@@ -345,6 +328,37 @@
         div.innerHTML = `<div class="status-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display==='block'?'none':'block'"><span>${title}</span><span>${watched.length}/${allPlayers.length} ▼</span></div><div class="status-content"><p style="color:var(--green); font-size:0.7rem;">GESEHEN</p><div class="player-status-grid">${watched.join('')}</div><p style="color:var(--red); font-size:0.7rem; margin-top:15px;">OFFEN</p><div class="player-status-grid">${open.join('')}</div></div>`;
         container.appendChild(div);
     }
+
+    async function addYT() {
+        const u = document.getElementById('yt-url').value;
+        const ytId = u.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1];
+        if(!ytId) return alert("Link ungültig!");
+        await db.collection("youtube_clips").add({ title: document.getElementById('yt-title').value, ytId, category: document.getElementById('yt-cat-in').value, position: document.getElementById('yt-pos-in').value, startTime: 0, createdAt: new Date() });
+        location.reload();
+    }
+
+    async function addGame() {
+        const u = document.getElementById('g-url').value;
+        const ytId = u.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1];
+        await db.collection("games").add({ title: document.getElementById('g-title').value, ytId, date: document.getElementById('g-date').value, createdAt: new Date() });
+        location.reload();
+    }
+
+    async function addMember() {
+        let nr = document.getElementById('p-nr').value; if(nr.length===1) nr="0"+nr;
+        await db.collection("players").doc(nr).set({ name: document.getElementById('p-name').value, nr });
+        location.reload();
+    }
+
+    async function grantAdmin() {
+        let nr = document.getElementById('p-nr').value; if(nr.length===1) nr="0"+nr;
+        await db.collection("admins").doc(nr).set({ active: true });
+        location.reload();
+    }
+
+    function toggleVideoSelection(id) { const i = selectedForSession.indexOf(id); if(i > -1) selectedForSession.splice(i,1); else selectedForSession.push(id); }
+    async function deleteDoc(col, id) { if(confirm("Löschen?")) { await db.collection(col).doc(id).delete(); loadBaseData(); } }
+    
     checkAuth();
 </script>
 </body>
