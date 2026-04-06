@@ -7,8 +7,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --panel: #1a1a1a; --border: #333; --blue: #5dade2; }
-        body { font-family: 'Montserrat'; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        :root { --red: #e30613; --bg: #0d0d0d; --panel: #1a1a1a; --border: #333; --blue: #5dade2; --gray: #aaaaaa; }
+        body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
         /* VIDEO BEREICH (LINKS) */
         .main-content { flex: 3; display: flex; flex-direction: column; background: #000; border-right: 2px solid var(--border); }
@@ -21,27 +21,31 @@
 
         /* SEITENLEISTE (RECHTS) */
         .side-panel { flex: 1; background: var(--panel); display: flex; flex-direction: column; min-width: 380px; }
-        
         .info-area { padding: 20px; border-bottom: 1px solid var(--border); background: #000; }
-        .info-area h2 { margin: 0; font-size: 1.2rem; color: var(--red); text-transform: uppercase; }
+        .info-area h2 { margin: 0; font-size: 1.1rem; color: var(--red); text-transform: uppercase; }
         
         /* CLIP LISTE */
-        .clip-list { flex: 1; overflow-y: auto; padding: 10px; border-bottom: 1px solid var(--border); max-height: 35%; }
-        .clip-item { padding: 12px; background: #222; margin-bottom: 8px; border-radius: 5px; cursor: pointer; border-left: 5px solid transparent; transition: 0.2s; font-size: 0.85rem; }
-        .clip-item:hover { background: #2a2a2a; }
+        .clip-list { flex: 1; overflow-y: auto; padding: 10px; border-bottom: 1px solid var(--border); max-height: 30%; background: #111; }
+        .clip-item { padding: 12px; background: #222; margin-bottom: 8px; border-radius: 5px; cursor: pointer; border-left: 5px solid transparent; transition: 0.2s; font-size: 0.8rem; }
         .clip-item.active { border-left-color: var(--red); background: #333; }
 
         /* KOMMENTAR BEREICH */
-        .comment-area { flex: 1.5; display: flex; flex-direction: column; background: #111; }
+        .comment-area { flex: 2; display: flex; flex-direction: column; background: #111; }
         .comment-area h4 { padding: 12px 20px; margin: 0; background: #000; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border); color: #888; }
         
         .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .mini-comment { background: #1e1e1e; padding: 10px; border-radius: 5px; border-left: 3px solid var(--red); font-size: 0.8rem; line-height: 1.4; }
-        .mini-comment small { color: var(--red); font-weight: bold; display: block; margin-bottom: 3px; font-size: 0.65rem; }
+        .mini-comment { background: #1e1e1e; padding: 12px; border-radius: 8px; border-left: 4px solid var(--red); font-size: 0.85rem; color: var(--gray); line-height: 1.4; }
+        .mini-comment.is-read { opacity: 0.3; filter: grayscale(1); }
+        .mini-comment small { color: var(--red); font-weight: 900; display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.65rem; }
+        
+        /* HIGHLIGHTING COLORS */
         .mention { color: var(--blue) !important; font-weight: bold !important; }
+        .timestamp { background: var(--blue); color: white; padding: 2px 5px; border-radius: 3px; cursor: pointer; font-weight: bold; }
 
         .comment-input { padding: 15px; background: #000; border-top: 1px solid var(--border); }
-        .comment-input textarea { width: 100%; height: 50px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 8px; resize: none; font-family: inherit; font-size: 0.8rem; box-sizing: border-box; }
+        .comment-input textarea { width: 100%; height: 50px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 10px; resize: none; font-family: inherit; font-size: 0.8rem; box-sizing: border-box; }
+        .hub-check-btn { background: #28a745; color: white; border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer; font-size: 0.6rem; font-weight: bold; }
+        .hub-check-btn.uncheck { background: #444; color: #888; }
     </style>
 </head>
 <body>
@@ -49,33 +53,31 @@
 <div class="main-content">
     <div class="video-box"><iframe id="player" src="" allowfullscreen></iframe></div>
     <div class="nav-btns">
-        <button class="btn" id="btn-prev" onclick="prevClip()">← ZURÜCK</button>
-        <div id="progress-text" style="font-weight:bold; font-size:0.9rem;">Lade Clips...</div>
-        <button class="btn" id="btn-next" onclick="nextClip()">WEITER →</button>
+        <button class="btn" id="btn-prev" onclick="prevClip()">← CLIP</button>
+        <div id="progress-text" style="font-weight:bold; font-size:0.8rem; letter-spacing: 1px;">Lade...</div>
+        <button class="btn" id="btn-next" onclick="nextClip()">CLIP →</button>
     </div>
 </div>
 
 <div class="side-panel">
     <div class="info-area">
         <h2 id="s-title">Session</h2>
-        <p id="s-desc" style="font-size:0.75rem; color:#888; margin-top:8px; line-height:1.4;"></p>
+        <p id="s-desc" style="font-size:0.75rem; color:#666; margin-top:5px;"></p>
     </div>
 
-    <!-- Inhaltsverzeichnis der Clips -->
     <div class="clip-list" id="toc"></div>
 
-    <!-- Live Kommentare zum aktuellen Clip -->
     <div class="comment-area">
-        <h4>Feedback zum aktuellen Clip</h4>
-        <div class="comment-list" id="session-comment-display"></div>
+        <h4>Feedback & Analyse</h4>
+        <div class="comment-list" id="comment-display"></div>
         
         <div class="comment-input">
-            <textarea id="com-input" placeholder="Feedback schreiben (@Nr)..."></textarea>
-            <button class="btn" style="width:100%; margin-top:8px; padding:8px;" onclick="sendComment()">Senden</button>
+            <textarea id="com-input" placeholder="Feedback @Nr (z.B. @19)..."></textarea>
+            <button class="btn" style="width:100%; margin-top:8px; padding:10px;" onclick="sendComment()">Senden</button>
         </div>
     </div>
 
-    <button class="btn" style="margin:15px; background:#333;" onclick="location.href='index.html'">SESSION BEENDEN</button>
+    <button class="btn" style="margin:10px; background:#333;" onclick="location.href='index.html'">HUB BEENDEN</button>
 </div>
 
 <script>
@@ -86,39 +88,29 @@
     const sessionId = new URLSearchParams(window.location.search).get('id');
     const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
     
-    let currentSession = null;
-    let currentIdx = 0;
-    let videoData = [];
-    let playerMap = {};
-    let commentUnsubscribe = null;
+    let currentIdx = 0, videoData = [], playerMap = {}, commentUnsubscribe = null;
 
     async function init() {
         if(!sessionId) return location.href='index.html';
 
-        // 1. Session & Team laden
-        const [sDoc, pSnap] = await Promise.all([
+        const [sDoc, pSnap, driveRes, ytSnap] = await Promise.all([
             db.collection("sessions").doc(sessionId).get(),
-            db.collection("players").get()
+            db.collection("players").get(),
+            fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json()),
+            db.collection("youtube_clips").get()
         ]);
         
-        currentSession = sDoc.data();
+        const session = sDoc.data();
+        document.getElementById('s-title').innerText = session.title;
+        document.getElementById('s-desc').innerText = session.description;
         pSnap.forEach(doc => { playerMap[doc.id] = doc.data().name; });
 
-        document.getElementById('s-title').innerText = currentSession.title;
-        document.getElementById('s-desc').innerText = currentSession.description;
-
-        // 2. Alle verfügbaren Videos laden (Drive & YT)
-        const driveRes = await fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json());
-        const ytSnap = await db.collection("youtube_clips").get();
-        
         const allClips = [
-            ...driveRes.map(v => ({ id: v.link.split('/d/')[1].split('/')[0], title: v.title, link: `https://drive.google.com/file/d/${v.link.split('/d/')[1].split('/')[0]}/preview` })), 
-            ...ytSnap.docs.map(d => ({ id: d.id, title: d.data().title, link: `https://www.youtube.com/embed/${d.data().ytId}?start=${d.data().startTime}&autoplay=1` }))
+            ...driveRes.map(v => ({ id: v.link.split('/d/')[1].split('/')[0], title: v.title, link: `https://drive.google.com/file/d/${v.link.split('/d/')[1].split('/')[0]}/preview`, type: 'drive' })), 
+            ...ytSnap.docs.map(d => ({ id: d.id, title: d.data().title, link: `https://www.youtube.com/embed/${d.data().ytId}?start=${d.data().startTime}&autoplay=1`, type: 'youtube', ytId: d.data().ytId }))
         ];
 
-        // 3. Nur die Videos der Session mappen
-        videoData = currentSession.videoIds.map(id => allClips.find(c => c.id === id)).filter(v => v);
-        
+        videoData = session.videoIds.map(id => allClips.find(c => c.id === id)).filter(v => v);
         playClip(0);
     }
 
@@ -126,15 +118,14 @@
         currentIdx = idx;
         const v = videoData[idx];
         document.getElementById('player').src = v.link;
-        document.getElementById('progress-text').innerText = `Clip ${idx+1} / ${videoData.length}`;
+        document.getElementById('progress-text').innerText = `CLIP ${idx+1} / ${videoData.length}`;
         
-        // Navigation Buttons sperren
         document.getElementById('btn-prev').disabled = (idx === 0);
         document.getElementById('btn-next').disabled = (idx === videoData.length - 1);
 
         renderTOC();
+        listenForComments(v.id);
         updateProgress();
-        listenForComments(v.id); // Kommentare für diesen Clip laden
     }
 
     function renderTOC() {
@@ -147,78 +138,68 @@
         });
     }
 
-    // KOMMENTAR LOGIK
+    function getSec(txt) {
+        const m = txt.match(/(\d{1,2}):(\d{2}):(\d{2})/);
+        return m ? (parseInt(m[1])*3600)+(parseInt(m[2])*60)+parseInt(m[3]) : 0;
+    }
+
+    function jumpTo(ts) {
+        const v = videoData[currentIdx];
+        if(v.type === 'youtube') {
+            document.getElementById('player').src = `https://www.youtube.com/embed/${v.ytId}?start=${getSec(ts)}&autoplay=1`;
+        }
+    }
+
     async function sendComment() {
         const input = document.getElementById('com-input');
         let text = input.value.trim();
         if(!text) return;
-
         let mentions = [];
         let resolvedText = text.replace(/@(\d+)/g, (match, nr) => {
             mentions.push(nr);
-            return playerMap[nr] ? `@${nr} | ${playerMap[nr]}` : match;
+            return playerMap[nr] ? `@${nr} | ${playerMap[nr]}*` : `${match}*`;
         });
-
-        const currentVideoId = videoData[currentIdx].id;
-
         await db.collection("comments").add({
-            videoId: currentVideoId,
-            text: resolvedText,
-            author: user.name,
-            authorNr: user.nr,
-            mentions: mentions,
+            videoId: videoData[currentIdx].id, text: resolvedText,
+            author: user.name, authorNr: user.nr, mentions, readBy: [],
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         input.value = "";
     }
 
     function listenForComments(videoId) {
-    if(commentUnsubscribe) commentUnsubscribe();
-
-    commentUnsubscribe = db.collection("comments")
-        .where("videoId", "==", videoId)
-        .onSnapshot(snap => {
-            const display = document.getElementById('session-comment-display');
-            display.innerHTML = "";
-            let docs = [];
-            snap.forEach(d => docs.push({id: d.id, ...d.data()}));
-            docs.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-
+        if(commentUnsubscribe) commentUnsubscribe();
+        commentUnsubscribe = db.collection("comments").where("videoId", "==", videoId).onSnapshot(snap => {
+            const display = document.getElementById('comment-display'); display.innerHTML = "";
+            let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
+            docs.sort((a,b) => getSec(a.text) - getSec(b.text));
             docs.forEach(c => {
-                const readBy = c.readBy || [];
-                const isRead = readBy.includes(user.nr);
-                const isMentioned = (c.mentions || []).includes(user.nr);
-                const formatted = c.text.replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
+                const isRead = (c.readBy || []).includes(user.nr), isMentioned = (c.mentions || []).includes(user.nr);
+                const formatted = c.text.replace(/(\d{1,2}:\d{2}:\d{2})/g, '<span class="timestamp" onclick="jumpTo(\'$1\')">$1</span>')
+                                        .replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
                 
-                let checkBtn = (isMentioned && !isRead) ? `<button onclick="markAsRead('${c.id}')" style="background:#28a745; color:white; border:none; padding:2px 5px; border-radius:3px; cursor:pointer; font-size:0.6rem; float:right;">✓</button>` : '';
-
-                display.innerHTML += `
-                    <div class="mini-comment ${isRead ? 'is-read' : ''}" style="${isRead ? 'opacity:0.4; filter:grayscale(1);' : ''}">
-                        <small>${c.author} (#${c.authorNr}) ${checkBtn}</small>
-                        <div style="color:#aaa;">${formatted}</div>
-                    </div>`;
+                let checkBtn = isMentioned ? `<button class="hub-check-btn ${isRead?'uncheck':''}" onclick="markRead('${c.id}', ${isRead})">${isRead?'↺':'✓'}</button>` : '';
+                display.innerHTML += `<div class="mini-comment ${isRead ? 'is-read' : ''}"><small>${c.author} ${checkBtn}</small><div>${formatted}</div></div>`;
             });
             display.scrollTop = display.scrollHeight;
         });
-}
+    }
+
+    async function markRead(cid, isReadNow) {
+        const ref = db.collection("comments").doc(cid);
+        if(isReadNow) await ref.update({ readBy: firebase.firestore.FieldValue.arrayRemove(user.nr) });
+        else await ref.update({ readBy: firebase.firestore.FieldValue.arrayUnion(user.nr) });
+    }
 
     async function updateProgress() {
         if(!user.nr) return;
-        const progRef = db.collection("progress").doc(user.nr);
-        await progRef.set({ [sessionId]: currentIdx + 1 }, { merge: true });
+        await db.collection("progress").doc(user.nr).set({ [sessionId]: currentIdx + 1 }, { merge: true });
     }
 
     function nextClip() { if(currentIdx < videoData.length-1) playClip(currentIdx+1); }
     function prevClip() { if(currentIdx > 0) playClip(currentIdx-1); }
 
     init();
-
-    async function markAsRead(cid) {
-    if(!user.nr) return;
-    await db.collection("comments").doc(cid).update({
-        readBy: firebase.firestore.FieldValue.arrayUnion(user.nr)
-    });
-}
 </script>
 </body>
 </html>
