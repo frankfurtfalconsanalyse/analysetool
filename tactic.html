@@ -6,109 +6,130 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --floor: #252525; --line: rgba(255,255,255,0.9); }
+        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --floor: #ffffff; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
 
-        header { background: #000; padding: 15px 25px; border-bottom: 2px solid var(--red); display: flex; justify-content: space-between; align-items: center; z-index: 100; }
-        .logo { font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+        header { background: #000; padding: 10px 25px; border-bottom: 2px solid var(--red); display: flex; justify-content: space-between; align-items: center; z-index: 100; }
+        
+        .main-layout { display: flex; flex: 1; overflow: hidden; }
 
-        .main-layout { display: flex; flex: 1; overflow: hidden; position: relative; }
-
-        /* LINKER TOOLBAR */
-        .toolbar { width: 70px; background: #111; border-right: 1px solid #333; display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 20px; z-index: 10; }
+        /* TOOLBAR LINKS */
+        .toolbar { width: 70px; background: #111; border-right: 1px solid #333; display: flex; flex-direction: column; align-items: center; padding: 15px 0; gap: 15px; }
         .tool { width: 45px; height: 45px; background: #222; border: 1px solid #444; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; font-size: 1.2rem; }
         .tool:hover, .tool.active { border-color: var(--red); background: #2a2a2a; }
-        .color-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; cursor: pointer; }
+        .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 1px solid #000; cursor: pointer; margin: 5px 0; }
 
-        /* RECHTE BANK (SPIELER-VORRAT) */
-        .side-bench { width: 100px; background: #111; border-left: 1px solid #333; display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 15px; z-index: 10; }
-        .bench-item { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; cursor: grab; border: 2px solid #000; box-shadow: 0 4px 6px rgba(0,0,0,0.4); user-select: none; }
-        .falcons-player { background: var(--red); color: white; }
-        .opponent-player { background: white; color: black; }
-        .ball-item { width: 18px; height: 18px; background: orange; border-radius: 50%; border: 2px solid #000; cursor: grab; }
+        /* SPIELFELD BEREICH */
+        .rink-container { flex: 1; position: relative; padding: 20px; display: flex; align-items: center; justify-content: center; background: #111; }
         
-        .trash-zone { margin-top: auto; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 2px dashed #444; border-radius: 10px; color: #444; transition: 0.3s; }
-        .trash-zone.hover { border-color: var(--red); color: var(--red); background: rgba(227, 6, 19, 0.1); }
-
-        /* RINK BEREICH */
-        .rink-container { flex: 1; position: relative; padding: 40px; display: flex; align-items: center; justify-content: center; background: #080808; cursor: default; }
-        
-        /* Floorball Feld 40x20m (Maßstab 1m = 22.5px) */
         #rink { 
-            width: 900px; height: 450px; background: var(--floor); border: 4px solid #fff; border-radius: 10px; position: relative; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            width: 900px; height: 450px; background: var(--floor); border: 4px solid #000; border-radius: 60px; position: relative; 
+            box-shadow: 0 0 30px rgba(0,0,0,0.5); overflow: hidden;
         }
 
-        /* Floorball Linien */
-        .line { position: absolute; border: 2px solid var(--line); pointer-events: none; }
-        .center-line { width: 0; height: 100%; left: 50%; top: 0; border-style: dashed; opacity: 0.5; }
-        .center-circle { width: 60px; height: 60px; border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-        /* Torraum (5x4m) */
-        .goal-area { width: 112px; height: 90px; top: 50%; transform: translateY(-50%); }
-        /* Schutzraum (3x1m) */
-        .crease { width: 22px; height: 67px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); }
+        /* MARKIERUNGEN NACH VORLAGE */
+        .line { position: absolute; background: #000; pointer-events: none; }
+        .center-line { width: 3px; height: 100%; left: 50%; top: 0; transform: translateX(-50%); }
+        .center-dot { width: 16px; height: 16px; background: #000; border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+        
+        /* Bullykreuze (+) */
+        .cross { position: absolute; width: 20px; height: 20px; pointer-events: none; }
+        .cross::before { content: ""; position: absolute; background: #000; width: 100%; height: 2px; top: 50%; left: 0; }
+        .cross::after { content: ""; position: absolute; background: #000; width: 2px; height: 100%; left: 50%; top: 0; }
 
-        /* PLAYER ON FIELD */
-        .player { width: 36px; height: 36px; border-radius: 50%; position: absolute; z-index: 100; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 2px solid #000; cursor: move; user-select: none; transition: transform 0.1s; }
-        .player:active { transform: scale(1.1); cursor: grabbing; }
-        .player.ball { width: 18px; height: 18px; background: orange; z-index: 101; }
+        /* Torräume (Rechtecke) */
+        .goal-area { position: absolute; border: 2px solid #000; pointer-events: none; }
+        .area-large { width: 112px; height: 90px; top: 50%; transform: translateY(-50%); }
+        .area-small { width: 22px; height: 67px; top: 50%; transform: translateY(-50%); }
+
+        /* SPIELER */
+        .player { width: 34px; height: 34px; border-radius: 50%; position: absolute; z-index: 100; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 2px solid #000; cursor: move; user-select: none; }
+        .p-falcons { background: var(--red); color: white; }
+        .p-opponent { background: #fff; color: #000; }
+        .p-ball { width: 14px; height: 14px; background: #ffcc00; z-index: 101; }
 
         #draw-canvas { position: absolute; top: 0; left: 0; z-index: 50; pointer-events: none; }
         #draw-canvas.active { pointer-events: auto; cursor: crosshair; }
 
-        /* SAVE PANEL */
-        .save-panel { position: fixed; bottom: 30px; right: 130px; background: #000; padding: 20px; border-radius: 15px; border: 1px solid var(--red); z-index: 1000; width: 250px; }
-        input { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; width: 100%; box-sizing: border-box; font-family: inherit; }
-        .btn-red { background: var(--red); color: white; border: none; padding: 12px; border-radius: 6px; font-weight: 900; cursor: pointer; width: 100%; text-transform: uppercase; }
+        /* SEITENLEISTE RECHTS (BANK & LADEN) */
+        .sidebar-right { width: 200px; background: #111; border-left: 1px solid #333; display: flex; flex-direction: column; padding: 15px; }
+        .bench { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #333; }
+        .bench-item { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; cursor: grab; border: 2px solid #000; }
+        
+        .tactic-list { flex: 1; overflow-y: auto; }
+        .tactic-item { padding: 8px; background: #222; border-radius: 5px; margin-bottom: 5px; font-size: 0.75rem; cursor: pointer; display: flex; justify-content: space-between; }
+        .tactic-item:hover { background: #333; }
+
+        .save-area { margin-top: auto; }
+        input { background: #222; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+        .btn-red { background: var(--red); color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; text-transform: uppercase; }
+        .trash { width: 100%; height: 40px; border: 2px dashed #444; display: flex; align-items: center; justify-content: center; margin-top: 10px; color: #444; font-size: 1.2rem; }
+        .trash.hover { border-color: var(--red); color: var(--red); background: rgba(227, 6, 19, 0.1); }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="logo">Falcons <span>Tactic Hub</span></div>
-    <button class="btn-red" style="width:auto; padding: 10px 20px;" onclick="window.location.href='index.html'">Hub verlassen</button>
+    <div class="logo">Falcons <span>Tactic Pro</span></div>
+    <button class="btn-red" style="width:auto; padding: 5px 15px;" onclick="window.location.href='index.html'">Hub verlassen</button>
 </header>
 
 <div class="main-layout">
+    <!-- TOOLBAR -->
     <div class="toolbar">
-        <div class="tool active" id="btn-move" onclick="setMode('move')" title="Bewegen">🖐️</div>
-        <div class="tool" id="btn-draw" onclick="setMode('draw')" title="Zeichnen">✏️</div>
-        <div class="tool" onclick="undo()" title="Rückgängig">↩️</div>
-        <div class="tool" onclick="clearBoard()" title="Alles löschen">🗑</div>
-        <hr style="width: 40%; border-color: #333;">
-        <div class="color-dot" style="background: #e30613;" onclick="setColor('#e30613')"></div>
-        <div class="color-dot" style="background: #ffff00;" onclick="setColor('#ffff00')"></div>
-        <div class="color-dot" style="background: #ffffff;" onclick="setColor('#ffffff')"></div>
+        <div class="tool active" id="btn-move" onclick="setMode('move')">🖐️</div>
+        <div class="tool" id="btn-draw" onclick="setMode('draw')">✏️</div>
+        <div class="tool" onclick="undo()">↩️</div>
+        <div class="tool" onclick="clearBoard()">🗑</div>
+        <hr style="width:40%; border-color:#333;">
+        <div class="color-dot" style="background:red;" onclick="setColor('#e30613')"></div>
+        <div class="color-dot" style="background:blue;" onclick="setColor('blue')"></div>
+        <div class="color-dot" style="background:black;" onclick="setColor('black')"></div>
     </div>
 
+    <!-- FIELD -->
     <div class="rink-container">
         <div id="rink">
             <div class="line center-line"></div>
-            <div class="line center-circle"></div>
-            <!-- Torraum Links -->
-            <div class="line goal-area" style="left:0; border-left:none;"></div>
-            <div class="line crease" style="left:0; border-left:none;"></div>
-            <!-- Torraum Rechts -->
-            <div class="line goal-area" style="right:0; border-right:none;"></div>
-            <div class="line crease" style="right:0; border-right:none;"></div>
+            <div class="center-dot"></div>
+            <!-- Bullykreuze -->
+            <div class="cross" style="top: 15%; left: 20%;"></div>
+            <div class="cross" style="bottom: 15%; left: 20%;"></div>
+            <div class="cross" style="top: 15%; right: 20%;"></div>
+            <div class="cross" style="bottom: 15%; right: 20%;"></div>
+            <div class="cross" style="top: 50%; left: 45%; transform: translateY(-50%);"></div>
+            <div class="cross" style="top: 50%; right: 45%; transform: translateY(-50%);"></div>
             
+            <!-- Torräume Links -->
+            <div class="goal-area area-large" style="left:0; border-left:none;"></div>
+            <div class="goal-area area-small" style="left:0; border-left:none;"></div>
+            <!-- Torräume Rechts -->
+            <div class="goal-area area-large" style="right:0; border-right:none;"></div>
+            <div class="goal-area area-small" style="right:0; border-right:none;"></div>
+
             <canvas id="draw-canvas"></canvas>
         </div>
     </div>
 
-    <div class="side-bench">
-        <small style="color:#444; font-weight:900;">BANK</small>
-        <div class="bench-item falcons-player" onmousedown="spawn('falcons')">F</div>
-        <div class="bench-item opponent-player" onmousedown="spawn('opponent')">G</div>
-        <div class="ball-item" onmousedown="spawn('ball')"></div>
-        
-        <div class="trash-zone" id="trash">🗑</div>
-    </div>
-</div>
+    <!-- SIDEBAR -->
+    <div class="sidebar-right">
+        <div class="bench">
+            <div class="bench-item p-falcons" onmousedown="spawn('falcons')">F</div>
+            <div class="bench-item p-opponent" onmousedown="spawn('opponent')">G</div>
+            <div class="bench-item p-ball" onmousedown="spawn('ball')" style="border-radius:50%"></div>
+        </div>
 
-<div class="save-panel">
-    <input type="text" id="t-title" placeholder="Titel der Taktik">
-    <button class="btn-red" onclick="saveTactic()">In Sessions speichern</button>
+        <div class="tactic-list" id="tactic-list">
+            <small style="color:#555;">GESPEICHERTE BOARDS</small>
+            <div id="list-container"></div>
+        </div>
+
+        <div class="save-area">
+            <div class="trash" id="trash">🗑</div>
+            <input type="text" id="t-name" placeholder="Titel...">
+            <button class="btn-red" onclick="saveTactic()">Speichern</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -121,30 +142,22 @@
     const ctx = canvas.getContext('2d');
     const trash = document.getElementById('trash');
 
-    let mode = 'move'; // 'move' oder 'draw'
-    let penColor = '#e30613';
-    let isDrawing = false;
-    let history = [];
+    let mode = 'move', penColor = '#e30613', isDrawing = false, history = [], draggedEl = null, offset = {x:0, y:0};
 
-    // --- INITIALISIERUNG ---
     window.onload = () => {
         canvas.width = rink.offsetWidth;
         canvas.height = rink.offsetHeight;
-        saveState(); // Erster leerer State
+        saveState();
+        loadTacticsList();
     };
 
-    // --- DRAG & DROP LOGIK (GLOBAL GEGEN KLEBEN) ---
-    let draggedEl = null;
-    let offset = { x: 0, y: 0 };
-
+    // --- DRAG & DROP (FIXED) ---
     function spawn(type) {
-        if(mode !== 'move') setMode('move');
+        setMode('move');
         const el = document.createElement('div');
-        el.className = 'player ' + (type === 'ball' ? 'ball' : (type === 'falcons' ? 'falcons-player' : 'opponent-player'));
+        el.className = 'player ' + (type === 'ball' ? 'p-ball' : (type === 'falcons' ? 'p-falcons' : 'p-opponent'));
         el.innerHTML = type === 'ball' ? '' : (type === 'falcons' ? 'F' : 'G');
-        
-        // Startposition auf dem Mauszeiger
-        el.style.left = "-100px"; 
+        el.style.left = "50%"; el.style.top = "50%";
         rink.appendChild(el);
         draggedEl = el;
     }
@@ -161,114 +174,98 @@
 
     document.addEventListener('mousemove', e => {
         if(!draggedEl) return;
-
         const rinkRect = rink.getBoundingClientRect();
-        const trashRect = trash.getBoundingClientRect();
-
-        // Position berechnen
         let x = e.clientX - rinkRect.left - offset.x;
         let y = e.clientY - rinkRect.top - offset.y;
-
         draggedEl.style.left = x + 'px';
         draggedEl.style.top = y + 'px';
 
-        // Trash Highlight
-        if(e.clientX > trashRect.left && e.clientX < trashRect.right && e.clientY > trashRect.top && e.clientY < trashRect.bottom) {
-            trash.classList.add('hover');
-        } else {
-            trash.classList.remove('hover');
-        }
+        const trashRect = trash.getBoundingClientRect();
+        trash.classList.toggle('hover', e.clientX > trashRect.left && e.clientX < trashRect.right && e.clientY > trashRect.top && e.clientY < trashRect.bottom);
     });
 
     document.addEventListener('mouseup', e => {
         if(!draggedEl) return;
-
         const trashRect = trash.getBoundingClientRect();
         if(e.clientX > trashRect.left && e.clientX < trashRect.right && e.clientY > trashRect.top && e.clientY < trashRect.bottom) {
             draggedEl.remove();
         }
-
-        draggedEl = null;
-        trash.classList.remove('hover');
+        draggedEl = null; trash.classList.remove('hover');
     });
 
-    // --- ZEICHEN LOGIK ---
+    // --- ZEICHNEN & UNDO ---
     function setMode(m) {
         mode = m;
         document.getElementById('btn-move').classList.toggle('active', mode === 'move');
         document.getElementById('btn-draw').classList.toggle('active', mode === 'draw');
         canvas.classList.toggle('active', mode === 'draw');
     }
-
     function setColor(c) { penColor = c; }
-
-    canvas.onmousedown = (e) => {
-        if(mode !== 'draw') return;
-        isDrawing = true;
-        ctx.beginPath();
-        ctx.strokeStyle = penColor;
-        ctx.lineWidth = 4;
-        ctx.lineCap = 'round';
-        const rect = canvas.getBoundingClientRect();
-        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-    };
-
-    canvas.onmousemove = (e) => {
-        if(!isDrawing) return;
-        const rect = canvas.getBoundingClientRect();
-        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-        ctx.stroke();
-    };
-
-    canvas.onmouseup = () => {
-        if(isDrawing) {
-            isDrawing = false;
-            saveState();
-        }
-    };
-
-    function saveState() {
-        if (history.length > 20) history.shift();
-        history.push(canvas.toDataURL());
-    }
-
+    function saveState() { if (history.length > 30) history.shift(); history.push(canvas.toDataURL()); }
     function undo() {
         if (history.length <= 1) return;
-        history.pop(); // Aktuellen State entfernen
-        const img = new Image();
-        img.src = history[history.length - 1];
-        img.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
-        };
+        history.pop();
+        const img = new Image(); img.src = history[history.length - 1];
+        img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
     }
+    function clearBoard() { if(confirm("Löschen?")) { ctx.clearRect(0,0,canvas.width, canvas.height); document.querySelectorAll('.player').forEach(p => p.remove()); saveState(); } }
 
-    function clearBoard() {
-        if(confirm("Spielfeld leeren?")) {
-            ctx.clearRect(0,0,canvas.width, canvas.height);
-            document.querySelectorAll('.player').forEach(p => p.remove());
-            saveState();
-        }
-    }
+    canvas.onmousedown = (e) => { if(mode !== 'draw') return; isDrawing = true; ctx.beginPath(); ctx.strokeStyle = penColor; ctx.lineWidth = 4; ctx.lineCap = 'round'; const rect = canvas.getBoundingClientRect(); ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top); };
+    canvas.onmousemove = (e) => { if(!isDrawing) return; const rect = canvas.getBoundingClientRect(); ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top); ctx.stroke(); };
+    canvas.onmouseup = () => { if(isDrawing) { isDrawing = false; saveState(); } };
 
-    // --- FIREBASE SAVE ---
+    // --- SPEICHERN & LADEN ---
     async function saveTactic() {
-        const title = document.getElementById('t-title').value;
-        if(!title) return alert("Bitte Titel eingeben!");
+        const title = document.getElementById('t-name').value;
+        if(!title) return alert("Name fehlt!");
 
-        // Wir erstellen ein kombiniertes Bild (Zeichnung + Feld-Snapshot)
-        // Einfachheitshalber speichern wir hier das Canvas-Bild (Zeichnung)
-        const imageData = canvas.toDataURL();
-
-        await db.collection("tactics").add({
-            title: title,
-            drawing: imageData,
-            createdAt: new Date()
+        const players = [];
+        document.querySelectorAll('.player').forEach(p => {
+            players.push({ type: p.classList.contains('p-falcons') ? 'falcons' : (p.classList.contains('p-ball') ? 'ball' : 'opponent'), x: p.style.left, y: p.style.top });
         });
 
-        alert("Taktik erfolgreich gespeichert! Du kannst sie jetzt im Admin-Panel in Sessions einbauen.");
-        document.getElementById('t-title').value = "";
+        await db.collection("tactics").add({
+            title, players, drawing: canvas.toDataURL(), createdAt: new Date()
+        });
+        alert("Gespeichert!"); loadTacticsList();
     }
+
+    async function loadTacticsList() {
+        const snap = await db.collection("tactics").orderBy("createdAt", "desc").get();
+        const container = document.getElementById('list-container');
+        container.innerHTML = "";
+        snap.forEach(doc => {
+            const d = doc.data();
+            const div = document.createElement('div');
+            div.className = "tactic-item";
+            div.innerHTML = `<span>${d.title}</span><span onclick="deleteTactic('${doc.id}')">🗑</span>`;
+            div.onclick = (e) => { if(e.target.tagName !== 'SPAN' || e.target.innerHTML !== '🗑') loadTactic(doc.id); };
+            container.appendChild(div);
+        });
+    }
+
+    async function loadTactic(id) {
+        const doc = await db.collection("tactics").doc(id).get();
+        const d = doc.data();
+        // Board leeren
+        document.querySelectorAll('.player').forEach(p => p.remove());
+        ctx.clearRect(0,0,canvas.width, canvas.height);
+        
+        // Spieler setzen
+        d.players.forEach(p => {
+            const el = document.createElement('div');
+            el.className = 'player ' + (p.type === 'ball' ? 'p-ball' : (p.type === 'falcons' ? 'p-falcons' : 'p-opponent'));
+            el.innerHTML = p.type === 'ball' ? '' : (p.type === 'falcons' ? 'F' : 'G');
+            el.style.left = p.x; el.style.top = p.y;
+            rink.appendChild(el);
+        });
+
+        // Zeichnung laden
+        const img = new Image(); img.src = d.drawing;
+        img.onload = () => { ctx.drawImage(img, 0, 0); saveState(); };
+    }
+
+    async function deleteTactic(id) { if(confirm("Löschen?")) { await db.collection("tactics").doc(id).delete(); loadTacticsList(); } }
 </script>
 </body>
 </html>
