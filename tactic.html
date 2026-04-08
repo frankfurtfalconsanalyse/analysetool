@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8"><title>Falcons Hub | Floorball Taktik Pro</title>
+    <meta charset="UTF-8"><title>Falcons Hub | Taktik Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --floor: #ffffff; --line: #000000; }
+        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --floor: #ffffff; --line: #000000; --goal-blue: #0088cc; --goal-red: #cc0000; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
 
         header { background: #000; padding: 10px 25px; border-bottom: 2px solid var(--red); display: flex; justify-content: space-between; align-items: center; z-index: 100; }
@@ -14,19 +14,19 @@
 
         .main-layout { display: flex; flex: 1; overflow: hidden; }
 
-        /* TOOLS LINKS */
+        /* TOOLBAR LINKS */
         .toolbar { width: 70px; background: #111; border-right: 1px solid #333; display: flex; flex-direction: column; align-items: center; padding: 15px 0; gap: 15px; }
         .tool { width: 45px; height: 45px; background: #222; border: 1px solid #444; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; font-size: 1.2rem; }
         .tool:hover, .tool.active { border-color: var(--red); background: #2a2a2a; }
         .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 1px solid #000; cursor: pointer; margin: 5px 0; }
 
         /* RINK BEREICH */
-        .rink-container { flex: 1; position: relative; padding: 40px; display: flex; align-items: center; justify-content: center; background: #1a1a1a; }
+        .rink-container { flex: 1; position: relative; padding: 20px; display: flex; align-items: center; justify-content: center; background: #1a1a1a; overflow: auto; }
         
-        /* Das Feld 24m x 14m (Maßstab 1m = 40px -> 960px x 560px) */
+        /* Maßstabsgetreues Feld (24m x 14m -> 1100px x 640px) */
         #rink { 
-            width: 960px; height: 560px; background: var(--floor); border: 4px solid #000; border-radius: 60px; position: relative; 
-            box-shadow: 0 0 50px rgba(0,0,0,0.8); overflow: hidden;
+            width: 1100px; height: 640px; background: var(--floor); border: 4px solid #000; border-radius: 80px; position: relative; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.8); overflow: hidden; flex-shrink: 0;
         }
 
         /* MARKIERUNGEN (ALLE SCHWARZ) */
@@ -34,15 +34,13 @@
         .center-line { width: 3px; height: 100%; left: 50%; top: 0; transform: translateX(-50%); }
         .center-circle { width: 40px; height: 40px; border: 3px solid #000; border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%); position: absolute; }
         
-        /* Torraum (4.5m x 3m -> 180px x 120px) */
-        .torraum { position: absolute; border: 3px solid #000; width: 120px; height: 180px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-        /* Schutzraum (2.5m x 1m -> 100px x 40px) */
-        .schutzraum { position: absolute; border: 3px solid #000; width: 40px; height: 100px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-        /* Das Tor selbst */
-        .goal-box { position: absolute; width: 24px; height: 64px; border: 4px solid #000; top: 50%; transform: translateY(-50%); background: #fff; z-index: 5; }
+        /* Tor-Zonen (3m vom Rand eingerückt = ca. 137px) */
+        .torraum { position: absolute; border: 3px solid #000; width: 140px; height: 210px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+        .schutzraum { position: absolute; border: 3px solid #000; width: 45px; height: 115px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+        .goal-box { position: absolute; width: 28px; height: 75px; border: 4px solid #000; top: 50%; transform: translateY(-50%); background: #fff; z-index: 5; }
 
         /* SPIELER */
-        .player { width: 34px; height: 34px; border-radius: 50%; position: absolute; z-index: 100; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 2px solid #000; cursor: move; user-select: none; font-size: 13px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .player { width: 36px; height: 36px; border-radius: 50%; position: absolute; z-index: 100; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 2px solid #000; cursor: move; user-select: none; font-size: 13px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         .p-falcons { background: var(--red); color: white; }
         .p-opponent { background: #fff; color: #000; }
         .p-ball { width: 16px; height: 16px; background: orange; z-index: 101; border-radius: 50%; border: 2px solid #000; }
@@ -54,6 +52,7 @@
         .sidebar-right { width: 220px; background: #111; border-left: 1px solid #333; display: flex; flex-direction: column; padding: 15px; }
         .bench { display: flex; justify-content: space-around; padding-bottom: 20px; border-bottom: 1px solid #333; margin-bottom: 20px; }
         .bench-item { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; cursor: pointer; border: 2px solid #000; transition: 0.2s; }
+        .bench-item:hover { transform: scale(1.1); border-color: var(--red); }
         
         .tactic-list { flex: 1; overflow-y: auto; margin-bottom: 15px; }
         .tactic-item { padding: 12px; background: #222; border-radius: 6px; margin-bottom: 8px; font-size: 0.8rem; cursor: pointer; border-left: 4px solid var(--red); display: flex; justify-content: space-between; align-items: center; }
@@ -68,12 +67,11 @@
 <body>
 
 <header>
-    <div class="logo">Falcons <span>Tactic Pro</span></div>
-    <button style="background: #333; border:none; color:white; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight: bold;" onclick="location.href='index.html'">← Zurück</button>
+    <div class="logo">Falcons <span>Tactic Hub</span></div>
+    <button style="background: #333; border:none; color:white; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight: bold;" onclick="location.href='index.html'">Hub Beenden</button>
 </header>
 
 <div class="main-layout">
-    <!-- TOOLBAR -->
     <div class="toolbar">
         <div class="tool active" id="btn-move" onclick="setMode('move')">🖐️</div>
         <div class="tool" id="btn-draw" onclick="setMode('draw')">✏️</div>
@@ -87,20 +85,20 @@
 
     <div class="rink-container">
         <div id="rink">
-            <!-- Mittellinie -->
+            <!-- SCHWARZE LINIEN NACH VORLAGE -->
             <div class="line center-line"></div>
             <div class="center-circle"></div>
             
-            <!-- Torzonen mit Platz dahinter (3m = 120px) -->
+            <!-- Tor-Zonen eingerückt (3m = 137px bei 1100px Breite) -->
             <!-- Links -->
-            <div class="torraum" style="left: 120px; border-left: none;"></div>
-            <div class="schutzraum" style="left: 120px; border-left: none;"></div>
-            <div class="goal-box" style="left: 120px;"></div>
+            <div class="torraum" style="left: 137px; border-left: none;"></div>
+            <div class="schutzraum" style="left: 137px; border-left: none;"></div>
+            <div class="goal-box" style="left: 137px;"></div>
 
             <!-- Rechts -->
-            <div class="torraum" style="right: 120px; border-right: none;"></div>
-            <div class="schutzraum" style="right: 120px; border-right: none;"></div>
-            <div class="goal-box" style="right: 120px;"></div>
+            <div class="torraum" style="right: 137px; border-right: none;"></div>
+            <div class="schutzraum" style="right: 137px; border-right: none;"></div>
+            <div class="goal-box" style="right: 137px;"></div>
 
             <canvas id="draw-canvas"></canvas>
             <div id="players-layer"></div>
@@ -112,7 +110,7 @@
         <div class="bench">
             <div class="bench-item p-falcons" onmousedown="spawn('falcons')">F</div>
             <div class="bench-item p-opponent" onmousedown="spawn('opponent')">G</div>
-            <div class="bench-item p-ball" onmousedown="spawn('ball')" style="width:25px; height:25px; background:orange; border-radius:50%"></div>
+            <div class="bench-item p-ball" onmousedown="spawn('ball')" style="width:22px; height:22px; background:orange; border-radius:50%"></div>
         </div>
 
         <div class="tactic-list">
@@ -145,7 +143,7 @@
         loadTacticsList();
     };
 
-    // --- SPWAN & DRAG LOGIK (GLOBAL GEGEN BUGGY KLEBEN) ---
+    // --- BUGFREIE DRAG & DROP LOGIK (GLOBAL) ---
     function spawn(type) {
         setMode('move');
         const el = document.createElement('div');
@@ -172,8 +170,6 @@
         const rinkRect = rink.getBoundingClientRect();
         let x = e.clientX - rinkRect.left - offset.x;
         let y = e.clientY - rinkRect.top - offset.y;
-        
-        // Grenzen innerhalb des Rinks
         draggedEl.style.left = x + 'px';
         draggedEl.style.top = y + 'px';
 
@@ -209,7 +205,7 @@
     canvas.onmousemove = (e) => { if(!isDrawing) return; const r=canvas.getBoundingClientRect(); ctx.lineTo(e.clientX-r.left, e.clientY-r.top); ctx.stroke(); };
     canvas.onmouseup = () => { if(isDrawing) { isDrawing=false; saveState(); } };
 
-    // --- FIREBASE: SPEICHERN & LADEN ---
+    // --- SPEICHERN & LADEN ---
     async function saveTactic() {
         const title = document.getElementById('t-name').value;
         if(!title) return alert("Name fehlt!");
