@@ -3,37 +3,28 @@
 <head>
     <meta charset="UTF-8"><title>Falcons Hub | Session Player</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <!-- Zentrale Konfiguration -->
     <script src="falcons-init.js"></script>
     <style>
         :root { --red: #e30613; --bg: #0d0d0d; --panel: #1a1a1a; --border: #333; --blue: #5dade2; --gray: #aaaaaa; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        
         .main-content { flex: 3; display: flex; flex-direction: column; background: #000; border-right: 2px solid var(--border); }
         .viewer-box { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         iframe { width: 100%; height: 100%; border: none; }
-        
-        /* TAKTIK RENDER STYLES */
         #tactic-render { display: none; width: 960px; height: 560px; background: #fff; border: 4px solid #000; border-radius: 60px; position: relative; transform: scale(0.85); }
         .line { position: absolute; background: #000; pointer-events: none; }
         .center-line { width: 3px; height: 100%; left: 50%; transform: translateX(-50%); }
         .player { width: 34px; height: 34px; border-radius: 50%; position: absolute; z-index: 100; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 2px solid #000; color: #fff; }
-        .p-falcons { background: var(--red); } 
-        .p-opponent { background: #fff; color: #000; }
+        .p-falcons { background: var(--red); } .p-opponent { background: #fff; color: #000; }
         .p-ball { width: 16px; height: 16px; background: orange; border-radius: 50%; border: 2px solid #000; }
         #tactic-canvas { position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 50; pointer-events: none; }
-
         .nav-btns { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #000; border-top: 1px solid var(--border); }
         .btn { background: var(--red); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; }
-        
         .side-panel { flex: 1; background: var(--panel); display: flex; flex-direction: column; min-width: 380px; }
         .clip-list { flex: 1; overflow-y: auto; padding: 10px; max-height: 25%; background: #111; }
         .clip-item { padding: 12px; background: #222; margin-bottom: 8px; border-radius: 5px; cursor: pointer; border-left: 5px solid transparent; font-size: 0.8rem; }
         .clip-item.active { border-left-color: var(--red); background: #333; }
-        
         .comment-area { flex: 2; display: flex; flex-direction: column; background: #111; border-top: 1px solid var(--border); }
         .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .mini-comment { background: #1e1e1e; padding: 12px; border-radius: 8px; border-left: 4px solid var(--red); font-size: 0.85rem; color: var(--gray); }
@@ -44,97 +35,91 @@
     </style>
 </head>
 <body>
-
 <div class="main-content">
     <div class="viewer-box">
         <iframe id="video-player" src="" allowfullscreen></iframe>
-        <!-- TAKTIK LAYER -->
-        <div id="tactic-render">
-            <div class="line center-line"></div>
-            <canvas id="tactic-canvas"></canvas>
-            <div id="tactic-players-layer"></div>
-        </div>
+        <div id="tactic-render"><div class="line center-line"></div><canvas id="tactic-canvas"></canvas><div id="tactic-players-layer"></div></div>
     </div>
-    <div class="nav-btns">
-        <button class="btn" onclick="prevClip()">← ZURÜCK</button>
-        <div id="progress-text">Lade Session...</div>
-        <button class="btn" onclick="nextClip()">WEITER →</button>
-    </div>
+    <div class="nav-btns"><button class="btn" onclick="prevClip()">← ZURÜCK</button><div id="progress-text">Initialisierung...</div><button class="btn" onclick="nextClip()">WEITER →</button></div>
 </div>
-
 <div class="side-panel">
-    <div class="info-area" style="padding:20px; background:#000;">
-        <h2 id="s-title" style="margin:0; font-size:1.1rem; color:var(--red);">Session Player</h2>
-    </div>
+    <div class="info-area" style="padding:20px; background:#000;"><h2 id="s-title" style="margin:0; font-size:1.1rem; color:var(--red);">Session Player</h2></div>
     <div class="clip-list" id="toc"></div>
     <div class="comment-area">
         <div class="comment-list" id="comment-display"></div>
-        <div style="padding:15px; background:#000;">
-            <textarea id="com-input" placeholder="Feedback @Nr..." style="width:100%; height:50px; background:#222; border:1px solid #444; color:white; padding:8px; box-sizing:border-box; resize:none; font-family:inherit;"></textarea>
-            <button class="btn" style="width:100%; margin-top:8px;" onclick="sendComment()">Senden</button>
-        </div>
+        <div style="padding:15px; background:#000;"><textarea id="com-input" placeholder="Feedback @Nr..." style="width:100%; height:50px; background:#222; border:1px solid #444; color:white; padding:8px; box-sizing:border-box; resize:none; font-family:inherit;"></textarea><button class="btn" style="width:100%; margin-top:8px;" onclick="sendComment()">Senden</button></div>
     </div>
     <button class="btn" style="margin:10px; background:#333;" onclick="location.href='index.html'">BEENDEN</button>
 </div>
-
 <script>
     const sessionId = new URLSearchParams(window.location.search).get('id');
-    // currentUser kommt aus falcons-init.js
+    const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
     let currentIdx = 0, videoData = [], playerMap = {}, commentUnsubscribe = null;
 
     async function init() {
-        if(!sessionId) return location.href='index.html';
-
-        // Daten laden
-        const [sDoc, pSnap, driveRes, ytSnap, tSnap] = await Promise.all([
-            db.collection("sessions").doc(sessionId).get(),
-            db.collection("players").get(),
-            fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json()),
-            db.collection("youtube_clips").get(),
-            db.collection("tactics").get()
-        ]);
-
-        if(!sDoc.exists) return alert("Session nicht gefunden!");
-        document.getElementById('s-title').innerText = sDoc.data().title;
-
-        // Player Map für Mentions
-        pSnap.forEach(doc => { playerMap[doc.id] = doc.data().name; });
-
-        // Alle verfügbaren Medien kombinieren
-        const allMedia = [
-            ...driveRes.map(v => ({ 
-                id: v.link.split('/d/')[1].split('/')[0], 
-                title: v.title, 
-                link: `https://drive.google.com/file/d/${v.link.split('/d/')[1].split('/')[0]}/preview`, 
-                type: 'drive' 
-            })),
-            ...ytSnap.docs.map(d => ({ 
-                id: d.id, 
-                title: d.data().title, 
-                link: `https://www.youtube.com/embed/${d.data().ytId}?start=${d.data().startTime}&autoplay=1&enablejsapi=1`, 
-                type: 'youtube', 
-                ytId: d.data().ytId 
-            })),
-            ...tSnap.docs.map(d => ({ 
-                id: d.id, 
-                title: d.data().title, 
-                type: 'tactic', 
-                tacticData: d.data() 
-            }))
-        ];
-
-        // Nur die Videos der Session filtern
-        videoData = sDoc.data().videoIds.map(id => allMedia.find(m => m.id === id)).filter(m => m);
-        
-        // Starten bei Clip 0 oder gespeichertem Fortschritt
-        const progDoc = await db.collection("progress").doc(currentUser.nr).get();
-        let startAt = 0;
-        if(progDoc.exists && progDoc.data()[sessionId]) {
-            startAt = progDoc.data()[sessionId] - 1;
-            if(startAt < 0 || startAt >= videoData.length) startAt = 0;
+        console.log("Starte Session-Init für ID:", sessionId);
+        if(!sessionId || !user.nr) {
+            console.error("Session ID oder User fehlt!");
+            location.href = 'index.html';
+            return;
         }
 
-        playClip(startAt);
+        try {
+            const [sDoc, pSnap, driveRes, ytSnap, tSnap] = await Promise.all([
+                db.collection("sessions").doc(sessionId).get(),
+                db.collection("players").get(),
+                fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json()),
+                db.collection("youtube_clips").get(),
+                db.collection("tactics").get()
+            ]);
+
+            if(!sDoc.exists) {
+                alert("Session existiert nicht mehr.");
+                return;
+            }
+
+            document.getElementById('s-title').innerText = sDoc.data().title;
+            pSnap.forEach(doc => { playerMap[doc.id] = doc.data().name; });
+
+            // Medienliste aufbauen
+            const allMedia = [
+                ...driveRes.map(v => {
+                    const fid = v.link.split('/d/')[1].split('/')[0];
+                    return { id: fid, title: v.title, link: `https://drive.google.com/file/d/${fid}/preview`, type: 'drive' };
+                }),
+                ...ytSnap.docs.map(d => ({ 
+                    id: d.id, title: d.data().title, link: `https://www.youtube.com/embed/${d.data().ytId}?start=${d.data().startTime}&autoplay=1`, type: 'youtube', ytId: d.data().ytId 
+                })),
+                ...tSnap.docs.map(d => ({ 
+                    id: d.id, title: d.data().title, type: 'tactic', tacticData: d.data() 
+                }))
+            ];
+
+            const sData = sDoc.data();
+            console.log("Session IDs aus DB:", sData.videoIds);
+
+            videoData = sData.videoIds.map(id => allMedia.find(m => m.id === id)).filter(m => m);
+            console.log("Gefundene Clip-Objekte:", videoData);
+
+            if(videoData.length === 0) {
+                document.getElementById('progress-text').innerText = "Keine Clips gefunden.";
+                console.error("Die IDs in der Session matchen keine Medien-IDs!");
+                return;
+            }
+
+            // Fortschritt laden
+            const progDoc = await db.collection("progress").doc(user.nr).get();
+            let startAt = 0;
+            if(progDoc.exists && progDoc.data()[sessionId]) {
+                startAt = progDoc.data()[sessionId] - 1;
+                if(startAt < 0 || startAt >= videoData.length) startAt = 0;
+            }
+
+            playClip(startAt);
+        } catch (err) {
+            console.error("Fehler im Init:", err);
+            document.getElementById('progress-text').innerText = "Fehler beim Laden.";
+        }
     }
 
     function playClip(idx) {
@@ -143,9 +128,10 @@
         const vP = document.getElementById('video-player');
         const tR = document.getElementById('tactic-render');
 
+        if(!m) return;
+
         if(m.type === 'tactic') {
-            vP.style.display = 'none';
-            vP.src = "";
+            vP.style.display = 'none'; vP.src = "";
             tR.style.display = 'block';
             renderTactic(m.tacticData);
         } else {
@@ -160,127 +146,49 @@
         updateProgress();
     }
 
-    function getSec(txt) { 
-        const m = txt.match(/(\d{1,2}):(\d{2}):(\d{2})/); 
-        return m ? (parseInt(m[1])*3600)+(parseInt(m[2])*60)+parseInt(m[3]) : 0; 
-    }
-
-    function jumpTo(ts) {
-        const v = videoData[currentIdx];
-        if(v.type === 'youtube') {
-            document.getElementById('video-player').src = `https://www.youtube.com/embed/${v.ytId}?start=${getSec(ts)}&autoplay=1&enablejsapi=1`;
-        }
+    function renderTOC() {
+        const toc = document.getElementById('toc'); toc.innerHTML = "";
+        videoData.forEach((v, i) => { toc.innerHTML += `<div class="clip-item ${i===currentIdx?'active':''}" onclick="playClip(${i})"><strong>${i+1}.</strong> ${v.title}</div>`; });
     }
 
     function listenForComments(vid) {
         if(commentUnsubscribe) commentUnsubscribe();
         commentUnsubscribe = db.collection("comments").where("videoId", "==", vid).onSnapshot(snap => {
-            const display = document.getElementById('comment-display');
-            display.innerHTML = "";
-            let docs = [];
-            snap.forEach(d => docs.push({id: d.id, ...d.data()}));
-            
-            // Sortierung nach Zeitstempel im Text
-            docs.sort((a,b) => getSec(a.text) - getSec(b.text));
-
+            const display = document.getElementById('comment-display'); display.innerHTML = "";
+            let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
+            docs.sort((a,b) => (a.text.match(/(\d{1,2}:\d{2}:\d{2})/) || [0])[0].localeCompare((b.text.match(/(\d{1,2}:\d{2}:\d{2})/) || [0])[0]));
             docs.forEach(c => {
-                const isRead = (c.readBy || []).includes(currentUser.nr);
-                const isMentioned = (c.mentions || []).includes(currentUser.nr);
-                
-                const formatted = c.text.replace(/(\d{1,2}:\d{2}:\d{2})/g, '<span class="timestamp" onclick="jumpTo(\'$1\')">$1</span>')
-                                        .replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
-                
-                let checkBtn = isMentioned ? `<button class="hub-check-btn" onclick="markRead('${c.id}', ${isRead})">${isRead?'↺':'✓'}</button>` : '';
-                
-                display.innerHTML += `
-                    <div class="mini-comment ${isRead ? 'is-read' : ''}">
-                        <small><span>${c.author}</span> ${checkBtn}</small>
-                        <div>${formatted}</div>
-                    </div>`;
+                const isRead = (c.readBy || []).includes(user.nr), isMentioned = (c.mentions || []).includes(user.nr);
+                const formatted = c.text.replace(/(\d{1,2}:\d{2}:\d{2})/g, '<span class="timestamp" onclick="jumpTo(\'$1\')">$1</span>').replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
+                display.innerHTML += `<div class="mini-comment ${isRead ? 'is-read' : ''}"><small><span>${c.author}</span> ${isMentioned?`<button class="hub-check-btn" onclick="markRead('${c.id}', ${isRead})">${isRead?'↺':'✓'}</button>`:''}</small><div>${formatted}</div></div>`;
             });
-            display.scrollTop = display.scrollHeight;
-        });
-    }
-
-    async function markRead(cid, isReadNow) {
-        const ref = db.collection("comments").doc(cid);
-        if(isReadNow) await ref.update({ readBy: firebase.firestore.FieldValue.arrayRemove(currentUser.nr) });
-        else await ref.update({ readBy: firebase.firestore.FieldValue.arrayUnion(currentUser.nr) });
-    }
-
-    function renderTOC() {
-        const toc = document.getElementById('toc');
-        toc.innerHTML = "";
-        videoData.forEach((v, i) => {
-            toc.innerHTML += `<div class="clip-item ${i===currentIdx?'active':''}" onclick="playClip(${i})"><strong>${i+1}.</strong> ${v.title}</div>`;
         });
     }
 
     async function sendComment() {
-        const input = document.getElementById('com-input');
-        let text = input.value.trim();
-        if(!text) return;
-
-        // Mentions auflösen
+        const input = document.getElementById('com-input'); let text = input.value.trim(); if(!text) return;
         let mentions = [];
-        let resolvedText = text.replace(/@(\d+)/g, (match, nr) => {
-            if(playerMap[nr]) {
-                mentions.push(nr);
-                return `@${nr} | ${playerMap[nr]}*`;
-            }
-            return `${match}*`;
-        });
-
-        await db.collection("comments").add({
-            videoId: videoData[currentIdx].id,
-            text: resolvedText,
-            author: currentUser.name,
-            authorNr: currentUser.nr,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            readBy: [],
-            mentions: mentions
-        });
+        let resolvedText = text.replace(/@(\d+)/g, (match, nr) => { if(playerMap[nr]) { mentions.push(nr); return `@${nr} | ${playerMap[nr]}*`; } return `${match}*`; });
+        await db.collection("comments").add({ videoId: videoData[currentIdx].id, text: resolvedText, author: user.name, authorNr: user.nr, createdAt: firebase.firestore.FieldValue.serverTimestamp(), readBy: [], mentions: mentions });
         input.value = "";
     }
 
     function renderTactic(data) {
-        const layer = document.getElementById('tactic-players-layer');
-        const canvas = document.getElementById('tactic-canvas');
-        const ctx = canvas.getContext('2d');
-        
-        canvas.width = 960;
-        canvas.height = 560;
-        layer.innerHTML = "";
-        ctx.clearRect(0, 0, 960, 560);
-
+        const layer = document.getElementById('tactic-players-layer'); const canvas = document.getElementById('tactic-canvas'); const ctx = canvas.getContext('2d');
+        canvas.width = 960; canvas.height = 560; layer.innerHTML = ""; ctx.clearRect(0,0,960,560);
         data.players.forEach(p => {
-            const el = document.createElement('div');
-            el.className = 'player ' + (p.type === 'ball' ? 'p-ball' : (p.type === 'falcons' ? 'p-falcons' : 'p-opponent'));
-            el.innerHTML = p.type === 'ball' ? '' : (p.type === 'falcons' ? 'F' : 'G');
-            el.style.left = p.x;
-            el.style.top = p.y;
-            layer.appendChild(el);
+            const el = document.createElement('div'); el.className = 'player ' + (p.type === 'ball' ? 'p-ball' : (p.type === 'falcons' ? 'p-falcons' : 'p-opponent'));
+            el.innerHTML = p.type === 'ball' ? '' : (p.type === 'falcons' ? 'F' : 'G'); el.style.left = p.x; el.style.top = p.y; layer.appendChild(el);
         });
-
-        if(data.drawing) {
-            const img = new Image();
-            img.src = data.drawing;
-            img.onload = () => ctx.drawImage(img, 0, 0);
-        }
+        if(data.drawing) { const img = new Image(); img.src = data.drawing; img.onload = () => ctx.drawImage(img, 0, 0); }
     }
 
-    async function updateProgress() {
-        if(currentUser.nr) {
-            await db.collection("progress").doc(currentUser.nr).set({
-                [sessionId]: currentIdx + 1
-            }, { merge: true });
-        }
-    }
+    async function updateProgress() { if(user.nr) await db.collection("progress").doc(user.nr).set({ [sessionId]: currentIdx + 1 }, { merge: true }); }
+    function nextClip() { if(currentIdx < videoData.length-1) playClip(currentIdx+1); }
+    function prevClip() { if(currentIdx > 0) playClip(currentIdx-1); }
+    function jumpTo(ts) { /* YouTube Jump Logic hier einfügen falls nötig */ }
 
-    function nextClip() { if(currentIdx < videoData.length - 1) playClip(currentIdx + 1); }
-    function prevClip() { if(currentIdx > 0) playClip(currentIdx - 1); }
-
-    window.onload = init;
+    init();
 </script>
 </body>
 </html>
