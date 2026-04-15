@@ -7,50 +7,42 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="falcons-init.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root { --red: #e30613; --bg: #0d0d0d; --panel: #1a1a1a; --border: #333; --mention: #5dade2; --gray: #aaaaaa; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-
-        /* BACK BUTTON OVER VIDEO */
         .btn-hub { position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.6); color: white; border: 1px solid #fff; padding: 10px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 0.8rem; }
-
-        /* VIEWER AREA */
         .viewer { flex: 1.5; position: relative; background: #000; display: flex; flex-direction: column; }
         .video-box { position: relative; flex: 1; overflow: hidden; }
         iframe { position: absolute; top:0; left:0; width: 100%; height: 100%; border:none; z-index: 1; }
         #draw-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; pointer-events: none; }
         #draw-canvas.active { pointer-events: auto; }
-
-        /* TOOLBAR - Scrollable on mobile */
-        .toolbar { background: var(--panel); padding: 10px; display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .toolbar { background: var(--panel); padding: 10px; display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--border); overflow-x: auto; }
         .btn { background: #333; color: white; border: 1px solid #444; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.7rem; white-space: nowrap; }
-        .btn.active { background: var(--red); border-color: white; }
-
-        /* SIDEBAR (Stapelt unten auf mobile) */
         .sidebar { flex: 1; background: var(--panel); border-top: 2px solid var(--border); display: flex; flex-direction: column; }
-        @media (min-width: 900px) { 
-            body { flex-direction: row; }
-            .viewer { flex: 3; }
-            .sidebar { flex: 1; border-top: none; border-left: 2px solid var(--border); max-width: 400px; }
-        }
-
+        @media (min-width: 900px) { body { flex-direction: row; } .viewer { flex: 3; } .sidebar { flex: 1; border-top: none; border-left: 2px solid var(--border); max-width: 400px; } }
         .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #111; }
-        .comment-item { background: #1e1e1e; padding: 12px; border-radius: 8px; border-left: 4px solid var(--red); font-size: 0.85rem; color: var(--gray); }
+        .comment-item { background: #1e1e1e; padding: 12px; border-radius: 8px; border-left: 4px solid var(--red); font-size: 0.85rem; }
         .mention { color: var(--mention) !important; font-weight: bold !important; }
         .timestamp { background: var(--mention); color: white; padding: 2px 5px; border-radius: 4px; cursor: pointer; }
-
         .input-area { padding: 10px; background: #000; border-top: 1px solid var(--border); display: flex; gap: 5px; }
-        textarea { flex: 1; height: 44px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 10px; resize: none; font-size: 0.9rem; }
+        textarea { flex: 1; height: 44px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 10px; resize: none; }
     </style>
 </head>
 <body>
 
     <div class="viewer">
         <a href="index.html" class="btn-hub">← HUB</a>
-        <div class="video-box"><iframe id="main-frame" src=""></iframe><canvas id="draw-canvas"></canvas></div>
+        <div class="video-box"><div id="main-frame"></div><canvas id="draw-canvas"></canvas></div>
         <div class="toolbar">
             <button class="btn" id="btn-draw" onclick="toggleDrawing()">✏️ ZEICHNEN</button>
             <button class="btn" onclick="clearDraw()">🗑 LÖSCHEN</button>
+            <select class="btn" onchange="setSpeed(this.value)" style="background:#444">
+                <option value="1">Normal Speed</option>
+                <option value="0.5">0.5x Slow</option>
+                <option value="0.25">0.25x Slow</option>
+            </select>
             <div style="background: red; width:24px; height:24px; border-radius:50%;" onclick="penColor='#e30613'"></div>
             <div style="background: yellow; width:24px; height:24px; border-radius:50%;" onclick="penColor='#ffff00'"></div>
         </div>
@@ -65,68 +57,57 @@
     </div>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const params = new URLSearchParams(window.location.search), videoId = params.get('id'), type = params.get('type') || 'drive', user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
-        let playerMap = {}, currentYtId = "";
+        const params = new URLSearchParams(window.location.search), videoId = params.get('id'), type = params.get('type') || 'drive';
+        let playerMap = {}, ytPlayer = null, currentYtId = "";
 
         async function init() {
             const pSnap = await db.collection("players").get();
             pSnap.forEach(doc => playerMap[doc.id] = doc.data().name);
-            const frame = document.getElementById('main-frame');
             if(type === 'youtube') {
                 const ytDoc = await db.collection("youtube_clips").doc(videoId).get();
                 currentYtId = ytDoc.data().ytId;
-                frame.src = `https://www.youtube.com/embed/${currentYtId}?start=${ytDoc.data().startTime}&autoplay=1`;
-            } else { frame.src = `https://drive.google.com/file/d/${videoId}/preview`; }
+                window.onYouTubeIframeAPIReady = () => {
+                    ytPlayer = new YT.Player('main-frame', { videoId: currentYtId, playerVars: { start: ytDoc.data().startTime, autoplay: 1 } });
+                };
+            } else {
+                document.getElementById('main-frame').innerHTML = `<iframe src="https://drive.google.com/file/d/${videoId}/preview" style="width:100%;height:100%"></iframe>`;
+            }
             listenForComments();
         }
 
+        function setSpeed(s) { if(ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(parseFloat(s)); }
+        
         async function sendComment() {
             const input = document.getElementById('com-input'); let text = input.value.trim(); if(!text) return;
-            let mentions = [];
-            let resolvedText = text.replace(/@(\d+)/g, (match, nr) => { mentions.push(nr); return playerMap[nr] ? `@${nr} | ${playerMap[nr]}*` : `${match}*`; });
-            await db.collection("comments").add({ videoId, text: resolvedText, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            let resolvedText = text.replace(/@(\d+)/g, (match, nr) => playerMap[nr] ? `@${nr} | ${playerMap[nr]}*` : `${match}*`);
+            await db.collection("comments").add({ videoId, text: resolvedText, author: currentUser.name, authorNr: currentUser.nr, mentions: [], readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
             input.value = "";
         }
 
         function listenForComments() {
             db.collection("comments").where("videoId", "==", videoId).onSnapshot(snap => {
                 const display = document.getElementById('comment-display'); display.innerHTML = "";
-                let docs = []; snap.forEach(d => docs.push(d.data()));
-                docs.sort((a,b) => parseTime(a.text) - parseTime(b.text));
-                docs.forEach(c => {
+                snap.forEach(doc => {
+                    const c = doc.data();
                     const formatted = c.text.replace(/(\d{1,2}:\d{2}:\d{2})/g, '<span class="timestamp" onclick="jumpTo(\'$1\')">$1</span>').replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
                     display.innerHTML += `<div class="comment-item"><small>${c.author}</small><div>${formatted}</div></div>`;
                 });
-                display.scrollTop = display.scrollHeight;
             });
         }
 
-        function jumpTo(ts) { if(type === 'youtube') document.getElementById('main-frame').src = `https://www.youtube.com/embed/${currentYtId}?start=${parseTime(ts)}&autoplay=1`; }
-        function parseTime(t) { const m = t.match(/(\d{1,2}):(\d{2}):(\d{2})/); return m ? (+m[1])*3600+(+m[2])*60+(+m[3]) : 0; }
+        function jumpTo(ts) { 
+            const sec = ts.split(':').reduce((acc,time) => (60 * acc) + +time);
+            if(ytPlayer) ytPlayer.seekTo(sec); 
+        }
 
         const canvas = document.getElementById('draw-canvas'), ctx = canvas.getContext('2d');
         let isDrawing = false, penColor = "#e30613";
-        function toggleDrawing() { isDrawing = !isDrawing; canvas.classList.toggle('active', isDrawing); document.getElementById('btn-draw').classList.toggle('active', isDrawing); canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
+        function toggleDrawing() { isDrawing = !isDrawing; canvas.classList.toggle('active', isDrawing); canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
         function clearDraw() { ctx.clearRect(0,0,canvas.width,canvas.height); }
-
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
-        }
-
-        function start(e) { if(!isDrawing) return; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.strokeStyle=penColor; ctx.lineWidth=4; ctx.lineCap="round"; }
-        function move(e) { if(!isDrawing || (e.buttons !== 1 && !e.touches)) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
-        
-        canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move);
-        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); }, {passive:false});
-        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e); }, {passive:false});
-
-        window.onload = init;
+        function getPos(e) { const rect = canvas.getBoundingClientRect(); return { x: (e.touches?e.touches[0].clientX:e.clientX) - rect.left, y: (e.touches?e.touches[0].clientY:e.clientY) - rect.top }; }
+        canvas.addEventListener('mousedown', e => { if(!isDrawing) return; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.strokeStyle=penColor; ctx.lineWidth=4; ctx.lineCap="round"; canvas.onmousemove = e => { const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }; });
+        canvas.addEventListener('mouseup', () => canvas.onmousemove = null);
+        init();
     </script>
 </body>
 </html>
