@@ -1,11 +1,10 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8"><title>Falcons Hub | Session Player</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="falcons-init.js"></script>
     <style>
         :root { --red: #e30613; --bg: #0d0d0d; --panel: #1a1a1a; --border: #333; --blue: #5dade2; --gray: #aaaaaa; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
@@ -19,6 +18,7 @@
         .p-falcons { background: var(--red); } .p-opponent { background: #fff; color: #000; }
         .p-ball { width: 16px; height: 16px; background: orange; border-radius: 50%; border: 2px solid #000; }
         #tactic-canvas { position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 50; pointer-events: none; }
+
         .nav-btns { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #000; border-top: 1px solid var(--border); }
         .btn { background: var(--red); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; }
         .side-panel { flex: 1; background: var(--panel); display: flex; flex-direction: column; min-width: 380px; }
@@ -40,115 +40,50 @@
         <iframe id="video-player" src="" allowfullscreen></iframe>
         <div id="tactic-render"><div class="line center-line"></div><canvas id="tactic-canvas"></canvas><div id="tactic-players-layer"></div></div>
     </div>
-    <div class="nav-btns"><button class="btn" onclick="prevClip()">← ZURÜCK</button><div id="progress-text">Initialisierung...</div><button class="btn" onclick="nextClip()">WEITER →</button></div>
+    <div class="nav-btns"><button class="btn" onclick="prevClip()">← ZURÜCK</button><div id="progress-text">Lade...</div><button class="btn" onclick="nextClip()">WEITER →</button></div>
 </div>
 <div class="side-panel">
-    <div class="info-area" style="padding:20px; background:#000;"><h2 id="s-title" style="margin:0; font-size:1.1rem; color:var(--red);">Session Player</h2></div>
+    <div class="info-area" style="padding:20px; background:#000;"><h2 id="s-title" style="margin:0; font-size:1.1rem; color:var(--red);">Session</h2></div>
     <div class="clip-list" id="toc"></div>
     <div class="comment-area">
         <div class="comment-list" id="comment-display"></div>
-        <div style="padding:15px; background:#000;"><textarea id="com-input" placeholder="Feedback @Nr..." style="width:100%; height:50px; background:#222; border:1px solid #444; color:white; padding:8px; box-sizing:border-box; resize:none; font-family:inherit;"></textarea><button class="btn" style="width:100%; margin-top:8px;" onclick="sendComment()">Senden</button></div>
+        <div style="padding:15px; background:#000;"><textarea id="com-input" placeholder="Feedback @Nr..." style="width:100%; height:50px; background:#222; border:1px solid #444; color:white; padding:8px; box-sizing:border-box;"></textarea><button class="btn" style="width:100%; margin-top:8px;" onclick="sendComment()">Senden</button></div>
     </div>
     <button class="btn" style="margin:10px; background:#333;" onclick="location.href='index.html'">BEENDEN</button>
 </div>
 <script>
-    const sessionId = new URLSearchParams(window.location.search).get('id');
-    const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
+    const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const sessionId = new URLSearchParams(window.location.search).get('id'), user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
     let currentIdx = 0, videoData = [], playerMap = {}, commentUnsubscribe = null;
 
     async function init() {
-        console.log("Starte Session-Init für ID:", sessionId);
-        if(!sessionId || !user.nr) {
-            console.error("Session ID oder User fehlt!");
-            location.href = 'index.html';
-            return;
-        }
-
-        try {
-            const [sDoc, pSnap, driveRes, ytSnap, tSnap] = await Promise.all([
-                db.collection("sessions").doc(sessionId).get(),
-                db.collection("players").get(),
-                fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json()),
-                db.collection("youtube_clips").get(),
-                db.collection("tactics").get()
-            ]);
-
-            if(!sDoc.exists) {
-                alert("Session existiert nicht mehr.");
-                return;
-            }
-
-            document.getElementById('s-title').innerText = sDoc.data().title;
-            pSnap.forEach(doc => { playerMap[doc.id] = doc.data().name; });
-
-            // Medienliste aufbauen
-            const allMedia = [
-                ...driveRes.map(v => {
-                    const fid = v.link.split('/d/')[1].split('/')[0];
-                    return { id: fid, title: v.title, link: `https://drive.google.com/file/d/${fid}/preview`, type: 'drive' };
-                }),
-                ...ytSnap.docs.map(d => ({ 
-                    id: d.id, title: d.data().title, link: `https://www.youtube.com/embed/${d.data().ytId}?start=${d.data().startTime}&autoplay=1`, type: 'youtube', ytId: d.data().ytId 
-                })),
-                ...tSnap.docs.map(d => ({ 
-                    id: d.id, title: d.data().title, type: 'tactic', tacticData: d.data() 
-                }))
-            ];
-
-            const sData = sDoc.data();
-            console.log("Session IDs aus DB:", sData.videoIds);
-
-            videoData = sData.videoIds.map(id => allMedia.find(m => m.id === id)).filter(m => m);
-            console.log("Gefundene Clip-Objekte:", videoData);
-
-            if(videoData.length === 0) {
-                document.getElementById('progress-text').innerText = "Keine Clips gefunden.";
-                console.error("Die IDs in der Session matchen keine Medien-IDs!");
-                return;
-            }
-
-            // Fortschritt laden
-            const progDoc = await db.collection("progress").doc(user.nr).get();
-            let startAt = 0;
-            if(progDoc.exists && progDoc.data()[sessionId]) {
-                startAt = progDoc.data()[sessionId] - 1;
-                if(startAt < 0 || startAt >= videoData.length) startAt = 0;
-            }
-
-            playClip(startAt);
-        } catch (err) {
-            console.error("Fehler im Init:", err);
-            document.getElementById('progress-text').innerText = "Fehler beim Laden.";
-        }
+        const [sDoc, pSnap, driveRes, ytSnap, tSnap] = await Promise.all([db.collection("sessions").doc(sessionId).get(), db.collection("players").get(), fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json()), db.collection("youtube_clips").get(), db.collection("tactics").get()]);
+        pSnap.forEach(doc => { playerMap[doc.id] = doc.data().name; });
+        const allMedia = [
+            ...driveRes.map(v => ({ id: v.link.split('/d/')[1].split('/')[0], title: v.title, link: `https://drive.google.com/file/d/${v.link.split('/d/')[1].split('/')[0]}/preview`, type: 'drive' })),
+            ...ytSnap.docs.map(d => ({ id: d.id, title: d.data().title, link: `https://www.youtube.com/embed/${d.data().ytId}?start=${d.data().startTime}&autoplay=1`, type: 'youtube', ytId: d.data().ytId })),
+            ...tSnap.docs.map(d => ({ id: d.id, title: d.data().title, type: 'tactic', tacticData: d.data() }))
+        ];
+        videoData = sDoc.data().videoIds.map(id => allMedia.find(m => m.id === id)).filter(m => m);
+        playClip(0);
     }
+
+    function getSec(txt) { const m = txt.match(/(\d{1,2}):(\d{2}):(\d{2})/); return m ? (parseInt(m[1])*3600)+(parseInt(m[2])*60)+parseInt(m[3]) : 0; }
 
     function playClip(idx) {
-        currentIdx = idx;
-        const m = videoData[idx];
-        const vP = document.getElementById('video-player');
-        const tR = document.getElementById('tactic-render');
-
-        if(!m) return;
-
-        if(m.type === 'tactic') {
-            vP.style.display = 'none'; vP.src = "";
-            tR.style.display = 'block';
-            renderTactic(m.tacticData);
-        } else {
-            tR.style.display = 'none';
-            vP.style.display = 'block';
-            vP.src = m.link;
-        }
-
+        currentIdx = idx; const m = videoData[idx];
+        const vP = document.getElementById('video-player'), tR = document.getElementById('tactic-render');
+        if(m.type === 'tactic') { vP.style.display = 'none'; tR.style.display = 'block'; renderTactic(m.tacticData); }
+        else { tR.style.display = 'none'; vP.style.display = 'block'; vP.src = m.link; }
         document.getElementById('progress-text').innerText = `CLIP ${idx+1} / ${videoData.length}`;
-        renderTOC();
-        listenForComments(m.id);
-        updateProgress();
+        renderTOC(); listenForComments(m.id); updateProgress();
     }
 
-    function renderTOC() {
-        const toc = document.getElementById('toc'); toc.innerHTML = "";
-        videoData.forEach((v, i) => { toc.innerHTML += `<div class="clip-item ${i===currentIdx?'active':''}" onclick="playClip(${i})"><strong>${i+1}.</strong> ${v.title}</div>`; });
+    function jumpTo(ts) {
+        const v = videoData[currentIdx];
+        if(v.type === 'youtube') document.getElementById('video-player').src = `https://www.youtube.com/embed/${v.ytId}?start=${getSec(ts)}&autoplay=1`;
     }
 
     function listenForComments(vid) {
@@ -156,20 +91,32 @@
         commentUnsubscribe = db.collection("comments").where("videoId", "==", vid).onSnapshot(snap => {
             const display = document.getElementById('comment-display'); display.innerHTML = "";
             let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
-            docs.sort((a,b) => (a.text.match(/(\d{1,2}:\d{2}:\d{2})/) || [0])[0].localeCompare((b.text.match(/(\d{1,2}:\d{2}:\d{2})/) || [0])[0]));
+            docs.sort((a,b) => getSec(a.text) - getSec(b.text));
             docs.forEach(c => {
                 const isRead = (c.readBy || []).includes(user.nr), isMentioned = (c.mentions || []).includes(user.nr);
-                const formatted = c.text.replace(/(\d{1,2}:\d{2}:\d{2})/g, '<span class="timestamp" onclick="jumpTo(\'$1\')">$1</span>').replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
-                display.innerHTML += `<div class="mini-comment ${isRead ? 'is-read' : ''}"><small><span>${c.author}</span> ${isMentioned?`<button class="hub-check-btn" onclick="markRead('${c.id}', ${isRead})">${isRead?'↺':'✓'}</button>`:''}</small><div>${formatted}</div></div>`;
+                const formatted = c.text.replace(/(\d{1,2}:\d{2}:\d{2})/g, '<span class="timestamp" onclick="jumpTo(\'$1\')">$1</span>')
+                                        .replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
+                let checkBtn = isMentioned ? `<button class="hub-check-btn ${isRead?'uncheck':''}" onclick="markRead('${c.id}', ${isRead})">${isRead?'↺':'✓'}</button>` : '';
+                display.innerHTML += `<div class="mini-comment ${isRead ? 'is-read' : ''}"><small><span>${c.author}</span> ${checkBtn}</small><div>${formatted}</div></div>`;
             });
         });
     }
 
+    async function markRead(cid, isReadNow) {
+        const ref = db.collection("comments").doc(cid);
+        if(isReadNow) await ref.update({ readBy: firebase.firestore.FieldValue.arrayRemove(user.nr) });
+        else await ref.update({ readBy: firebase.firestore.FieldValue.arrayUnion(user.nr) });
+    }
+
+    function renderTOC() {
+        const toc = document.getElementById('toc'); toc.innerHTML = "";
+        videoData.forEach((v, i) => { toc.innerHTML += `<div class="clip-item ${i===currentIdx?'active':''}" onclick="playClip(${i})"><strong>${i+1}.</strong> ${v.title}</div>`; });
+    }
+
     async function sendComment() {
         const input = document.getElementById('com-input'); let text = input.value.trim(); if(!text) return;
-        let mentions = [];
-        let resolvedText = text.replace(/@(\d+)/g, (match, nr) => { if(playerMap[nr]) { mentions.push(nr); return `@${nr} | ${playerMap[nr]}*`; } return `${match}*`; });
-        await db.collection("comments").add({ videoId: videoData[currentIdx].id, text: resolvedText, author: user.name, authorNr: user.nr, createdAt: firebase.firestore.FieldValue.serverTimestamp(), readBy: [], mentions: mentions });
+        let resolvedText = text.replace(/@(\d+)/g, (match, nr) => playerMap[nr] ? `@${nr} | ${playerMap[nr]}*` : `${match}*`);
+        await db.collection("comments").add({ videoId: videoData[currentIdx].id, text: resolvedText, author: user.name, authorNr: user.nr, createdAt: firebase.firestore.FieldValue.serverTimestamp(), readBy: [], mentions: [] });
         input.value = "";
     }
 
@@ -180,14 +127,12 @@
             const el = document.createElement('div'); el.className = 'player ' + (p.type === 'ball' ? 'p-ball' : (p.type === 'falcons' ? 'p-falcons' : 'p-opponent'));
             el.innerHTML = p.type === 'ball' ? '' : (p.type === 'falcons' ? 'F' : 'G'); el.style.left = p.x; el.style.top = p.y; layer.appendChild(el);
         });
-        if(data.drawing) { const img = new Image(); img.src = data.drawing; img.onload = () => ctx.drawImage(img, 0, 0); }
+        const img = new Image(); img.src = data.drawing; img.onload = () => ctx.drawImage(img, 0, 0);
     }
 
     async function updateProgress() { if(user.nr) await db.collection("progress").doc(user.nr).set({ [sessionId]: currentIdx + 1 }, { merge: true }); }
     function nextClip() { if(currentIdx < videoData.length-1) playClip(currentIdx+1); }
     function prevClip() { if(currentIdx > 0) playClip(currentIdx-1); }
-    function jumpTo(ts) { /* YouTube Jump Logic hier einfügen falls nötig */ }
-
     init();
 </script>
 </body>
