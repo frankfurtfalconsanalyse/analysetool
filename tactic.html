@@ -1,81 +1,70 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8"><title>Falcons Hub | Taktik Pro</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Falcons Hub | Taktik Pro Touch</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --floor: #ffffff; --line: #000000; }
-        body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --floor: #ffffff; --line: #000000; }
+        body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; touch-action: none; }
 
         header { background: #000; padding: 10px 25px; border-bottom: 2px solid var(--red); display: flex; justify-content: space-between; align-items: center; z-index: 100; }
-        .logo { font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+        .logo { font-weight: 900; text-transform: uppercase; letter-spacing: 1px; font-size: 1rem; }
 
         .main-layout { display: flex; flex: 1; overflow: hidden; }
 
-        /* TOOLBAR LINKS */
+        /* TOOLS */
         .toolbar { width: 70px; background: #111; border-right: 1px solid #333; display: flex; flex-direction: column; align-items: center; padding: 15px 0; gap: 15px; }
-        .tool { width: 45px; height: 45px; background: #222; border: 1px solid #444; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; font-size: 1.2rem; }
-        .tool:hover, .tool.active { border-color: var(--red); background: #2a2a2a; }
+        .tool { width: 45px; height: 45px; background: #222; border: 1px solid #444; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; }
+        .tool.active { border-color: var(--red); background: #2a2a2a; }
         .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 1px solid #000; cursor: pointer; margin: 5px 0; }
 
-        /* SPIELFELD BEREICH */
-        .rink-container { flex: 1; position: relative; padding: 20px; display: flex; align-items: center; justify-content: center; background: #1a1a1a; overflow: auto; }
-        
-        /* IFF GOSS-FELD 40x20m (Maßstab 1m = 25px -> 1000px x 500px) */
+        /* RINK */
+        .rink-container { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; background: #1a1a1a; padding: 10px; }
         #rink { 
-            width: 1000px; height: 500px; background: var(--floor); border: 4px solid #000; border-radius: 50px; position: relative; 
-            box-shadow: 0 0 50px rgba(0,0,0,0.8); overflow: hidden; flex-shrink: 0;
+            width: 960px; height: 560px; background: var(--floor); border: 4px solid #000; border-radius: 60px; position: relative; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.8); overflow: hidden;
         }
 
-        /* MARKIERUNGEN (ALLE SCHWARZ) */
-        .line { position: absolute; background: var(--line); pointer-events: none; }
+        /* LINIEN */
+        .line { position: absolute; background: #000; pointer-events: none; }
         .center-line { width: 3px; height: 100%; left: 50%; top: 0; transform: translateX(-50%); }
-        .center-dot { width: 20px; height: 20px; background: #000; border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%); position: absolute; z-index: 10; }
-        
-        /* Bullypunkte (Mitte oben/unten) */
-        .bully { position: absolute; width: 20px; height: 20px; background: transparent; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; }
-        .bully::before { content: ""; position: absolute; background: #000; width: 100%; height: 2px; }
-        .bully::after { content: ""; position: absolute; background: #000; width: 2px; height: 100%; }
+        .center-circle { width: 40px; height: 40px; border: 3px solid #000; border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%); position: absolute; }
+        .torraum { position: absolute; border: 3px solid #000; width: 120px; height: 180px; top: 50%; transform: translateY(-50%); }
+        .schutzraum { position: absolute; border: 3px solid #000; width: 40px; height: 100px; top: 50%; transform: translateY(-50%); }
+        .goal-box { position: absolute; width: 24px; height: 64px; border: 4px solid #000; top: 50%; transform: translateY(-50%); background: #fff; z-index: 5; }
 
-        /* Torlinien (3,5m vom Rand = 87.5px) */
-        .goal-line { width: 2px; height: 100%; top: 0; opacity: 0.1; }
-
-        /* Torräume IM QUERFORMAT (Laut IFF: Schutzraum 5x4m, Torraum 2.5x1m) */
-        .schutzraum { position: absolute; border: 3px solid #000; width: 100px; height: 125px; top: 50%; transform: translateY(-50%); } /* 4m tief x 5m breit */
-        .torraum { position: absolute; border: 3px solid #000; width: 25px; height: 62px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.05); } /* 1m tief x 2.5m breit */
-
-        /* SPIELER */
-        .player { width: 34px; height: 34px; border-radius: 50%; position: absolute; z-index: 100; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 2px solid #000; cursor: move; user-select: none; font-size: 13px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s; }
+        /* SPIELER & BALL */
+        .player { width: 36px; height: 36px; border-radius: 50%; position: absolute; z-index: 100; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 2px solid #000; cursor: move; user-select: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3); touch-action: none; }
         .p-falcons { background: var(--red); color: white; }
         .p-opponent { background: #fff; color: #000; }
-        .p-ball { width: 16px; height: 16px; background: orange; z-index: 101; border-radius: 50%; border: 2px solid #000; }
+        .p-ball { width: 18px; height: 18px; background: orange; z-index: 101; border-radius: 50%; border: 2px solid #000; }
 
         #draw-canvas { position: absolute; top: 0; left: 0; z-index: 50; pointer-events: none; }
-        #draw-canvas.active { pointer-events: auto; cursor: crosshair; }
+        #draw-canvas.active { pointer-events: auto; }
 
         /* SIDEBAR RECHTS */
-        .sidebar-right { width: 220px; background: #111; border-left: 1px solid #333; display: flex; flex-direction: column; padding: 15px; }
-        .bench { display: flex; justify-content: space-around; padding-bottom: 20px; border-bottom: 1px solid #333; margin-bottom: 15px; }
-        .bench-item { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; cursor: pointer; border: 2px solid #000; transition: 0.2s; }
-        .bench-item:hover { transform: scale(1.1); border-color: var(--red); }
+        .sidebar-right { width: 200px; background: #111; border-left: 1px solid #333; display: flex; flex-direction: column; padding: 15px; }
+        .bench { display: flex; justify-content: space-around; padding-bottom: 20px; border-bottom: 1px solid #333; margin-bottom: 20px; }
+        .bench-item { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 2px solid #000; cursor: pointer; }
         
         .tactic-list { flex: 1; overflow-y: auto; margin-bottom: 15px; }
-        .tactic-item { padding: 10px; background: #222; border-radius: 6px; margin-bottom: 8px; font-size: 0.75rem; cursor: pointer; border-left: 3px solid var(--red); display: flex; justify-content: space-between; align-items: center; }
-        .tactic-item:hover { background: #2a2a2a; }
+        .tactic-item { padding: 10px; background: #222; border-radius: 6px; margin-bottom: 8px; font-size: 0.75rem; cursor: pointer; border-left: 3px solid var(--red); display: flex; justify-content: space-between; }
 
-        .trash { width: 100%; height: 50px; border: 2px dashed #444; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #444; font-size: 1.5rem; margin-bottom: 15px; transition: 0.2s; }
+        .trash { width: 100%; height: 50px; border: 2px dashed #444; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #444; font-size: 1.5rem; margin-bottom: 15px; }
         .trash.hover { border-color: var(--red); color: var(--red); background: rgba(227,6,19,0.1); }
         input { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; width: 100%; box-sizing: border-box; margin-bottom: 10px; font-family: inherit; }
-        .btn-red { background: var(--red); color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; width: 100%; cursor: pointer; text-transform: uppercase; }
+        .btn-red { background: var(--red); color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; width: 100%; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <header>
     <div class="logo">Falcons <span>Tactic Hub</span></div>
-    <button style="background: #333; border:none; color:white; padding:5px 15px; border-radius:4px; cursor:pointer;" onclick="location.href='index.html'">← Zurück</button>
+    <button style="background:#333; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;" onclick="location.href='index.html'">← Zurück</button>
 </header>
 
 <div class="main-layout">
@@ -85,29 +74,23 @@
         <div class="tool" onclick="undo()">↩️</div>
         <div class="tool" onclick="clearBoard()">🗑</div>
         <hr style="width:40%; border-color:#333;">
-        <div class="color-dot" style="background:red;" onclick="setColor('#e30613')"></div>
-        <div class="color-dot" style="background:blue;" onclick="setColor('blue')"></div>
-        <div class="color-dot" style="background:black;" onclick="setColor('black')"></div>
+        <div class="color-dot" style="background:#e30613;" onclick="setColor('#e30613')"></div>
+        <div class="color-dot" style="background:#0055ff;" onclick="setColor('#0055ff')"></div>
+        <div class="color-dot" style="background:#000000;" onclick="setColor('#000000')"></div>
     </div>
 
     <div class="rink-container">
         <div id="rink">
             <div class="line center-line"></div>
-            <div class="center-dot"></div>
-            
-            <!-- Bully-Kreuze auf der Torlinie (87.5px vom Rand) -->
-            <div class="bully" style="left: 87.5px; top: 15%;"></div>
-            <div class="bully" style="left: 87.5px; top: 85%;"></div>
-            <div class="bully" style="right: 87.5px; top: 15%;"></div>
-            <div class="bully" style="right: 87.5px; top: 85%;"></div>
-
-            <!-- Torzonen Links -->
-            <div class="schutzraum" style="left: 87.5px; border-left: none;"></div>
-            <div class="torraum" style="left: 87.5px; border-left: none;"></div>
-            
-            <!-- Torzonen Rechts -->
-            <div class="schutzraum" style="right: 87.5px; border-right: none;"></div>
-            <div class="torraum" style="right: 87.5px; border-right: none;"></div>
+            <div class="center-circle"></div>
+            <!-- Links -->
+            <div class="torraum" style="left: 120px; border-left: none;"></div>
+            <div class="schutzraum" style="left: 120px; border-left: none;"></div>
+            <div class="goal-box" style="left: 120px;"></div>
+            <!-- Rechts -->
+            <div class="torraum" style="right: 120px; border-right: none;"></div>
+            <div class="schutzraum" style="right: 120px; border-right: none;"></div>
+            <div class="goal-box" style="right: 120px;"></div>
 
             <canvas id="draw-canvas"></canvas>
             <div id="players-layer"></div>
@@ -115,21 +98,21 @@
     </div>
 
     <div class="sidebar-right">
-        <small style="color:#555; font-weight:900; margin-bottom:10px; display:block;">BANK (ZIEHEN)</small>
+        <small style="color:#555; font-weight:900; margin-bottom:10px; display:block;">BANK</small>
         <div class="bench">
-            <div class="bench-item p-falcons" onmousedown="spawn('falcons')">F</div>
-            <div class="bench-item p-opponent" onmousedown="spawn('opponent')">G</div>
-            <div class="bench-item p-ball" onmousedown="spawn('ball')" style="width:25px; height:25px; background:orange; border-radius:50%"></div>
+            <div class="bench-item p-falcons" onmousedown="spawn('falcons')" ontouchstart="spawn('falcons')">F</div>
+            <div class="bench-item p-opponent" onmousedown="spawn('opponent')" ontouchstart="spawn('opponent')">G</div>
+            <div class="bench-item p-ball" onmousedown="spawn('ball')" ontouchstart="spawn('ball')" style="width:22px; height:22px; background:orange;"></div>
         </div>
 
         <div class="tactic-list">
-            <small style="color:#555; font-weight:900; margin-bottom:10px; display:block;">GESPEICHERTE BOARDS</small>
+            <small style="color:#555; font-weight:900; margin-bottom:10px; display:block;">GESPEICHERT</small>
             <div id="list-container"></div>
         </div>
 
         <div class="trash" id="trash">🗑</div>
-        <input type="text" id="t-name" placeholder="Name der Taktik">
-        <button class="btn-red" onclick="saveTactic()">BOARD SPEICHERN</button>
+        <input type="text" id="t-name" placeholder="Titel...">
+        <button class="btn-red" onclick="saveTactic()">SPEICHERN</button>
     </div>
 </div>
 
@@ -152,7 +135,7 @@
         loadTacticsList();
     };
 
-    // --- BUGFREIE DRAG & DROP LOGIK ---
+    // --- UNIVERSAL DRAG LOGIC (MOUSE & TOUCH) ---
     function spawn(type) {
         setMode('move');
         const el = document.createElement('div');
@@ -160,41 +143,58 @@
         el.innerHTML = type === 'ball' ? '' : (type === 'falcons' ? 'F' : 'G');
         el.style.left = "50%"; el.style.top = "50%";
         document.getElementById('players-layer').appendChild(el);
-        // Sofort an Maus hängen ohne Bug
         draggedEl = el;
-        offset = { x: 17, y: 17 };
     }
 
-    document.addEventListener('mousedown', e => {
+    function handleStart(e) {
         if(e.target.classList.contains('player')) {
             if(mode !== 'move') return;
             draggedEl = e.target;
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
             const rect = draggedEl.getBoundingClientRect();
-            offset.x = e.clientX - rect.left;
-            offset.y = e.clientY - rect.top;
+            offset.x = clientX - rect.left;
+            offset.y = clientY - rect.top;
         }
-    });
+    }
 
-    document.addEventListener('mousemove', e => {
+    function handleMove(e) {
         if(!draggedEl) return;
+        e.preventDefault();
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        
         const rinkRect = rink.getBoundingClientRect();
-        let x = e.clientX - rinkRect.left - offset.x;
-        let y = e.clientY - rinkRect.top - offset.y;
+        let x = clientX - rinkRect.left - offset.x;
+        let y = clientY - rinkRect.top - offset.y;
+        
         draggedEl.style.left = x + 'px';
         draggedEl.style.top = y + 'px';
 
         const tRect = trash.getBoundingClientRect();
-        trash.classList.toggle('hover', e.clientX > tRect.left && e.clientX < tRect.right && e.clientY > tRect.top && e.clientY < tRect.bottom);
-    });
+        trash.classList.toggle('hover', clientX > tRect.left && clientX < tRect.right && clientY > tRect.top && clientY < tRect.bottom);
+    }
 
-    document.addEventListener('mouseup', e => {
+    function handleEnd(e) {
         if(!draggedEl) return;
+        const clientX = e.type.includes('touch') ? e.changedTouches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.changedTouches[0].clientY : e.clientY;
+        
         const tRect = trash.getBoundingClientRect();
-        if(e.clientX > tRect.left && e.clientX < tRect.right && e.clientY > tRect.top && e.clientY < tRect.bottom) draggedEl.remove();
+        if(clientX > tRect.left && clientX < tRect.right && clientY > tRect.top && clientY < tRect.bottom) {
+            draggedEl.remove();
+        }
         draggedEl = null; trash.classList.remove('hover');
-    });
+    }
 
-    // --- DRAW & UNDO ---
+    document.addEventListener('mousedown', handleStart);
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchstart', handleStart, {passive: false});
+    document.addEventListener('touchmove', handleMove, {passive: false});
+    document.addEventListener('touchend', handleEnd);
+
+    // --- DRAW LOGIK (MOUSE & TOUCH) ---
     function setMode(m) {
         mode = m;
         document.getElementById('btn-move').classList.toggle('active', m==='move');
@@ -211,20 +211,47 @@
     }
     function clearBoard() { if(confirm("Board leeren?")) { ctx.clearRect(0,0,canvas.width,canvas.height); document.querySelectorAll('.player').forEach(p=>p.remove()); saveState(); } }
 
-    canvas.onmousedown = (e) => { if(mode!=='draw') return; isDrawing=true; ctx.beginPath(); ctx.strokeStyle=penColor; ctx.lineWidth=4; ctx.lineCap='round'; const r=canvas.getBoundingClientRect(); ctx.moveTo(e.clientX-r.left, e.clientY-r.top); };
-    canvas.onmousemove = (e) => { if(!isDrawing) return; const r=canvas.getBoundingClientRect(); ctx.lineTo(e.clientX-r.left, e.clientY-r.top); ctx.stroke(); };
-    canvas.onmouseup = () => { if(isDrawing) { isDrawing=false; saveState(); } };
+    function startDraw(e) {
+        if(mode !== 'draw') return;
+        isDrawing = true;
+        saveState();
+        ctx.beginPath();
+        ctx.strokeStyle = penColor;
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        const rect = canvas.getBoundingClientRect();
+        ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    }
 
-    // --- DATA HANDLING ---
+    function moveDraw(e) {
+        if(!isDrawing) return;
+        e.preventDefault();
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        const rect = canvas.getBoundingClientRect();
+        ctx.lineTo(clientX - rect.left, clientY - rect.top);
+        ctx.stroke();
+    }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', moveDraw);
+    canvas.addEventListener('mouseup', () => isDrawing = false);
+    canvas.addEventListener('touchstart', startDraw, {passive: false});
+    canvas.addEventListener('touchmove', moveDraw, {passive: false});
+    canvas.addEventListener('touchend', () => isDrawing = false);
+
+    // --- FIREBASE SAVE/LOAD ---
     async function saveTactic() {
         const title = document.getElementById('t-name').value;
-        if(!title) return alert("Titel fehlt!");
+        if(!title) return alert("Name fehlt!");
         const players = [];
         document.querySelectorAll('.player').forEach(p => {
             players.push({ type: p.classList.contains('p-falcons')?'falcons':(p.classList.contains('p-ball')?'ball':'opponent'), x: p.style.left, y: p.style.top });
         });
         await db.collection("tactics").add({ title, players, drawing: canvas.toDataURL(), createdAt: new Date() });
-        alert("Board gespeichert!"); loadTacticsList();
+        alert("Board gespeichert!"); document.getElementById('t-name').value = ""; loadTacticsList();
     }
 
     async function loadTacticsList() {
