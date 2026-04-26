@@ -218,13 +218,28 @@
     }
 
     // --- RENDER FUNKTIONEN ---
-    function renderKader() {
-        const tbody = document.querySelector("#full-member-table"); tbody.innerHTML = "";
-        allPlayers.sort((a,b)=>a.id-b.id).forEach(p => {
-            const isAdmin = (p.id === "22" || allAdmins.includes(p.id));
-            tbody.innerHTML += `<tr><td>#${p.id}</td><td>${p.name} ${isAdmin?'<span class="admin-badge">ADMIN</span>':''}</td><td style="text-align:right;"><button class="delete-btn" onclick="deleteDoc('players','${p.id}')">🗑</button></td></tr>`;
-        });
+function renderKader() {
+    const tbody = document.querySelector("#full-member-table"); tbody.innerHTML = "";
+    allPlayers.sort((a,b)=>a.id-b.id).forEach(p => {
+        const isAdmin = (p.id === "22" || allAdmins.includes(p.id));
+        tbody.innerHTML += `<tr>
+            <td>#${p.id}</td>
+            <td>${p.name} ${isAdmin?'<span class="admin-badge">ADMIN</span>':''}</td>
+            <td style="text-align:right;">
+                <button class="btn-action" style="background:#444; padding: 5px 10px; margin-right:10px;" onclick="resetPin('${p.id}')">PIN Reset</button>
+                <button class="delete-btn" onclick="deleteDoc('players','${p.id}')">🗑</button>
+            </td>
+        </tr>`;
+    });
+}
+
+// Neue Funktion zum PIN zurücksetzen
+async function resetPin(id) {
+    if(confirm("PIN für Spieler #" + id + " wirklich zurücksetzen?")) {
+        await db.collection("players").doc(id).update({ pin: firebase.firestore.FieldValue.delete() });
+        alert("PIN wurde gelöscht. Der Spieler kann beim nächsten Login eine neue PIN festlegen.");
     }
+}
 
     function renderYT(snap) {
         const tbody = document.querySelector("#yt-table tbody"); tbody.innerHTML = "";
