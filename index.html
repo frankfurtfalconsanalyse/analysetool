@@ -3,105 +3,162 @@
 <head>
     <meta charset="UTF-8"><title>Falcons Hub | Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
         :root { --red: #e30613; --bg: #0d0d0d; --card: #161616; --blue: #5dade2; --gray: #aaaaaa; --border: #252525; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; overflow-x: hidden; }
         
-        header { background: #000; padding: 15px 25px; border-bottom: 3px solid var(--red); display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 100; }
+        /* HEADER */
+        header { 
+            background: #000; padding: 15px 25px; border-bottom: 3px solid var(--red); 
+            display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 100;
+        }
         .logo { font-weight:900; letter-spacing:2px; cursor:pointer; text-transform: uppercase; font-size: 1.3rem; }
         .header-right { display: flex; gap: 12px; align-items: center; }
         .nav-btn { background: #222; color: white; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 0.75rem; border: 1px solid var(--border); cursor: pointer; transition: 0.3s; }
+        .nav-btn:hover { background: #333; border-color: #555; }
         #admin-link { background: var(--red); border: none; display: none; }
 
         .container { max-width: 1400px; margin: 0 auto; padding: 30px; }
+
+        /* HERO SESSION */
         .hero-session { background: linear-gradient(135deg, #1a1a1a 0%, #000 100%); border: 1px solid var(--red); border-radius: 20px; padding: 50px; margin-bottom: 60px; display: none; position: relative; overflow: hidden; }
+        .hero-session::after { content: "LATEST"; position: absolute; top: 25px; right: -35px; background: var(--red); padding: 5px 45px; transform: rotate(45deg); font-weight: 900; font-size: 0.7rem; }
         .hero-session h1 { font-size: 2.5rem; margin: 0; text-transform: uppercase; font-weight: 700; }
-        .section-title { color: var(--red); text-transform: uppercase; margin-top: 60px; border-left: 5px solid var(--red); padding-left: 15px; font-size: 1.2rem; font-weight: 400; }
+        .hero-session p { color: #888; margin: 20px 0 30px; max-width: 700px; line-height: 1.6; }
+        .btn-start { background: var(--red); color: white; border: none; padding: 16px 40px; border-radius: 50px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+
+        /* SECTION TITLES */
+        .section-title { color: var(--red); text-transform: uppercase; margin-top: 60px; border-left: 5px solid var(--red); padding-left: 15px; font-size: 1.2rem; font-weight: 400; letter-spacing: 1px; }
         
+        /* GRIDS */
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-top: 25px; }
+
+        /* LOBBY CARDS */
         .card, .s-card { background: var(--card); padding: 40px 20px; border-radius: 15px; cursor: pointer; border: 1px solid var(--border); transition: 0.3s; text-align: center; position: relative; }
-        .card:hover, .s-card:hover { border-color: var(--red); transform: translateY(-5px); }
-        
+        .card:hover, .s-card:hover { border-color: var(--red); transform: translateY(-5px); background: #1f1f1f; }
+        .card h3 { margin: 0; font-size: 1rem; text-transform: uppercase; font-weight: 700; }
+        .watched-dot { position: absolute; top: 15px; right: 15px; width: 10px; height: 10px; background: var(--red); border-radius: 50%; box-shadow: 0 0 10px var(--red); }
+
+        /* VIDEO CARDS (16:9) */
         .video-list-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 30px; margin-top: 30px; }
         .v-card { background: var(--card); border-radius: 16px; overflow: hidden; cursor: pointer; border: 1px solid var(--border); transition: 0.4s; position: relative; }
-        .v-thumb { width: 100%; aspect-ratio: 16 / 9; background-size: cover; background-position: center; background-color: #0a0a0a; }
+        .v-thumb { width: 100%; aspect-ratio: 16 / 9; background-size: cover; background-position: center; background-color: #0a0a0a; position: relative; }
         .v-info { padding: 20px; }
+        .v-info h3 { margin: 0; font-size: 1rem; font-weight: 700; line-height: 1.4; color: #fff; }
+        .v-info small { color: var(--red); font-weight: 700; text-transform: uppercase; font-size: 0.65rem; display: block; margin-bottom: 5px; }
+        .type-badge { position: absolute; bottom: 15px; right: 15px; background: rgba(0,0,0,0.8); color: #fff; font-size: 0.6rem; padding: 4px 8px; border-radius: 4px; font-weight: 900; z-index: 2; border: 1px solid #333; }
 
+        /* MODAL & KOMMENTARE */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); }
         .modal-content { max-width: 1200px; width: 95%; margin: 20px auto; background: #111; border-radius: 15px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #333; }
         .modal-main { display: flex; flex-wrap: wrap; }
         .video-side { flex: 2.2; min-width: 300px; background: #000; position: relative; padding-bottom: 40%; height: 0; }
         .video-side iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:none; }
         .comment-side { flex: 1; min-width: 350px; background: #161616; display: flex; flex-direction: column; max-height: 600px; border-left: 1px solid #333; }
-        .mini-comment { background: #222; padding: 15px; border-radius: 10px; border-left: 4px solid var(--red); font-size: 0.9rem; color: var(--gray); margin-bottom: 10px;}
+        .modal-comment-list { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .mini-comment { background: #222; padding: 15px; border-radius: 10px; border-left: 4px solid var(--red); font-size: 0.9rem; color: var(--gray); line-height: 1.5; }
+        .mini-comment.is-read { opacity: 0.3; filter: grayscale(1); }
         .mention { color: var(--blue) !important; font-weight: bold !important; }
         .timestamp { background: var(--blue); color: white !important; padding: 2px 6px; border-radius: 4px; cursor: pointer; }
+        .hub-check-btn { background: #28a745; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.65rem; }
 
-        /* LOGIN OVERLAY UPDATED */
-        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
-        .login-box { background: #111; padding: 40px; border-radius: 20px; border: 1px solid var(--border); width: 320px; }
-        #login-overlay input { padding: 15px; font-size: 2rem; width: 100%; text-align: center; border: 2px solid var(--border); background: #000; color: white; border-radius: 10px; outline: none; margin-top: 20px; box-sizing: border-box; }
-        #login-overlay input:focus { border-color: var(--red); }
+        /* PIN LOGIN STYLES */
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .login-box { background: #111; padding: 40px; border-radius: 20px; border: 1px solid var(--border); width: 320px; text-align: center; }
+        #login-overlay input { padding: 15px; font-size: 2.5rem; width: 100%; text-align: center; border: 2px solid var(--red); background: #111; color: white; border-radius: 10px; margin-top: 20px; outline: none; box-sizing: border-box; }
         .login-step { display: none; }
         .login-step.active { display: block; }
-        .error-msg { color: var(--red); font-size: 0.8rem; margin-top: 15px; display: none; }
+        .back-btn { background: #333; border: 1px solid var(--border); color: white; padding: 12px 25px; cursor: pointer; display: none; margin-bottom: 30px; font-weight: 700; border-radius: 5px; text-transform: uppercase; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div class="login-box">
-        <h1 style="font-size: 1.5rem; margin:0 0 10px 0; font-weight: 900;">FALCONS <span style="color:var(--red);">HUB</span></h1>
+        <h1 style="font-size: 2rem; margin:0; font-weight: 900;">FALCONS <span style="color:var(--red);">HUB</span></h1>
         
-        <!-- SCHRITT 1: NUMMER -->
         <div id="step-nr" class="login-step active">
-            <p style="color: #555; font-size: 0.8rem;">TRIKOTNUMMER (ZWEISTELLIG)</p>
+            <p style="color: #555; margin-top:20px;">TRIKOTNUMMER (ZWEISTELLIG)</p>
             <input type="text" id="login-nr" placeholder="00" maxlength="2" oninput="this.value = this.value.replace(/[^0-9]/g, ''); checkNr();">
         </div>
 
-        <!-- SCHRITT 2: PIN SETUP (ERSTER LOGIN) -->
         <div id="step-setup" class="login-step">
-            <p style="color: var(--red); font-weight: bold;">ERSTER LOGIN!</p>
+            <p style="color: var(--red); font-weight: bold; margin-top:20px;">ERSTER LOGIN!</p>
             <p style="color: #555; font-size: 0.8rem;">Wähle eine vierstellige PIN</p>
             <input type="password" id="setup-pin" placeholder="****" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length===4) savePin();">
         </div>
 
-        <!-- SCHRITT 3: PIN EINGABE -->
         <div id="step-pin" class="login-step">
-            <p id="welcome-user" style="font-weight: bold; margin-bottom: 5px;"></p>
+            <p id="welcome-user" style="font-weight: bold; margin-top:20px;"></p>
             <p style="color: #555; font-size: 0.8rem;">GIB DEINE PIN EIN</p>
             <input type="password" id="login-pin" placeholder="****" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length===4) verifyPin();">
             <p style="font-size: 0.6rem; color: #444; margin-top: 15px; cursor: pointer;" onclick="location.reload()">Falsche Nummer? Zurück</p>
         </div>
-
-        <div id="login-error" class="error-msg">Nummer nicht gefunden!</div>
     </div>
 </div>
 
 <header>
     <div class="logo" onclick="location.reload()">FALCONS <span style="color:var(--red);">HUB</span></div>
     <div class="header-right">
-        <span id="user-display" style="font-size: 0.7rem; color: #666; margin-right: 10px;"></span>
+        <span id="user-display" style="font-size: 0.7rem; color: #666; margin-right:5px;"></span>
         <a href="games.html" class="nav-btn">GAME HUB</a>
         <a href="tactic.html" class="nav-btn">TACTIC BOARD</a>
         <a href="help.html" class="nav-btn">HELP</a>
-        <a href="admin.html" id="admin-link" class="nav-btn">ADMIN</a>
+        <a href="admin.html" id="admin-link" class="nav-btn" style="background:var(--red);">ADMIN</a>
         <button class="nav-btn" onclick="logout()">LOGOUT</button>
     </div>
 </header>
 
 <div class="container" id="hub-content" style="display:none;">
     <div id="hero-area" class="hero-session">
+        <small style="color:var(--red); font-weight:700; letter-spacing: 1px;">NEUESTE SESSION</small>
         <h1 id="hero-title"></h1><p id="hero-desc"></p>
-        <button class="nav-btn" style="background:var(--red); padding:15px 30px;" id="hero-btn">Session starten</button>
+        <button class="btn-start" id="hero-btn">Session starten</button>
     </div>
+
+    <button id="back-btn" class="back-btn" onclick="location.reload()">← ZURÜCK ZUR ÜBERSICHT</button>
+
     <div id="lobby-view">
         <h2 class="section-title">Sessions</h2><div id="session-grid" class="grid"></div>
         <h2 class="section-title">Für dich markiert</h2><div id="personal-grid" class="grid"></div>
+        
+        <h2 class="section-title">Spielsituation</h2>
+        <div class="grid">
+            <div class="card" onclick="filterVideos('cat', 'Offense')"><h3>Offense</h3></div>
+            <div class="card" onclick="filterVideos('cat', 'Defense')"><h3>Defense</h3></div>
+            <div class="card" onclick="filterVideos('cat', 'Powerplay')"><h3>Powerplay</h3></div>
+            <div class="card" onclick="filterVideos('cat', 'Penalty Kill')"><h3>Penalty Kill</h3></div>
+            <div class="card" onclick="filterVideos('cat', 'Setplays')"><h3>Setplays</h3></div>
+        </div>
+
+        <h2 class="section-title">Positionen</h2>
+        <div class="grid">
+            <div class="card" onclick="filterVideos('pos', 'Angriff')"><h3>Angriff</h3></div>
+            <div class="card" onclick="filterVideos('pos', 'Center')"><h3>Center</h3></div>
+            <div class="card" onclick="filterVideos('pos', 'Verteidigung')"><h3>Verteidigung</h3></div>
+            <div class="card" onclick="filterVideos('pos', 'Goalie')"><h3>Goalie</h3></div>
+        </div>
     </div>
+    
     <div id="video-list-view" class="video-list-grid"></div>
+</div>
+
+<div id="videoModal" class="modal" onclick="closePlayer()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-main">
+            <div class="video-side"><iframe id="modal-iframe" src="" allowfullscreen></iframe></div>
+            <div class="comment-side">
+                <h4>Feedback & Analyse</h4><div class="modal-comment-list" id="modal-comment-display"></div>
+            </div>
+        </div>
+        <div style="padding:15px; background:#000; display:flex; justify-content:space-between; align-items:center; border-top:1px solid #333;">
+            <h3 id="modal-title" style="margin:0; font-size:0.9rem; font-weight: 700;">Clip</h3>
+            <button class="nav-btn" id="btn-goto-analyse" style="background:var(--red); border: none;">ZUR PRO-ANALYSE</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -109,59 +166,44 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let tempUser = null;
-    let currentUser = null;
-    let combinedVideos = [];
+    let tempUser = null, currentUser = null, combinedVideos = [], commentUnsubscribe = null, currentVideo = null;
 
-    // PHASE 1: NUMMER PRÜFEN
+    // PIN LOGIC FUNCTIONS
     async function checkNr() {
         const nr = document.getElementById('login-nr').value;
         if(nr.length !== 2) return;
-        
         const doc = await db.collection("players").doc(nr).get();
         if(doc.exists) {
             tempUser = doc.data();
-            document.getElementById('login-error').style.display = "none";
-            document.getElementById('step-nr').classList.remove('active');
-            
+            document.querySelectorAll('.login-step').forEach(s => s.classList.remove('active'));
             if(!tempUser.pin) {
-                // Erster Login -> PIN Setup
                 document.getElementById('step-setup').classList.add('active');
             } else {
-                // PIN existiert -> Abfrage
                 document.getElementById('welcome-user').innerText = "Hallo " + tempUser.name;
                 document.getElementById('step-pin').classList.add('active');
-                document.getElementById('login-pin').focus();
             }
-        } else {
-            document.getElementById('login-error').style.display = "block";
         }
     }
 
-    // PHASE 2: PIN SPEICHERN (ERSTER LOGIN)
     async function savePin() {
-        const newPin = document.getElementById('setup-pin').value;
-        if(newPin.length !== 4) return;
-        
-        await db.collection("players").doc(tempUser.nr).update({ pin: newPin });
-        tempUser.pin = newPin;
-        successLogin(tempUser);
+        const pin = document.getElementById('setup-pin').value;
+        await db.collection("players").doc(tempUser.nr).update({ pin: pin });
+        tempUser.pin = pin;
+        finishLogin(tempUser);
     }
 
-    // PHASE 3: PIN VERIFIZIEREN
     function verifyPin() {
-        const enteredPin = document.getElementById('login-pin').value;
-        if(enteredPin === tempUser.pin) {
-            successLogin(tempUser);
+        const pin = document.getElementById('login-pin').value;
+        if(pin === tempUser.pin) {
+            finishLogin(tempUser);
         } else {
             alert("Falsche PIN!");
             document.getElementById('login-pin').value = "";
         }
     }
 
-    function successLogin(user) {
-        currentUser = user;
-        localStorage.setItem('falcons_user', JSON.stringify(currentUser));
+    function finishLogin(user) {
+        localStorage.setItem('falcons_user', JSON.stringify(user));
         startHub();
     }
 
@@ -169,50 +211,106 @@
         const saved = localStorage.getItem('falcons_user');
         if(!saved) return;
         currentUser = JSON.parse(saved);
-        
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('hub-content').style.display = 'block';
         document.getElementById('user-display').innerText = `${currentUser.name} (#${currentUser.nr})`;
-        
         const adminDoc = await db.collection("admins").doc(currentUser.nr).get();
         if(currentUser.nr === "22" || adminDoc.exists) document.getElementById('admin-link').style.display = 'block';
-        
         loadAllData();
     }
 
     async function loadAllData() {
-        const [driveRes, ytSnap, sessSnap, progSnap] = await Promise.all([
+        const [driveRes, ytSnap, metaSnap, sessSnap, progSnap] = await Promise.all([
             fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json()),
             db.collection("youtube_clips").get(),
+            db.collection("video_metadata").get(),
             db.collection("sessions").orderBy("createdAt", "desc").get(),
             db.collection("progress").doc(currentUser.nr).get()
         ]);
-
+        let meta = {}; metaSnap.forEach(d => meta[d.id] = d.data().position);
         combinedVideos = [
-            ...driveRes.map(v => ({ id: v.link.split('/d/')[1].split('/')[0], title: v.title, type: 'drive', link: `https://drive.google.com/file/d/${v.link.split('/d/')[1].split('/')[0]}/preview` })),
-            ...ytSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'youtube', link: `https://www.youtube.com/embed/${doc.data().ytId}?start=${doc.data().startTime}&autoplay=1` }))
+            ...driveRes.map(v => { const fid = v.link.split('/d/')[1].split('/')[0]; return { id: fid, title: v.title, category: v.category, type: 'drive', position: meta[fid] || 'Alle', link: `https://drive.google.com/file/d/${fid}/preview`, ytId: null }; }),
+            ...ytSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'youtube', link: `https://www.youtube.com/embed/${doc.data().ytId}?start=${doc.data().startTime}&autoplay=1`, ytId: doc.data().ytId }))
         ];
-
         renderSessions(sessSnap, progSnap);
+        loadMentions();
     }
 
     function renderSessions(sessSnap, progSnap) {
         const sGrid = document.getElementById('session-grid'), hero = document.getElementById('hero-area'), progress = progSnap.exists ? progSnap.data() : {};
         sGrid.innerHTML = "";
         sessSnap.docs.forEach((doc, index) => {
-            const s = doc.data(), sid = doc.id;
-            if(index === 0) {
-                hero.style.display = 'block'; 
-                document.getElementById('hero-title').innerText = s.title; 
-                document.getElementById('hero-desc').innerText = s.description || "";
-                document.getElementById('hero-btn').onclick = () => location.href=`session_view.html?id=${sid}`;
-            } else {
-                sGrid.innerHTML += `<div class="s-card" onclick="location.href='session_view.html?id=${sid}'"><h3>${s.title}</h3></div>`;
+            const s = doc.data(), sid = doc.id, hasStarted = progress[sid] > 0;
+            if(index === 0) { hero.style.display = 'block'; document.getElementById('hero-title').innerText = s.title; document.getElementById('hero-desc').innerText = s.description || ""; document.getElementById('hero-btn').onclick = () => location.href=`session_view.html?id=${sid}`; }
+            else { sGrid.innerHTML += `<div class="s-card" onclick="location.href='session_view.html?id=${sid}'">${hasStarted ? '<div class="watched-dot"></div>' : ''}<small style="color:var(--red); font-weight:700;">${s.videoIds.length} CLIPS</small><h3 style="margin-top:12px;">${s.title}</h3></div>`; }
+        });
+    }
+
+    async function loadMentions() {
+        const snap = await db.collection("comments").where("mentions", "array-contains", currentUser.nr).get();
+        const pGrid = document.getElementById('personal-grid'); pGrid.innerHTML = "";
+        snap.forEach(doc => {
+            const c = doc.data();
+            if(!(c.readBy || []).includes(currentUser.nr)) {
+                const v = combinedVideos.find(item => item.id === c.videoId);
+                if(v) pGrid.innerHTML += createVideoCard(v, "NEUE MARKIERUNG");
             }
         });
     }
 
+    function createVideoCard(v, badge) {
+        const thumb = v.ytId ? `https://img.youtube.com/vi/${v.ytId}/mqdefault.jpg` : `https://via.placeholder.com/640x360/0a0a0a/e30613?text=Falcons+Clip`;
+        return `<div class="v-card" onclick="openPlayer('${v.id}')">
+            <div class="type-badge">${v.type==='youtube'?'YT':'DRIVE'}</div>
+            <div class="v-thumb" style="background-image:url('${thumb}')"></div>
+            <div class="v-info">
+                <small>${badge || v.category}</small>
+                <h3>${v.title}</h3>
+            </div>
+        </div>`;
+    }
+
+    function openPlayer(id) {
+        currentVideo = combinedVideos.find(item => item.id === id);
+        if(!currentVideo) return;
+        document.getElementById('modal-iframe').src = currentVideo.link;
+        document.getElementById('modal-title').innerText = currentVideo.title;
+        document.getElementById('videoModal').style.display = 'block';
+        document.getElementById('btn-goto-analyse').onclick = () => location.href=`analyze.html?id=${id}&type=${currentVideo.type}`;
+        
+        if(commentUnsubscribe) commentUnsubscribe();
+        commentUnsubscribe = db.collection("comments").where("videoId", "==", id).onSnapshot(snap => {
+            const display = document.getElementById('modal-comment-display'); display.innerHTML = "";
+            snap.forEach(doc => {
+                const c = doc.data();
+                const isRead = (c.readBy || []).includes(currentUser.nr);
+                const formatted = c.text.replace(/(\d{1,2}:\d{2}:\d{2})/g, '<span class="timestamp" onclick="jumpTo(\'$1\')">$1</span>').replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
+                display.innerHTML += `<div class="mini-comment ${isRead ? 'is-read' : ''}"><small>${c.author} ${(c.mentions||[]).includes(currentUser.nr)?`<button class="hub-check-btn" onclick="markRead('${doc.id}', ${isRead})">${isRead?'↺':'✓'}</button>`:''}</small><div>${formatted}</div></div>`;
+            });
+        });
+    }
+
+    function jumpTo(ts) {
+        if(currentVideo.type === 'youtube') {
+            const sec = ts.split(':').reduce((acc,time) => (60 * acc) + +time);
+            document.getElementById('modal-iframe').src = `https://www.youtube.com/embed/${currentVideo.ytId}?start=${sec}&autoplay=1`;
+        }
+    }
+
+    async function markRead(cid, isRead) {
+        const ref = db.collection("comments").doc(cid);
+        if(isRead) await ref.update({ readBy: firebase.firestore.FieldValue.arrayRemove(currentUser.nr) });
+        else await ref.update({ readBy: firebase.firestore.FieldValue.arrayUnion(currentUser.nr) });
+    }
+
+    function closePlayer() { document.getElementById('videoModal').style.display='none'; document.getElementById('modal-iframe').src=''; }
     function logout() { localStorage.removeItem('falcons_user'); location.reload(); }
+    
+    function filterVideos(t, v) {
+        document.getElementById('lobby-view').style.display='none'; document.getElementById('video-list-view').style.display='grid'; document.getElementById('back-btn').style.display='block'; document.getElementById('hero-area').style.display='none';
+        const grid = document.getElementById('video-list-view'); grid.innerHTML = "";
+        combinedVideos.filter(x => t==='cat' ? x.category === v : (x.position === v || x.position === 'Alle')).forEach(x => grid.innerHTML += createVideoCard(x));
+    }
     window.onload = startHub;
 </script>
 </body>
