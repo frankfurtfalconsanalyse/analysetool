@@ -6,7 +6,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --panel: #161616; --blue: #3498db; --green: #2ecc71; --orange: #e67e22; }
+        :root { --red: #e30613; --bg: #0d0d0d; --panel: #161616; --blue: #3498db; --orange: #e67e22; --gray: #555; --purple: #9b59b6; }
         body { font-family: 'Montserrat'; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
         /* VIDEO BEREICH */
@@ -18,12 +18,11 @@
         .comment-side { flex: 1; min-width: 380px; background: var(--panel); border-left: 2px solid #333; display: flex; flex-direction: column; }
         .header { padding: 15px; border-bottom: 1px solid #333; background: #000; }
         
-        /* REGLER / TOGGLE */
         .mode-switch { display: flex; background: #222; border-radius: 50px; padding: 5px; margin-bottom: 15px; border: 1px solid #444; }
         .mode-btn { flex: 1; padding: 10px; border: none; background: none; color: #777; cursor: pointer; border-radius: 50px; font-weight: 900; font-size: 0.65rem; text-transform: uppercase; transition: 0.3s; }
         .mode-btn.active { background: var(--red); color: white; }
 
-        /* TIMELINE / EREIGNISSE */
+        /* TIMELINE BLÖCKE */
         .event-timeline { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #0a0a0a; }
         .event-block { display: flex; align-items: center; gap: 15px; padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.05); position: relative; }
         .event-block:hover { transform: scale(1.02); filter: brightness(1.2); }
@@ -33,10 +32,12 @@
         .event-info span { font-size: 0.75rem; color: #aaa; }
         .event-time { font-family: monospace; font-weight: bold; color: var(--blue); background: rgba(52, 152, 219, 0.1); padding: 2px 6px; border-radius: 4px; }
 
-        .type-goal { border-left: 5px solid var(--green); background: rgba(46, 204, 113, 0.1); }
-        .type-penalty { border-left: 5px solid var(--red); background: rgba(227, 6, 19, 0.1); }
+        /* FARBEN DER BEREICHE */
+        .type-goal { border-left: 5px solid var(--red); background: rgba(227, 6, 19, 0.1); } /* Falcons Tor = ROT */
+        .type-conceded { border-left: 5px solid var(--gray); background: rgba(85, 85, 85, 0.1); } /* Gegentor = GRAU */
         .type-pp { border-left: 5px solid var(--blue); background: rgba(52, 152, 219, 0.1); }
         .type-pk { border-left: 5px solid var(--orange); background: rgba(230, 126, 34, 0.1); }
+        .type-other { border-left: 5px solid var(--purple); background: rgba(155, 89, 182, 0.1); }
 
         .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: none; flex-direction: column; gap: 12px; }
         .game-comment { background: #1e1e1e; padding: 15px; border-radius: 10px; border-left: 4px solid var(--red); position: relative; margin-bottom: 10px; }
@@ -67,8 +68,10 @@
         </div>
     </div>
 
+    <!-- VIEW 1: SPIEL-EREIGNISSE -->
     <div id="view-events" class="event-timeline"></div>
 
+    <!-- VIEW 2: INDIVIDUELLE KOMMENTARE -->
     <div id="view-comments" class="comment-list">
         <select id="admin-player-select" class="player-select" style="display:none; width:100%; margin-bottom:10px;" onchange="loadGameComments()">
             <option value="">Spieler auswählen...</option>
@@ -76,18 +79,20 @@
         <div id="comment-display-inner"></div>
     </div>
 
+    <!-- ADMIN BEREICH -->
     <div class="admin-controls" id="admin-area" style="display:none;">
         <div id="form-events">
             <div class="admin-form-row">
                 <select id="ev-type" style="flex:1;">
-                    <option value="goal">🥅 TOR</option>
-                    <option value="penalty">🟥 STRAFE</option>
+                    <option value="goal">🦅 FALCONS TOR</option>
+                    <option value="conceded">🥅 GEGENTOR</option>
                     <option value="pp">🔵 ÜBERZAHL (PP)</option>
                     <option value="pk">🟠 UNTERZAHL (PK)</option>
+                    <option value="other">⚙️ SONSTIGES</option>
                 </select>
                 <input type="text" id="ev-time" placeholder="H:M:S">
             </div>
-            <textarea id="ev-desc" placeholder="Details zum Ereignis..." style="width:100%; height:50px; margin-bottom:10px;"></textarea>
+            <textarea id="ev-desc" placeholder="Details (Spieler, Art des Tores etc.)..." style="width:100%; height:50px; margin-bottom:10px;"></textarea>
             <button class="btn-send" onclick="sendGameEvent()">Ereignis speichern</button>
         </div>
 
@@ -124,7 +129,6 @@
             pSnap.forEach(d => document.getElementById('admin-player-select').innerHTML += `<option value="${d.id}">#${d.id} ${d.data().name}</option>`);
         }
         
-        // Erst hier das YouTube Script laden, wenn die ID bereit ist
         const tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         document.head.appendChild(tag);
@@ -132,25 +136,12 @@
         switchMode('events');
     }
 
-    // YouTube API Callback
     window.onYouTubeIframeAPIReady = function() {
         if(!currentYtId) return;
         ytPlayer = new YT.Player('yt-player', {
             videoId: currentYtId,
-            playerVars: { 
-                'autoplay': 0, 
-                'rel': 0, 
-                'enablejsapi': 1,
-                'origin': window.location.origin // Behebt Wiedergabe-Fehler
-            },
-            events: {
-                'onError': (e) => {
-                    if(e.data == 101 || e.data == 150) {
-                        isVideoBlocked = true;
-                        document.getElementById('block-warning').style.display = 'block';
-                    }
-                }
-            }
+            playerVars: { 'autoplay': 0, 'rel': 0, 'enablejsapi': 1, 'origin': window.location.origin },
+            events: { 'onError': (e) => { if(e.data == 101 || e.data == 150) { isVideoBlocked = true; document.getElementById('block-warning').style.display = 'block'; } } }
         });
     };
 
@@ -159,12 +150,10 @@
         document.getElementById('view-comments').style.display = mode === 'comments' ? 'flex' : 'none';
         document.getElementById('btn-mode-events').classList.toggle('active', mode === 'events');
         document.getElementById('btn-mode-comments').classList.toggle('active', mode === 'comments');
-        
         if(isAdmin) {
             document.getElementById('form-events').style.display = mode === 'events' ? 'block' : 'none';
             document.getElementById('form-comments').style.display = mode === 'comments' ? 'block' : 'none';
         }
-        
         if(mode === 'events') loadGameEvents();
         else loadGameComments();
     }
@@ -194,8 +183,11 @@
             display.innerHTML = "";
             let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
             docs.sort((a,b) => a.sec - b.sec);
-            const icons = { goal: "🥅", penalty: "🟥", pp: "🔵", pk: "🟠" };
-            const names = { goal: "TOR", penalty: "STRAFE", pp: "ÜBERZAHL", pk: "UNTERZAHL" };
+
+            // Zuordnung Icons & Namen
+            const icons = { goal: "🦅", conceded: "🥅", pp: "🔵", pk: "🟠", other: "⚙️" };
+            const names = { goal: "FALCONS TOR", conceded: "GEGENTOR", pp: "ÜBERZAHL (PP)", pk: "UNTERZAHL (PK)", other: "SONSTIGES" };
+
             docs.forEach(e => {
                 display.innerHTML += `<div class="event-block type-${e.type}" onclick="jumpTo(${e.sec})">
                     <div class="event-icon">${icons[e.type]}</div>
