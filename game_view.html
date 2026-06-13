@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8"><title>Falcons | Game Analysis</title>
+    <meta charset="UTF-8"><title>Falcons | Pro Game Analysis</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <!-- YouTube API Script -->
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --panel: #161616; --blue: #3498db; }
+        :root { --red: #e30613; --bg: #0d0d0d; --panel: #161616; --blue: #3498db; --green: #2ecc71; --orange: #e67e22; --purple: #9b59b6; }
         body { font-family: 'Montserrat'; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
         /* VIDEO BEREICH */
@@ -17,31 +16,41 @@
         #block-warning { display: none; background: #d35400; color: white; padding: 10px; text-align: center; font-weight: bold; font-size: 0.8rem; }
 
         /* SEITENLEISTE */
-        .comment-side { flex: 1; min-width: 360px; background: var(--panel); border-left: 2px solid #333; display: flex; flex-direction: column; }
-        .header { padding: 20px; border-bottom: 2px solid var(--red); background: #000; }
-        .btn-back { background: #333; color: #ccc; border: 1px solid #444; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.7rem; text-transform: uppercase; margin-bottom: 15px; transition: 0.2s; }
-        .btn-back:hover { color: white; border-color: white; }
-
-        .player-select { width: 100%; padding: 12px; background: #222; color: white; border: 1px solid var(--red); border-radius: 5px; margin-bottom: 15px; font-family: inherit; font-weight: bold; }
+        .comment-side { flex: 1; min-width: 380px; background: var(--panel); border-left: 2px solid #333; display: flex; flex-direction: column; }
+        .header { padding: 15px; border-bottom: 1px solid #333; background: #000; }
         
-        /* KOMMENTAR LISTE */
-        .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; background: #111; }
-        .game-comment { background: #1e1e1e; padding: 15px; border-radius: 10px; border-left: 4px solid var(--red); position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .game-comment small { color: var(--red); font-weight: 900; font-size: 0.65rem; display: block; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-        
-        /* ZEITSTEMPEL */
-        .timestamp { background: var(--blue); color: white; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: 900; font-size: 0.8rem; margin-right: 5px; display: inline-block; transition: 0.2s; }
-        .timestamp:hover { background: white; color: var(--blue); }
+        /* REGLER / TOGGLE */
+        .mode-switch { display: flex; background: #222; border-radius: 50px; padding: 5px; margin-bottom: 15px; border: 1px solid #444; }
+        .mode-btn { flex: 1; padding: 10px; border: none; background: none; color: #777; cursor: pointer; border-radius: 50px; font-weight: 900; font-size: 0.65rem; text-transform: uppercase; transition: 0.3s; }
+        .mode-btn.active { background: var(--red); color: white; }
 
-        .comment-text { color: #bbb; font-size: 0.9rem; line-height: 1.5; }
+        /* TIMELINE / EREIGNISSE */
+        .event-timeline { flex: 1; overflow-y: auto; padding: 15px; display: none; flex-direction: column; gap: 10px; background: #0a0a0a; }
+        .event-block { display: flex; align-items: center; gap: 15px; padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.05); position: relative; }
+        .event-block:hover { transform: scale(1.02); filter: brightness(1.2); }
+        .event-icon { font-size: 1.2rem; min-width: 30px; text-align: center; }
+        .event-info { flex: 1; }
+        .event-info b { display: block; font-size: 0.85rem; text-transform: uppercase; }
+        .event-info span { font-size: 0.75rem; color: #aaa; }
+        .event-time { font-family: monospace; font-weight: bold; color: var(--blue); background: rgba(52, 152, 219, 0.1); padding: 2px 6px; border-radius: 4px; }
 
-        /* INPUT AREA */
-        .input-area { padding: 20px; border-top: 1px solid #333; background: #000; }
-        textarea { width: 100%; height: 70px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 12px; box-sizing: border-box; resize: none; font-family: inherit; margin-bottom: 10px; }
-        .btn-send { background: var(--red); color: white; border: none; width: 100%; padding: 12px; border-radius: 5px; font-weight: 900; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
-        
-        .del-com { position: absolute; right: 12px; top: 12px; color: #444; cursor: pointer; border:none; background:none; font-size: 1rem; }
-        .del-com:hover { color: var(--red); }
+        /* FARBEN FÜR BLÖCKE (Editor Style) */
+        .type-goal { border-left: 5px solid var(--green); background: rgba(46, 204, 113, 0.1); }
+        .type-penalty { border-left: 5px solid var(--red); background: rgba(227, 6, 19, 0.1); }
+        .type-pp { border-left: 5px solid var(--blue); background: rgba(52, 152, 219, 0.1); }
+        .type-pk { border-left: 5px solid var(--orange); background: rgba(230, 126, 34, 0.1); }
+
+        /* KOMMENTAR LISTE (bestehend) */
+        .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+        .game-comment { background: #1e1e1e; padding: 15px; border-radius: 10px; border-left: 4px solid var(--red); position: relative; }
+        .timestamp { background: var(--blue); color: white; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.75rem; }
+
+        /* ADMIN INPUT AREA */
+        .admin-controls { padding: 15px; background: #000; border-top: 2px solid #333; }
+        .admin-form-row { display: flex; gap: 5px; margin-bottom: 10px; }
+        select, input, textarea { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; font-family: inherit; font-size: 0.8rem; }
+        .btn-send { background: var(--red); color: white; border: none; width: 100%; padding: 12px; border-radius: 5px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        .del-com { position: absolute; right: 10px; top: 10px; color: #444; cursor: pointer; background: none; border: none; }
     </style>
 </head>
 <body>
@@ -53,20 +62,48 @@
 
 <div class="comment-side">
     <div class="header">
-        <button class="btn-back" onclick="location.href='games.html'">← Zurück zum Hub</button>
-        <h3 id="game-title" style="margin:0 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">Spiel-Analyse</h3>
+        <button style="background:#333; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-size:0.7rem; margin-bottom:15px;" onclick="location.href='games.html'">← HUB</button>
+        <h3 id="game-title" style="margin:0 0 15px 0; text-transform: uppercase; font-size: 1rem;">Spiel-Analyse</h3>
         
-        <select id="admin-player-select" class="player-select" style="display:none;" onchange="loadGameComments()">
-            <option value="">Spieler auswählen...</option>
-        </select>
-        <div id="player-info-view" style="font-size: 0.8rem; color: #888; font-weight: bold;"></div>
+        <div class="mode-switch">
+            <button class="mode-btn active" id="btn-mode-events" onclick="switchMode('events')">Ereignisse</button>
+            <button class="mode-btn" id="btn-mode-comments" onclick="switchMode('comments')">Indiv. Feedback</button>
+        </div>
     </div>
 
-    <div class="comment-list" id="comment-display"></div>
+    <!-- VIEW 1: SPIEL-EREIGNISSE -->
+    <div id="view-events" class="event-timeline"></div>
 
-    <div class="input-area" id="admin-input-area" style="display:none;">
-        <textarea id="com-text" placeholder="Privates Feedback... Nutze H:M:S (z.B. 0:45:12)"></textarea>
-        <button class="btn-send" onclick="sendGameComment()">Feedback senden</button>
+    <!-- VIEW 2: INDIVIDUELLE KOMMENTARE -->
+    <div id="view-comments" class="comment-list" style="display:none;">
+        <select id="admin-player-select" class="player-select" style="display:none; width:100%; margin-bottom:10px;" onchange="loadGameComments()">
+            <option value="">Spieler auswählen...</option>
+        </select>
+        <div id="comment-display-inner"></div>
+    </div>
+
+    <!-- ADMIN INPUT (Wird je nach Modus angepasst) -->
+    <div class="admin-controls" id="admin-area" style="display:none;">
+        <!-- Formular für Ereignisse -->
+        <div id="form-events">
+            <div class="admin-form-row">
+                <select id="ev-type" style="flex:1;">
+                    <option value="goal">⚽ TOR</option>
+                    <option value="penalty">🟥 STRAFE</option>
+                    <option value="pp">🔵 ÜBERZAHL (PP)</option>
+                    <option value="pk">🟠 UNTERZAHL (PK)</option>
+                </select>
+                <input type="text" id="ev-time" placeholder="H:M:S" style="width:80px;">
+            </div>
+            <textarea id="ev-desc" placeholder="Details (Wer? Was?)" style="width:100%; height:50px; margin-bottom:10px;"></textarea>
+            <button class="btn-send" onclick="sendGameEvent()">Ereignis eintragen</button>
+        </div>
+
+        <!-- Formular für Kommentare -->
+        <div id="form-comments" style="display:none;">
+            <textarea id="com-text" placeholder="Privates Feedback für den Spieler..."></textarea>
+            <button class="btn-send" onclick="sendGameComment()">Feedback senden</button>
+        </div>
     </div>
 </div>
 
@@ -77,112 +114,131 @@
 
     const gameId = new URLSearchParams(window.location.search).get('id');
     const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
-    
-    let isAdmin = false;
-    let ytPlayer = null;
-    let currentYtId = "";
-    let isVideoBlocked = false;
+    let isAdmin = false, ytPlayer = null, currentYtId = "", isVideoBlocked = false;
 
     async function init() {
         if(!gameId) return location.href='games.html';
-
         const gameDoc = await db.collection("games").doc(gameId).get();
-        const gd = gameDoc.data();
-        currentYtId = gd.ytId;
-        document.getElementById('game-title').innerText = gd.title;
+        currentYtId = gameDoc.data().ytId;
+        document.getElementById('game-title').innerText = gameDoc.data().title;
 
         const adminDoc = await db.collection("admins").doc(user.nr).get();
         if(user.nr === "22" || adminDoc.exists) {
             isAdmin = true;
+            document.getElementById('admin-area').style.display = "block";
             document.getElementById('admin-player-select').style.display = "block";
-            document.getElementById('admin-input-area').style.display = "block";
             const pSnap = await db.collection("players").get();
             pSnap.forEach(d => document.getElementById('admin-player-select').innerHTML += `<option value="${d.id}">#${d.id} ${d.data().name}</option>`);
-        } else {
-            document.getElementById('player-info-view').innerText = `Feedback für ${user.name}`;
-            loadGameComments();
         }
-
+        
+        switchMode('events'); // Standard-Modus
         onYouTubeIframeAPIReady();
     }
 
-    function onYouTubeIframeAPIReady() {
-        if(!currentYtId) return;
-        ytPlayer = new YT.Player('yt-player', {
-            videoId: currentYtId,
-            playerVars: { 'autoplay': 0, 'rel': 0, 'enablejsapi': 1 },
-            events: {
-                'onError': (e) => {
-                    if(e.data == 101 || e.data == 150) {
-                        isVideoBlocked = true;
-                        document.getElementById('block-warning').style.display = 'block';
-                    }
-                }
-            }
-        });
-    }
+    function switchMode(mode) {
+        const evView = document.getElementById('view-events');
+        const comView = document.getElementById('view-comments');
+        const evForm = document.getElementById('form-events');
+        const comForm = document.getElementById('form-comments');
 
-    // Zeitstempel aus Text in Sekunden umwandeln für Sortierung
-    function getSecondsFromText(text) {
-        const match = text.match(/(\d{1,2}):(\d{2}):(\d{2})/);
-        if(!match) return 0;
-        return (parseInt(match[1]) * 3600) + (parseInt(match[2]) * 60) + parseInt(match[3]);
-    }
+        document.getElementById('btn-mode-events').classList.toggle('active', mode === 'events');
+        document.getElementById('btn-mode-comments').classList.toggle('active', mode === 'comments');
 
-    function jumpTo(sec) {
-        if(isVideoBlocked) {
-            window.open(`https://www.youtube.com/watch?v=${currentYtId}&t=${sec}s`, '_blank');
+        if(mode === 'events') {
+            evView.style.display = 'flex'; comView.style.display = 'none';
+            if(isAdmin) { evForm.style.display = 'block'; comForm.style.display = 'none'; }
+            loadGameEvents();
         } else {
-            ytPlayer.seekTo(sec, true);
-            ytPlayer.playVideo();
+            evView.style.display = 'none'; comView.style.display = 'block';
+            if(isAdmin) { evForm.style.display = 'none'; comForm.style.display = 'block'; }
+            loadGameComments();
         }
     }
 
-    async function sendGameComment() {
-        const targetNr = document.getElementById('admin-player-select').value;
-        const text = document.getElementById('com-text').value.trim();
-        if(!targetNr || !text) return alert("Spieler und Text fehlen!");
-
-        await db.collection("game_comments").add({
-            gameId, targetNr, text, author: user.name, authorNr: user.nr, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    // --- YOUTUBE LOGIK ---
+    function onYouTubeIframeAPIReady() {
+        ytPlayer = new YT.Player('yt-player', {
+            videoId: currentYtId, playerVars: { 'autoplay': 0, 'rel': 0, 'enablejsapi': 1 },
+            events: { 'onError': (e) => { if(e.data == 101 || e.data == 150) { isVideoBlocked = true; document.getElementById('block-warning').style.display = 'block'; }}}
         });
+    }
+
+    function jumpTo(sec) {
+        if(isVideoBlocked) window.open(`https://www.youtube.com/watch?v=${currentYtId}&t=${sec}s`, '_blank');
+        else { ytPlayer.seekTo(sec, true); ytPlayer.playVideo(); }
+    }
+
+    function parseTimeToSec(t) {
+        const m = t.match(/(\d{1,2}):(\d{2}):(\d{2})/);
+        return m ? (parseInt(m[1])*3600) + (parseInt(m[2])*60) + parseInt(m[3]) : 0;
+    }
+
+    // --- SPIEL EREIGNISSE (TIMELINE) ---
+    async function sendGameEvent() {
+        const type = document.getElementById('ev-type').value;
+        const time = document.getElementById('ev-time').value;
+        const desc = document.getElementById('ev-desc').value;
+        if(!time || !desc) return alert("Zeit und Beschreibung fehlen!");
+
+        await db.collection("game_events").add({
+            gameId, type, time, desc, 
+            sec: parseTimeToSec(time),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        document.getElementById('ev-time').value = ""; document.getElementById('ev-desc').value = "";
+    }
+
+    function loadGameEvents() {
+        const display = document.getElementById('view-events');
+        db.collection("game_events").where("gameId", "==", gameId).onSnapshot(snap => {
+            display.innerHTML = "";
+            let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
+            docs.sort((a,b) => a.sec - b.sec);
+
+            const icons = { goal: "🥅", penalty: "🟥", pp: "🔵", pk: "🟠" };
+            const names = { goal: "TOR", penalty: "STRAFE", pp: "ÜBERZAHL (PP)", pk: "UNTERZAHL (PK)" };
+
+            docs.forEach(e => {
+                display.innerHTML += `
+                    <div class="event-block type-${e.type}" onclick="jumpTo(${e.sec})">
+                        <div class="event-icon">${icons[e.type]}</div>
+                        <div class="event-info">
+                            <b>${names[e.type]} <span class="event-time">${e.time}</span></b>
+                            <span>${e.desc}</span>
+                        </div>
+                        ${isAdmin ? `<button class="del-com" onclick="deleteDoc('game_events','${e.id}')">🗑</button>` : ''}
+                    </div>`;
+            });
+        });
+    }
+
+    // --- INDIVIDUELLE KOMMENTARE ---
+    async function sendGameComment() {
+        const nr = document.getElementById('admin-player-select').value;
+        const text = document.getElementById('com-text').value;
+        if(!nr || !text) return alert("Spieler und Text fehlen!");
+        await db.collection("game_comments").add({ gameId, targetNr: nr, text, author: user.name, authorNr: user.nr, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         document.getElementById('com-text').value = "";
     }
 
     function loadGameComments() {
-        const targetNr = isAdmin ? document.getElementById('admin-player-select').value : user.nr;
-        const display = document.getElementById('comment-display');
-        if(!targetNr) return display.innerHTML = "";
+        const nr = isAdmin ? document.getElementById('admin-player-select').value : user.nr;
+        const inner = document.getElementById('comment-display-inner');
+        if(!nr) return inner.innerHTML = "Wähle einen Spieler...";
 
-        db.collection("game_comments")
-          .where("gameId", "==", gameId)
-          .where("targetNr", "==", targetNr)
-          .onSnapshot(snap => {
-              display.innerHTML = "";
-              let docs = [];
-              snap.forEach(d => docs.push({id: d.id, ...d.data()}));
+        db.collection("game_comments").where("gameId", "==", gameId).where("targetNr", "==", nr).onSnapshot(snap => {
+            inner.innerHTML = "";
+            let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
+            docs.sort((a,b) => parseTimeToSec(a.text) - parseTimeToSec(b.text));
 
-              // SORTIERUNG NACH ZEITSTEMPEL (Chronologisch)
-              docs.sort((a, b) => getSecondsFromText(a.text) - getSecondsFromText(b.text));
-
-              docs.forEach(c => {
-                  const formatted = c.text.replace(/(\d{1,2}):(\d{2}):(\d{2})/g, (match, h, m, s) => {
-                      const totalSec = (parseInt(h)*3600) + (parseInt(m)*60) + parseInt(s);
-                      return `<span class="timestamp" onclick="jumpTo(${totalSec})">${match}</span>`;
-                  });
-                  const del = isAdmin ? `<button class="del-com" onclick="deleteComment('${c.id}')">🗑</button>` : '';
-                  
-                  display.innerHTML += `
-                    <div class="game-comment">
-                        <small>VON: ${c.author} (#${c.authorNr})</small>
-                        <div class="comment-text">${formatted}</div>
-                        ${del}
-                    </div>`;
-              });
-          });
+            docs.forEach(c => {
+                const formatted = c.text.replace(/(\d{1,2}):(\d{2}):(\d{2})/g, (m) => `<span class="timestamp" onclick="jumpTo(${parseTimeToSec(m)})">${m}</span>`);
+                inner.innerHTML += `<div class="game-comment"><small>VON: ${c.author}</small><div style="font-size:0.85rem;">${formatted}</div>${isAdmin?`<button class="del-com" onclick="deleteDoc('game_comments','${c.id}')">🗑</button>`:''}</div>`;
+            });
+        });
     }
 
-    async function deleteComment(id) { if(confirm("Löschen?")) await db.collection("game_comments").doc(id).delete(); }
+    async function deleteDoc(col, id) { if(confirm("Löschen?")) await db.collection(col).doc(id).delete(); }
 
     init();
 </script>
