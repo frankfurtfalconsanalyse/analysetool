@@ -35,12 +35,15 @@
         }
 
         .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #111; }
-        .comment-item { background: #1e1e1e; padding: 12px; border-radius: 8px; border-left: 4px solid var(--red); font-size: 0.85rem; color: var(--gray); }
+        .comment-item { background: #1e1e1e; padding: 12px; border-radius: 8px; border-left: 4px solid var(--red); font-size: 0.85rem; color: var(--gray); position: relative; }
         .mention { color: var(--mention) !important; font-weight: bold !important; }
         .timestamp { background: var(--mention); color: white; padding: 2px 5px; border-radius: 4px; cursor: pointer; }
 
         .input-area { padding: 10px; background: #000; border-top: 1px solid var(--border); display: flex; gap: 5px; }
         textarea { flex: 1; height: 44px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 10px; resize: none; font-size: 0.9rem; }
+        
+        .del-btn { background: none; border: none; color: #444; cursor: pointer; float: right; font-size: 1rem; }
+        .del-btn:hover { color: var(--red); }
     </style>
 </head>
 <body>
@@ -69,9 +72,13 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const params = new URLSearchParams(window.location.search), videoId = params.get('id'), type = params.get('type') || 'drive', user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
-        let playerMap = {}, currentYtId = "";
+        let playerMap = {}, currentYtId = "", isAdmin = false;
 
         async function init() {
+            // Admin Check
+            const adminDoc = await db.collection("admins").doc(user.nr || "0").get();
+            if (user.nr === "22" || adminDoc.exists) isAdmin = true;
+
             const pSnap = await db.collection("players").get();
             pSnap.forEach(doc => playerMap[doc.id] = doc.data().name);
             const frame = document.getElementById('main-frame');
@@ -94,14 +101,21 @@
         function listenForComments() {
             db.collection("comments").where("videoId", "==", videoId).onSnapshot(snap => {
                 const display = document.getElementById('comment-display'); display.innerHTML = "";
-                let docs = []; snap.forEach(d => docs.push(d.data()));
+                let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
                 docs.sort((a,b) => parseTime(a.text) - parseTime(b.text));
                 docs.forEach(c => {
                     const formatted = c.text.replace(/(\d{1,2}:\d{2}:\d{2})/g, '<span class="timestamp" onclick="jumpTo(\'$1\')">$1</span>').replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
-                    display.innerHTML += `<div class="comment-item"><small>${c.author}</small><div>${formatted}</div></div>`;
+                    const delBtn = isAdmin ? `<button class="del-btn" onclick="deleteComment('${c.id}')">🗑</button>` : '';
+                    display.innerHTML += `<div class="comment-item">${delBtn}<small>${c.author}</small><div>${formatted}</div></div>`;
                 });
                 display.scrollTop = display.scrollHeight;
             });
+        }
+
+        async function deleteComment(id) {
+            if(confirm("Kommentar löschen?")) {
+                await db.collection("comments").doc(id).delete();
+            }
         }
 
         function jumpTo(ts) { if(type === 'youtube') document.getElementById('main-frame').src = `https://www.youtube.com/embed/${currentYtId}?start=${parseTime(ts)}&autoplay=1`; }
