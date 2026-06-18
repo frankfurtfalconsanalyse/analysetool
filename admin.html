@@ -32,7 +32,6 @@
         .status-content { display: none; padding: 20px; background: #0a0a0a; border-top: 1px solid #222; }
         .player-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
         .player-tag { background: #1a1a1a; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; border: 1px solid #333; font-size: 0.8rem; }
-        .admin-badge { background: var(--red); color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 3px; font-weight: 900; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -44,29 +43,28 @@
 
 <div class="container">
     <nav class="tab-nav">
-        <button class="tab-btn active" onclick="openTab('status')">Status-Check</button>
-        <button class="tab-btn" onclick="openTab('sessions')">Sessions</button>
-        <button class="tab-btn" onclick="openTab('yt')">Clips</button>
-        <button class="tab-btn" onclick="openTab('games')">Spiele</button>
-        <button class="tab-btn" onclick="openTab('trainings')">Trainings</button>
-        <button class="tab-btn" onclick="openTab('kader')">Kader</button>
+        <button class="tab-btn active" id="tab-btn-status" onclick="openTab('status')">Status-Check</button>
+        <button class="tab-btn" id="tab-btn-sessions" onclick="openTab('sessions')">Sessions</button>
+        <button class="tab-btn" id="tab-btn-yt" onclick="openTab('yt')">Clips</button>
+        <button class="tab-btn" id="tab-btn-games" onclick="openTab('games')">Spiele</button>
+        <button class="tab-btn" id="tab-btn-trainings" onclick="openTab('trainings')">Trainings</button>
+        <button class="tab-btn" id="tab-btn-kader" onclick="openTab('kader')">Kader</button>
     </nav>
 
-    <!-- TAB: STATUS -->
     <div id="status" class="tab-content active">
         <div class="admin-card">
             <h3>Konsum prüfen</h3>
             <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap: wrap;">
-                <button class="btn-action" onclick="loadStatusData('sessions')">Sessions</button>
-                <button class="btn-action" style="background:#444" onclick="loadStatusData('clips')">Einzelclips</button>
-                <button class="btn-action" style="background:#444" onclick="loadStatusData('games')">Spiele Hub</button>
-                <button class="btn-action" style="background:#444" onclick="loadStatusData('trainings')">Trainings Hub</button>
+                <button id="mode-sessions" class="btn-action" onclick="loadStatusData('sessions')">Sessions</button>
+                <button id="mode-clips" class="btn-action" style="background:#444" onclick="loadStatusData('clips')">Einzelclips</button>
+                <button id="mode-games" class="btn-action" style="background:#444" onclick="loadStatusData('games')">Spiele Hub</button>
+                <button id="mode-trainings" class="btn-action" style="background:#444" onclick="loadStatusData('trainings')">Trainings Hub</button>
             </div>
-            <div id="status-list-container">Wähle eine Kategorie oben aus...</div>
+            <div id="status-list-container">Lade Basisdaten...</div>
         </div>
     </div>
 
-    <!-- TAB: SESSIONS -->
+    <!-- Andere Tabs bleiben inhaltsmäßig gleich -->
     <div id="sessions" class="tab-content">
         <div class="admin-card">
             <h3>Neue Session erstellen</h3>
@@ -78,7 +76,6 @@
         <div class="admin-card"><table id="session-table"><thead><tr><th>Titel</th><th>Löschen</th></tr></thead><tbody></tbody></table></div>
     </div>
 
-    <!-- TAB: YOUTUBE -->
     <div id="yt" class="tab-content">
         <div class="admin-card">
             <h3>Clip hinzufügen</h3>
@@ -92,30 +89,18 @@
         <div class="admin-card"><table id="yt-table"><thead><tr><th>Clip</th><th>Kat.</th><th>Löschen</th></tr></thead><tbody></tbody></table></div>
     </div>
 
-    <!-- TAB: GAMES -->
     <div id="games" class="tab-content">
-        <div class="admin-card">
-            <h3>Spiel hinzufügen</h3>
-            <div class="form-row"><input type="text" id="g-title" placeholder="Spiel"><input type="text" id="g-url" placeholder="Link"><input type="date" id="g-date"><button class="btn-action" onclick="addGame()">Speichern</button></div>
-        </div>
+        <div class="admin-card"><h3>Spiel hinzufügen</h3><div class="form-row"><input type="text" id="g-title" placeholder="Spiel"><input type="text" id="g-url" placeholder="Link"><input type="date" id="g-date"><button class="btn-action" onclick="addGame()">Speichern</button></div></div>
         <div class="admin-card"><table id="games-table"><tbody></tbody></table></div>
     </div>
 
-    <!-- TAB: TRAININGS -->
     <div id="trainings" class="tab-content">
-        <div class="admin-card">
-            <h3>Training hinzufügen</h3>
-            <div class="form-row"><input type="text" id="t-title" placeholder="Fokus"><input type="text" id="t-url" placeholder="Link"><input type="date" id="t-date"><button class="btn-action" onclick="addTraining()">Speichern</button></div>
-        </div>
+        <div class="admin-card"><h3>Training hinzufügen</h3><div class="form-row"><input type="text" id="t-title" placeholder="Fokus"><input type="text" id="t-url" placeholder="Link"><input type="date" id="t-date"><button class="btn-action" onclick="addTraining()">Speichern</button></div></div>
         <div class="admin-card"><table id="trainings-table"><tbody></tbody></table></div>
     </div>
 
-    <!-- TAB: KADER -->
     <div id="kader" class="tab-content">
-        <div class="admin-card">
-            <h3>Spieler hinzufügen</h3>
-            <div class="form-row"><input type="number" id="p-nr" placeholder="Nr." style="width:70px;"><input type="text" id="p-name" placeholder="Name"><button class="btn-action" onclick="addMember()">Speichern</button></div>
-        </div>
+        <div class="admin-card"><h3>Spieler hinzufügen</h3><div class="form-row"><input type="number" id="p-nr" placeholder="Nr." style="width:70px;"><input type="text" id="p-name" placeholder="Name"><button class="btn-action" onclick="addMember()">Speichern</button></div></div>
         <div class="admin-card"><table id="full-member-table"><tbody></tbody></table></div>
     </div>
 </div>
@@ -135,9 +120,10 @@
     }
 
     function openTab(id) {
-        document.querySelectorAll('.tab-content, .tab-btn').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(id).classList.add('active');
-        if(event) event.currentTarget.classList.add('active');
+        document.getElementById('tab-btn-' + id).classList.add('active');
     }
 
     async function loadBaseData() {
@@ -153,11 +139,18 @@
             ...ytSnap.docs.map(d => ({ id: d.id, title: d.data().title, type: 'YouTube' }))
         ];
         renderKader(); renderYT(ytSnap); renderGames(gSnap); renderTrainings(trSnap); renderSessions(); renderSessionSelector();
+        loadStatusData('sessions');
     }
 
-    // --- STATUS CHECK ---
     async function loadStatusData(mode) {
-        const container = document.getElementById('status-list-container'); container.innerHTML = "Lade...";
+        const container = document.getElementById('status-list-container');
+        container.innerHTML = "Lade Status...";
+
+        // Button Farben anpassen
+        ['sessions', 'clips', 'games', 'trainings'].forEach(m => {
+            document.getElementById('mode-' + m).style.background = (m === mode) ? 'var(--red)' : '#444';
+        });
+
         let collectionName = mode === 'sessions' ? 'progress' : (mode === 'clips' ? 'video_views' : (mode === 'games' ? 'game_views' : 'training_views'));
         
         const [itemsSnap, viewsSnap] = await Promise.all([
@@ -172,9 +165,9 @@
             allVideos.forEach(v => renderStatusAccordion(container, v.title, v.id, 1, viewsMap, false));
         } else {
             itemsSnap.forEach(doc => {
-                const data = doc.data();
+                const data = mode === 'clips' ? doc : doc.data();
                 const target = mode === 'sessions' ? data.videoIds.length : 1;
-                renderStatusAccordion(container, data.title, doc.id, target, viewsMap, mode === 'sessions');
+                renderStatusAccordion(container, data.title, doc.id || data.id, target, viewsMap, mode === 'sessions');
             });
         }
     }
@@ -183,7 +176,7 @@
         let watched = [], open = [];
         allPlayers.forEach(p => {
             let val = (viewsMap[p.id] && viewsMap[p.id][id]) ? viewsMap[p.id][id] : 0;
-            let done = isSession ? val >= target : val === true || val === 1;
+            let done = isSession ? val >= target : (val === true || val === 1);
             const html = `<div class="player-tag">#${p.id} ${p.name} <span>${done?'✅':'❌'} ${isSession?`(${val}/${target})`:''}</span></div>`;
             if(done) watched.push(html); else open.push(html);
         });
@@ -193,56 +186,19 @@
         container.appendChild(div);
     }
 
-    // --- RENDER & SAVE ---
-    function renderKader() {
-        const tbody = document.querySelector("#full-member-table"); tbody.innerHTML = "";
-        allPlayers.sort((a,b)=>a.id-b.id).forEach(p => tbody.innerHTML += `<tr><td>#${p.id}</td><td>${p.name}</td><td style="text-align:right;"><button class="btn-action" style="background:#444; margin-right:5px;" onclick="resetPin('${p.id}')">PIN Reset</button><button class="delete-btn" onclick="deleteDoc('players','${p.id}')">🗑</button></td></tr>`);
-    }
-    function renderYT(snap) {
-        const tbody = document.querySelector("#yt-table tbody"); tbody.innerHTML = "";
-        snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td>${d.data().category}</td><td><button class="delete-btn" onclick="deleteDoc('youtube_clips','${d.id}')">🗑</button></td></tr>`);
-    }
-    function renderGames(snap) {
-        const tbody = document.querySelector("#games-table"); tbody.innerHTML = "";
-        snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td>${d.data().date}</td><td><button class="delete-btn" onclick="deleteDoc('games','${d.id}')">🗑</button></td></tr>`);
-    }
-    function renderTrainings(snap) {
-        const tbody = document.querySelector("#trainings-table"); tbody.innerHTML = "";
-        snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td>${d.data().date}</td><td><button class="delete-btn" onclick="deleteDoc('trainings','${d.id}')">🗑</button></td></tr>`);
-    }
-    async function renderSessions() {
-        const snap = await db.collection("sessions").orderBy("createdAt", "desc").get();
-        const tbody = document.querySelector("#session-table tbody"); tbody.innerHTML = "";
-        snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td><button class="delete-btn" onclick="deleteDoc('sessions','${d.id}')">🗑</button></td></tr>`);
-    }
-    function renderSessionSelector() {
-        const list = document.getElementById('s-video-list'); list.innerHTML = "";
-        allVideos.forEach(v => list.innerHTML += `<div><input type="checkbox" onchange="toggleSelect('${v.id}')"> [${v.type}] ${v.title}</div>`);
-    }
+    // Rest der Funktionen (Hinzufügen, Löschen, Kader) bleibt wie gehabt
+    function renderKader() { const tbody = document.querySelector("#full-member-table"); tbody.innerHTML = ""; allPlayers.sort((a,b)=>a.id-b.id).forEach(p => tbody.innerHTML += `<tr><td>#${p.id}</td><td>${p.name}</td><td style="text-align:right;"><button class="btn-action" style="background:#444; margin-right:5px;" onclick="resetPin('${p.id}')">PIN Reset</button><button class="delete-btn" onclick="deleteDoc('players','${p.id}')">🗑</button></td></tr>`); }
+    function renderYT(snap) { const tbody = document.querySelector("#yt-table tbody"); tbody.innerHTML = ""; snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td>${d.data().category}</td><td><button class="delete-btn" onclick="deleteDoc('youtube_clips','${d.id}')">🗑</button></td></tr>`); }
+    function renderGames(snap) { const tbody = document.querySelector("#games-table"); tbody.innerHTML = ""; snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td>${d.data().date}</td><td><button class="delete-btn" onclick="deleteDoc('games','${d.id}')">🗑</button></td></tr>`); }
+    function renderTrainings(snap) { const tbody = document.querySelector("#trainings-table"); tbody.innerHTML = ""; snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td>${d.data().date}</td><td><button class="delete-btn" onclick="deleteDoc('trainings','${d.id}')">🗑</button></td></tr>`); }
+    async function renderSessions() { const snap = await db.collection("sessions").orderBy("createdAt", "desc").get(); const tbody = document.querySelector("#session-table tbody"); tbody.innerHTML = ""; snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td><button class="delete-btn" onclick="deleteDoc('sessions','${d.id}')">🗑</button></td></tr>`); }
+    function renderSessionSelector() { const list = document.getElementById('s-video-list'); list.innerHTML = ""; allVideos.forEach(v => list.innerHTML += `<div><input type="checkbox" onchange="toggleSelect('${v.id}')"> [${v.type}] ${v.title}</div>`); }
     function toggleSelect(id) { const i = selectedForSession.indexOf(id); if(i>-1) selectedForSession.splice(i,1); else selectedForSession.push(id); }
-    async function saveSession() {
-        await db.collection("sessions").add({ title: document.getElementById('s-title').value, description: document.getElementById('s-desc').value, videoIds: selectedForSession, createdAt: new Date() });
-        location.reload();
-    }
-    async function addYT() {
-        const u = document.getElementById('yt-url').value; const ytId = u.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1];
-        await db.collection("youtube_clips").add({ title: document.getElementById('yt-title').value, ytId, category: document.getElementById('yt-cat-in').value, createdAt: new Date() });
-        location.reload();
-    }
-    async function addGame() {
-        const u = document.getElementById('g-url').value; const ytId = u.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1];
-        await db.collection("games").add({ title: document.getElementById('g-title').value, ytId, date: document.getElementById('g-date').value, createdAt: new Date() });
-        location.reload();
-    }
-    async function addTraining() {
-        const u = document.getElementById('t-url').value; const ytId = u.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1];
-        await db.collection("trainings").add({ title: document.getElementById('t-title').value, ytId, date: document.getElementById('t-date').value, createdAt: new Date() });
-        location.reload();
-    }
-    async function addMember() {
-        let nr = document.getElementById('p-nr').value; if(nr.length===1) nr="0"+nr;
-        await db.collection("players").doc(nr).set({ name: document.getElementById('p-name').value, nr }); location.reload();
-    }
+    async function saveSession() { await db.collection("sessions").add({ title: document.getElementById('s-title').value, description: document.getElementById('s-desc').value, videoIds: selectedForSession, createdAt: new Date() }); location.reload(); }
+    async function addYT() { const u = document.getElementById('yt-url').value; const ytId = u.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1]; await db.collection("youtube_clips").add({ title: document.getElementById('yt-title').value, ytId, category: document.getElementById('yt-cat-in').value, createdAt: new Date() }); location.reload(); }
+    async function addGame() { const u = document.getElementById('g-url').value; const ytId = u.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1]; await db.collection("games").add({ title: document.getElementById('g-title').value, ytId, date: document.getElementById('g-date').value, createdAt: new Date() }); location.reload(); }
+    async function addTraining() { const u = document.getElementById('t-url').value; const ytId = u.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1]; await db.collection("trainings").add({ title: document.getElementById('t-title').value, ytId, date: document.getElementById('t-date').value, createdAt: new Date() }); location.reload(); }
+    async function addMember() { let nr = document.getElementById('p-nr').value; if(nr.length===1) nr="0"+nr; await db.collection("players").doc(nr).set({ name: document.getElementById('p-name').value, nr }); location.reload(); }
     async function resetPin(id) { if(confirm("PIN zurücksetzen?")) { await db.collection("players").doc(id).update({ pin: firebase.firestore.FieldValue.delete() }); alert("PIN gelöscht."); } }
     async function deleteDoc(col, id) { if(confirm("Löschen?")) { await db.collection(col).doc(id).delete(); location.reload(); } }
     
