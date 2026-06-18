@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8"><title>Falcons | Training Hub Viewer</title>
+    <meta charset="UTF-8"><title>Falcons | Training Viewer</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
         :root { --red: #e30613; --bg: #0d0d0d; --panel: #161616; --blue: #3498db; --purple: #9b59b6; }
         body { font-family: 'Montserrat'; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        .video-side { flex: 2.5; background: #000; position: relative; display: flex; flex-direction: column; }
+        .video-side { flex: 2.5; background: #000; position: relative; }
         #yt-player { width: 100%; height: 100%; border: none; }
         .comment-side { flex: 1; min-width: 380px; background: var(--panel); border-left: 2px solid #333; display: flex; flex-direction: column; }
         .header { padding: 15px; border-bottom: 1px solid #333; background: #000; }
@@ -17,7 +17,6 @@
         .mode-btn.active { background: var(--red); color: white; }
         .event-timeline, .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .event-block { display: flex; align-items: center; gap: 15px; padding: 12px; border-radius: 8px; cursor: pointer; border-left: 5px solid var(--purple); background: rgba(155, 89, 182, 0.1); }
-        .event-info b { display: block; font-size: 0.85rem; text-transform: uppercase; }
         .timestamp { background: var(--blue); color: white; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.75rem; }
         .admin-controls { padding: 15px; background: #000; border-top: 2px solid #333; }
         select, input, textarea { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; font-family: inherit; font-size: 0.8rem; width: 100%; box-sizing: border-box; }
@@ -45,15 +44,8 @@
     </div>
 
     <div class="admin-controls" id="admin-area" style="display:none;">
-        <div id="form-events">
-            <input type="text" id="ev-time" placeholder="Startzeit H:M:S" style="margin-bottom:10px;">
-            <textarea id="ev-desc" placeholder="Name der Übung / Fokus..."></textarea>
-            <button class="btn-send" onclick="sendTrainingEvent()">Übung speichern</button>
-        </div>
-        <div id="form-comments" style="display:none;">
-            <textarea id="com-text" placeholder="Privates Feedback zum Training..."></textarea>
-            <button class="btn-send" onclick="sendTrainingComment()">Feedback senden</button>
-        </div>
+        <div id="form-events"><input type="text" id="ev-time" placeholder="Startzeit H:M:S" style="margin-bottom:10px;"><textarea id="ev-desc" placeholder="Name der Übung..."></textarea><button class="btn-send" onclick="sendTrainingEvent()">Übung speichern</button></div>
+        <div id="form-comments" style="display:none;"><textarea id="com-text" placeholder="Privates Feedback..."></textarea><button class="btn-send" onclick="sendTrainingComment()">Feedback senden</button></div>
     </div>
 </div>
 
@@ -70,8 +62,8 @@
         currentYtId = trDoc.data().ytId;
         document.getElementById('training-title').innerText = trDoc.data().title;
         
-        // --- TRACKER: Dokumentiert, dass Video gesehen wurde ---
-        db.collection("training_views").doc(user.nr).set({ [trainingId]: true }, { merge: true });
+        // --- TRACKER FIX: Speichert gesehene Trainings ---
+        if(user.nr) await db.collection("training_views").doc(user.nr).set({ [trainingId]: true }, { merge: true });
 
         const adminDoc = await db.collection("admins").doc(user.nr).get();
         if(user.nr === "22" || adminDoc.exists) {
@@ -84,19 +76,14 @@
         switchMode('events');
     }
 
-    window.onYouTubeIframeAPIReady = () => {
-        ytPlayer = new YT.Player('yt-player', { videoId: currentYtId, playerVars: { 'enablejsapi': 1, 'origin': window.location.origin } });
-    };
+    window.onYouTubeIframeAPIReady = () => { ytPlayer = new YT.Player('yt-player', { videoId: currentYtId, playerVars: { 'enablejsapi': 1, 'origin': window.location.origin } }); };
 
     function switchMode(mode) {
         document.getElementById('view-events').style.display = mode === 'events' ? 'flex' : 'none';
         document.getElementById('view-comments').style.display = mode === 'comments' ? 'flex' : 'none';
         document.getElementById('btn-mode-events').classList.toggle('active', mode === 'events');
         document.getElementById('btn-mode-comments').classList.toggle('active', mode === 'comments');
-        if(isAdmin) {
-            document.getElementById('form-events').style.display = mode === 'events' ? 'block' : 'none';
-            document.getElementById('form-comments').style.display = mode === 'comments' ? 'block' : 'none';
-        }
+        if(isAdmin) { document.getElementById('form-events').style.display = mode === 'events' ? 'block' : 'none'; document.getElementById('form-comments').style.display = mode === 'comments' ? 'block' : 'none'; }
         if(mode === 'events') loadTrainingEvents(); else loadTrainingComments();
     }
 
@@ -114,9 +101,7 @@
             const display = document.getElementById('view-events'); display.innerHTML = "";
             let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
             docs.sort((a,b) => a.sec - b.sec);
-            docs.forEach(e => {
-                display.innerHTML += `<div class="event-block" onclick="jumpTo(${e.sec})"><div style="flex:1"><b>ÜBUNG <span class="timestamp" style="background:#444">${e.time}</span></b><span>${e.desc}</span></div>${isAdmin?`<button style="background:none;border:none;color:#444;" onclick="deleteDoc('training_events','${e.id}')">🗑</button>`:''}</div>`;
-            });
+            docs.forEach(e => { display.innerHTML += `<div class="event-block" onclick="jumpTo(${e.sec})"><div style="flex:1"><b>ÜBUNG <span class="timestamp" style="background:#444">${e.time}</span></b><span>${e.desc}</span></div>${isAdmin?`<button style="background:none;border:none;color:#444;" onclick="deleteDoc('training_events','${e.id}')">🗑</button>`:''}</div>`; });
         });
     }
 
