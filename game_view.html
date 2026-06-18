@@ -8,7 +8,7 @@
     <style>
         :root { --red: #e30613; --bg: #0d0d0d; --panel: #161616; --blue: #3498db; --orange: #e67e22; --gray: #555; --purple: #9b59b6; }
         body { font-family: 'Montserrat'; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        .video-side { flex: 2.5; background: #000; position: relative; display: flex; flex-direction: column; }
+        .video-side { flex: 2.5; background: #000; position: relative; }
         #yt-player { width: 100%; height: 100%; border: none; }
         .comment-side { flex: 1; min-width: 380px; background: var(--panel); border-left: 2px solid #333; display: flex; flex-direction: column; }
         .header { padding: 15px; border-bottom: 1px solid #333; background: #000; }
@@ -25,12 +25,10 @@
         .type-pp { border-left: 5px solid var(--blue); background: rgba(52, 152, 219, 0.1); }
         .type-pk { border-left: 5px solid var(--orange); background: rgba(230, 126, 34, 0.1); }
         .type-other { border-left: 5px solid var(--purple); background: rgba(155, 89, 182, 0.1); }
-        .game-comment { background: #1e1e1e; padding: 15px; border-radius: 10px; border-left: 4px solid var(--red); position: relative; }
         .timestamp { background: var(--blue); color: white; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.75rem; }
         .admin-controls { padding: 15px; background: #000; border-top: 2px solid #333; }
         select, input, textarea { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; font-family: inherit; font-size: 0.8rem; width: 100%; box-sizing: border-box; }
         .btn-send { background: var(--red); color: white; border: none; width: 100%; padding: 12px; border-radius: 5px; font-weight: 900; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
-        .del-btn { position: absolute; right: 10px; top: 10px; background: none; border: none; color: #444; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -62,10 +60,7 @@
             <textarea id="ev-desc" placeholder="Details..."></textarea>
             <button class="btn-send" onclick="sendGameEvent()">Ereignis speichern</button>
         </div>
-        <div id="form-comments" style="display:none;">
-            <textarea id="com-text" placeholder="Privates Feedback (H:M:S nutzen)..."></textarea>
-            <button class="btn-send" onclick="sendGameComment()">Feedback senden</button>
-        </div>
+        <div id="form-comments" style="display:none;"><textarea id="com-text" placeholder="Privates Feedback (H:M:S nutzen)..."></textarea><button class="btn-send" onclick="sendGameComment()">Feedback senden</button></div>
     </div>
 </div>
 
@@ -82,8 +77,8 @@
         currentYtId = gameDoc.data().ytId;
         document.getElementById('game-title').innerText = gameDoc.data().title;
         
-        // --- TRACKER: Dokumentiert, dass Video gesehen wurde ---
-        db.collection("game_views").doc(user.nr).set({ [gameId]: true }, { merge: true });
+        // --- TRACKER FIX: Speichert gesehene Spiele ---
+        if(user.nr) await db.collection("game_views").doc(user.nr).set({ [gameId]: true }, { merge: true });
 
         const adminDoc = await db.collection("admins").doc(user.nr).get();
         if(user.nr === "22" || adminDoc.exists) {
@@ -96,19 +91,14 @@
         switchMode('events');
     }
 
-    window.onYouTubeIframeAPIReady = () => {
-        ytPlayer = new YT.Player('yt-player', { videoId: currentYtId, playerVars: { 'enablejsapi': 1, 'origin': window.location.origin } });
-    };
+    window.onYouTubeIframeAPIReady = () => { ytPlayer = new YT.Player('yt-player', { videoId: currentYtId, playerVars: { 'enablejsapi': 1, 'origin': window.location.origin } }); };
 
     function switchMode(mode) {
         document.getElementById('view-events').style.display = mode === 'events' ? 'flex' : 'none';
         document.getElementById('view-comments').style.display = mode === 'comments' ? 'flex' : 'none';
         document.getElementById('btn-mode-events').classList.toggle('active', mode === 'events');
         document.getElementById('btn-mode-comments').classList.toggle('active', mode === 'comments');
-        if(isAdmin) {
-            document.getElementById('form-events').style.display = mode === 'events' ? 'block' : 'none';
-            document.getElementById('form-comments').style.display = mode === 'comments' ? 'block' : 'none';
-        }
+        if(isAdmin) { document.getElementById('form-events').style.display = mode === 'events' ? 'block' : 'none'; document.getElementById('form-comments').style.display = mode === 'comments' ? 'block' : 'none'; }
         if(mode === 'events') loadGameEvents(); else loadGameComments();
     }
 
@@ -127,9 +117,7 @@
             let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
             docs.sort((a,b) => a.sec - b.sec);
             const icons = { goal: "🦅", conceded: "🥅", pp: "🔵", pk: "🟠", other: "⚙️" }, names = { goal: "FALCONS TOR", conceded: "GEGENTOR", pp: "ÜBERZAHL", pk: "UNTERZAHL", other: "SONSTIGES" };
-            docs.forEach(e => {
-                display.innerHTML += `<div class="event-block type-${e.type}" onclick="jumpTo(${e.sec})"><div style="font-size:1.2rem;">${icons[e.type]}</div><div style="flex:1"><b>${names[e.type]} <span class="event-time">${e.time}</span></b><span>${e.desc}</span></div>${isAdmin?`<button class="del-btn" onclick="deleteDoc('game_events','${e.id}')">🗑</button>`:''}</div>`;
-            });
+            docs.forEach(e => { display.innerHTML += `<div class="event-block type-${e.type}" onclick="jumpTo(${e.sec})"><div style="font-size:1.2rem;">${icons[e.type]}</div><div style="flex:1"><b>${names[e.type]} <span class="event-time">${e.time}</span></b><span>${e.desc}</span></div>${isAdmin?`<button style="background:none; border:none; color:#444; cursor:pointer;" onclick="deleteDoc('game_events','${e.id}')">🗑</button>`:''}</div>`; });
         });
     }
 
@@ -149,7 +137,7 @@
             docs.sort((a,b) => parseTimeToSec(a.text) - parseTimeToSec(b.text));
             docs.forEach(c => {
                 const formatted = c.text.replace(/(\d{1,2}):(\d{2}):(\d{2})/g, (m) => `<span class="timestamp" onclick="jumpTo(${parseTimeToSec(m)})">${m}</span>`);
-                inner.innerHTML += `<div class="game-comment"><small>VON: ${c.author}</small><div>${formatted}</div>${isAdmin?`<button class="del-btn" onclick="deleteDoc('game_comments','${c.id}')">🗑</button>`:''}</div>`;
+                inner.innerHTML += `<div style="background:#1e1e1e; padding:15px; border-radius:10px; border-left:4px solid var(--red); margin-bottom:10px;"><small>VON: ${c.author}</small><div>${formatted}</div>${isAdmin?`<button style="background:none; border:none; color:#444; cursor:pointer;" onclick="deleteDoc('game_comments','${c.id}')">🗑</button>`:''}</div>`;
             });
         });
     }
