@@ -41,7 +41,8 @@
 
         /* STATUS CHECK ACCORDION */
         .status-row { background: #111; margin-bottom: 10px; border-radius: 8px; border: 1px solid #222; overflow: hidden; }
-        .status-header { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .status-header { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .status-header:hover { background: #1a1a1a; }
         .status-content { display: none; padding: 20px; background: #0a0a0a; border-top: 1px solid #222; }
         .player-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
         .player-tag { background: #1a1a1a; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; border: 1px solid #333; font-size: 0.8rem; }
@@ -81,7 +82,7 @@
         <div class="admin-card">
             <h3>Video-Konsum prüfen</h3>
             <div style="display:flex; gap:10px; margin-bottom:20px;">
-                <button class="btn-action" onclick="loadStatusData('sessions')">Sessions</button>
+                <button class="btn-action" onclick="loadStatusData('sessions')">Sessions laden</button>
             </div>
             <div id="status-list-container">Wähle einen Modus...</div>
         </div>
@@ -199,6 +200,46 @@
         renderTrainings(trSnap);
         renderSessions();
         renderSessionSelector();
+        loadStatusData('sessions');
+    }
+
+    // --- STATUS CHECK LOGIK ---
+    async function loadStatusData(mode) {
+        const container = document.getElementById('status-list-container'); container.innerHTML = "Lade Status...";
+        const [sSnap, progSnap] = await Promise.all([db.collection("sessions").get(), db.collection("progress").get()]);
+        
+        let progress = {}; progSnap.forEach(d => progress[d.id] = d.data());
+        container.innerHTML = "";
+        
+        if(mode === 'sessions') {
+            sSnap.forEach(doc => {
+                const s = doc.data();
+                renderStatusAccordion(container, s.title, doc.id, s.videoIds.length, progress);
+            });
+        }
+    }
+
+    function renderStatusAccordion(container, title, id, target, progressMap) {
+        let watched = [], open = [];
+        allPlayers.forEach(p => {
+            let seenCount = (progressMap[p.id] && progressMap[p.id][id]) ? progressMap[p.id][id] : 0;
+            let isDone = seenCount >= target;
+            const html = `<div class="player-tag">#${p.id} ${p.name} <span>${isDone?'✅':'❌'} (${seenCount}/${target})</span></div>`;
+            if(isDone) watched.push(html); else open.push(html);
+        });
+
+        const div = document.createElement('div'); div.className = 'status-row';
+        div.innerHTML = `
+            <div class="status-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display==='block'?'none':'block'">
+                <span>${title}</span><span>${watched.length}/${allPlayers.length} Gesehen ▼</span>
+            </div>
+            <div class="status-content">
+                <p style="color:var(--green); font-size:0.7rem;">GESEHEN</p>
+                <div class="player-status-grid">${watched.join('')}</div>
+                <p style="color:var(--red); font-size:0.7rem; margin-top:15px;">OFFEN</p>
+                <div class="player-status-grid">${open.join('')}</div>
+            </div>`;
+        container.appendChild(div);
     }
 
     function renderKader(admins) {
