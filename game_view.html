@@ -1,103 +1,69 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8"><title>Falcons | Pro Game Analysis</title>
+    <meta charset="UTF-8"><title>Falcons | Game Hub Viewer</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
         :root { --red: #e30613; --bg: #0d0d0d; --panel: #161616; --blue: #3498db; --orange: #e67e22; --gray: #555; --purple: #9b59b6; }
         body { font-family: 'Montserrat'; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        
-        /* VIDEO BEREICH */
         .video-side { flex: 2.5; background: #000; position: relative; display: flex; flex-direction: column; }
         #yt-player { width: 100%; height: 100%; border: none; }
-        #block-warning { display: none; background: #d35400; color: white; padding: 10px; text-align: center; font-weight: bold; font-size: 0.8rem; }
-
-        /* SEITENLEISTE */
         .comment-side { flex: 1; min-width: 380px; background: var(--panel); border-left: 2px solid #333; display: flex; flex-direction: column; }
         .header { padding: 15px; border-bottom: 1px solid #333; background: #000; }
-        
         .mode-switch { display: flex; background: #222; border-radius: 50px; padding: 5px; margin-bottom: 15px; border: 1px solid #444; }
         .mode-btn { flex: 1; padding: 10px; border: none; background: none; color: #777; cursor: pointer; border-radius: 50px; font-weight: 900; font-size: 0.65rem; text-transform: uppercase; transition: 0.3s; }
         .mode-btn.active { background: var(--red); color: white; }
-
-        /* TIMELINE BLÖCKE */
-        .event-timeline { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #0a0a0a; }
-        .event-block { display: flex; align-items: center; gap: 15px; padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.05); position: relative; }
+        .event-timeline, .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .event-block { display: flex; align-items: center; gap: 15px; padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.05); }
         .event-block:hover { transform: scale(1.02); filter: brightness(1.2); }
-        .event-icon { font-size: 1.2rem; min-width: 30px; text-align: center; }
-        .event-info { flex: 1; }
         .event-info b { display: block; font-size: 0.85rem; text-transform: uppercase; }
-        .event-info span { font-size: 0.75rem; color: #aaa; }
         .event-time { font-family: monospace; font-weight: bold; color: var(--blue); background: rgba(52, 152, 219, 0.1); padding: 2px 6px; border-radius: 4px; }
-
-        /* FARBEN DER BEREICHE */
-        .type-goal { border-left: 5px solid var(--red); background: rgba(227, 6, 19, 0.1); } /* Falcons Tor = ROT */
-        .type-conceded { border-left: 5px solid var(--gray); background: rgba(85, 85, 85, 0.1); } /* Gegentor = GRAU */
+        .type-goal { border-left: 5px solid var(--red); background: rgba(227, 6, 19, 0.1); }
+        .type-conceded { border-left: 5px solid var(--gray); background: rgba(85, 85, 85, 0.1); }
         .type-pp { border-left: 5px solid var(--blue); background: rgba(52, 152, 219, 0.1); }
         .type-pk { border-left: 5px solid var(--orange); background: rgba(230, 126, 34, 0.1); }
         .type-other { border-left: 5px solid var(--purple); background: rgba(155, 89, 182, 0.1); }
-
-        .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: none; flex-direction: column; gap: 12px; }
-        .game-comment { background: #1e1e1e; padding: 15px; border-radius: 10px; border-left: 4px solid var(--red); position: relative; margin-bottom: 10px; }
+        .game-comment { background: #1e1e1e; padding: 15px; border-radius: 10px; border-left: 4px solid var(--red); position: relative; }
         .timestamp { background: var(--blue); color: white; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.75rem; }
-
         .admin-controls { padding: 15px; background: #000; border-top: 2px solid #333; }
-        .admin-form-row { display: flex; gap: 5px; margin-bottom: 10px; }
-        select, input, textarea { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; font-family: inherit; font-size: 0.8rem; }
-        .btn-send { background: var(--red); color: white; border: none; width: 100%; padding: 12px; border-radius: 5px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
-        .del-com { position: absolute; right: 10px; top: 10px; color: #444; cursor: pointer; background: none; border: none; }
+        select, input, textarea { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; font-family: inherit; font-size: 0.8rem; width: 100%; box-sizing: border-box; }
+        .btn-send { background: var(--red); color: white; border: none; width: 100%; padding: 12px; border-radius: 5px; font-weight: 900; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
+        .del-btn { position: absolute; right: 10px; top: 10px; background: none; border: none; color: #444; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="video-side">
-    <div id="block-warning">⚠️ Einbetten deaktiviert. Zeitstempel öffnen YouTube im neuen Tab.</div>
-    <div id="yt-player"></div>
-</div>
+<div class="video-side"><div id="yt-player"></div></div>
 
 <div class="comment-side">
     <div class="header">
         <button style="background:#333; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-size:0.7rem; margin-bottom:15px;" onclick="location.href='games.html'">← HUB</button>
         <h3 id="game-title" style="margin:0 0 15px 0; text-transform: uppercase; font-size: 1rem;">Spiel-Analyse</h3>
-        
         <div class="mode-switch">
             <button class="mode-btn active" id="btn-mode-events" onclick="switchMode('events')">Ereignisse</button>
-            <button class="mode-btn" id="btn-mode-comments" onclick="switchMode('comments')">Indiv. Feedback</button>
+            <button class="mode-btn" id="btn-mode-comments" onclick="switchMode('comments')">Feedback</button>
         </div>
     </div>
 
-    <!-- VIEW 1: SPIEL-EREIGNISSE -->
     <div id="view-events" class="event-timeline"></div>
-
-    <!-- VIEW 2: INDIVIDUELLE KOMMENTARE -->
-    <div id="view-comments" class="comment-list">
-        <select id="admin-player-select" class="player-select" style="display:none; width:100%; margin-bottom:10px;" onchange="loadGameComments()">
-            <option value="">Spieler auswählen...</option>
-        </select>
+    <div id="view-comments" class="comment-list" style="display:none;">
+        <select id="admin-player-select" style="display:none; margin-bottom:10px;" onchange="loadGameComments()"><option value="">Spieler wählen...</option></select>
         <div id="comment-display-inner"></div>
     </div>
 
-    <!-- ADMIN BEREICH -->
     <div class="admin-controls" id="admin-area" style="display:none;">
         <div id="form-events">
-            <div class="admin-form-row">
-                <select id="ev-type" style="flex:1;">
-                    <option value="goal">🦅 FALCONS TOR</option>
-                    <option value="conceded">🥅 GEGENTOR</option>
-                    <option value="pp">🔵 ÜBERZAHL (PP)</option>
-                    <option value="pk">🟠 UNTERZAHL (PK)</option>
-                    <option value="other">⚙️ SONSTIGES</option>
-                </select>
-                <input type="text" id="ev-time" placeholder="H:M:S">
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <select id="ev-type"><option value="goal">🦅 FALCONS TOR</option><option value="conceded">🥅 GEGENTOR</option><option value="pp">🔵 ÜBERZAHL</option><option value="pk">🟠 UNTERZAHL</option><option value="other">⚙️ SONSTIGES</option></select>
+                <input type="text" id="ev-time" placeholder="H:M:S" style="width:100px;">
             </div>
-            <textarea id="ev-desc" placeholder="Details (Spieler, Art des Tores etc.)..." style="width:100%; height:50px; margin-bottom:10px;"></textarea>
+            <textarea id="ev-desc" placeholder="Details..."></textarea>
             <button class="btn-send" onclick="sendGameEvent()">Ereignis speichern</button>
         </div>
-
         <div id="form-comments" style="display:none;">
-            <textarea id="com-text" placeholder="Privates Feedback (H:M:S nutzen)..." style="width:100%; height:50px; margin-bottom:10px;"></textarea>
+            <textarea id="com-text" placeholder="Privates Feedback (H:M:S nutzen)..."></textarea>
             <button class="btn-send" onclick="sendGameComment()">Feedback senden</button>
         </div>
     </div>
@@ -107,42 +73,31 @@
     const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-
-    const gameId = new URLSearchParams(window.location.search).get('id');
-    const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
-    let isAdmin = false, ytPlayer = null, currentYtId = "", isVideoBlocked = false;
+    const gameId = new URLSearchParams(window.location.search).get('id'), user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
+    let isAdmin = false, ytPlayer = null, currentYtId = "";
 
     async function init() {
         if(!gameId) return location.href='games.html';
         const gameDoc = await db.collection("games").doc(gameId).get();
-        if(!gameDoc.exists) return;
-        
         currentYtId = gameDoc.data().ytId;
         document.getElementById('game-title').innerText = gameDoc.data().title;
+        
+        // --- TRACKER: Dokumentiert, dass Video gesehen wurde ---
+        db.collection("game_views").doc(user.nr).set({ [gameId]: true }, { merge: true });
 
         const adminDoc = await db.collection("admins").doc(user.nr).get();
         if(user.nr === "22" || adminDoc.exists) {
-            isAdmin = true;
-            document.getElementById('admin-area').style.display = "block";
+            isAdmin = true; document.getElementById('admin-area').style.display = "block";
             document.getElementById('admin-player-select').style.display = "block";
             const pSnap = await db.collection("players").get();
             pSnap.forEach(d => document.getElementById('admin-player-select').innerHTML += `<option value="${d.id}">#${d.id} ${d.data().name}</option>`);
         }
-        
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
-
+        const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(tag);
         switchMode('events');
     }
 
-    window.onYouTubeIframeAPIReady = function() {
-        if(!currentYtId) return;
-        ytPlayer = new YT.Player('yt-player', {
-            videoId: currentYtId,
-            playerVars: { 'autoplay': 0, 'rel': 0, 'enablejsapi': 1, 'origin': window.location.origin },
-            events: { 'onError': (e) => { if(e.data == 101 || e.data == 150) { isVideoBlocked = true; document.getElementById('block-warning').style.display = 'block'; } } }
-        });
+    window.onYouTubeIframeAPIReady = () => {
+        ytPlayer = new YT.Player('yt-player', { videoId: currentYtId, playerVars: { 'enablejsapi': 1, 'origin': window.location.origin } });
     };
 
     function switchMode(mode) {
@@ -154,55 +109,33 @@
             document.getElementById('form-events').style.display = mode === 'events' ? 'block' : 'none';
             document.getElementById('form-comments').style.display = mode === 'comments' ? 'block' : 'none';
         }
-        if(mode === 'events') loadGameEvents();
-        else loadGameComments();
+        if(mode === 'events') loadGameEvents(); else loadGameComments();
     }
 
-    function jumpTo(sec) {
-        if(isVideoBlocked) window.open(`https://www.youtube.com/watch?v=${currentYtId}&t=${sec}s`, '_blank');
-        else { ytPlayer.seekTo(sec, true); ytPlayer.playVideo(); }
-    }
-
-    function parseTimeToSec(t) {
-        const m = t.match(/(\d{1,2}):(\d{2}):(\d{2})/);
-        return m ? (parseInt(m[1])*3600) + (parseInt(m[2])*60) + parseInt(m[3]) : 0;
-    }
+    function jumpTo(sec) { ytPlayer.seekTo(sec, true); ytPlayer.playVideo(); }
+    function parseTimeToSec(t) { const m = t.match(/(\d{1,2}):(\d{2}):(\d{2})/); return m ? (parseInt(m[1])*3600) + (parseInt(m[2])*60) + parseInt(m[3]) : 0; }
 
     async function sendGameEvent() {
-        const type = document.getElementById('ev-type').value;
-        const time = document.getElementById('ev-time').value;
-        const desc = document.getElementById('ev-desc').value;
-        if(!time || !desc) return alert("Zeit und Info fehlen!");
+        const type = document.getElementById('ev-type').value, time = document.getElementById('ev-time').value, desc = document.getElementById('ev-desc').value;
         await db.collection("game_events").add({ gameId, type, time, desc, sec: parseTimeToSec(time), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         document.getElementById('ev-time').value = ""; document.getElementById('ev-desc').value = "";
     }
 
     function loadGameEvents() {
         db.collection("game_events").where("gameId", "==", gameId).onSnapshot(snap => {
-            const display = document.getElementById('view-events');
-            display.innerHTML = "";
+            const display = document.getElementById('view-events'); display.innerHTML = "";
             let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
             docs.sort((a,b) => a.sec - b.sec);
-
-            // Zuordnung Icons & Namen
-            const icons = { goal: "🦅", conceded: "🥅", pp: "🔵", pk: "🟠", other: "⚙️" };
-            const names = { goal: "FALCONS TOR", conceded: "GEGENTOR", pp: "ÜBERZAHL (PP)", pk: "UNTERZAHL (PK)", other: "SONSTIGES" };
-
+            const icons = { goal: "🦅", conceded: "🥅", pp: "🔵", pk: "🟠", other: "⚙️" }, names = { goal: "FALCONS TOR", conceded: "GEGENTOR", pp: "ÜBERZAHL", pk: "UNTERZAHL", other: "SONSTIGES" };
             docs.forEach(e => {
-                display.innerHTML += `<div class="event-block type-${e.type}" onclick="jumpTo(${e.sec})">
-                    <div class="event-icon">${icons[e.type]}</div>
-                    <div class="event-info"><b>${names[e.type]} <span class="event-time">${e.time}</span></b><span>${e.desc}</span></div>
-                    ${isAdmin ? `<button class="del-com" onclick="deleteDoc('game_events','${e.id}')">🗑</button>` : ''}
-                </div>`;
+                display.innerHTML += `<div class="event-block type-${e.type}" onclick="jumpTo(${e.sec})"><div style="font-size:1.2rem;">${icons[e.type]}</div><div style="flex:1"><b>${names[e.type]} <span class="event-time">${e.time}</span></b><span>${e.desc}</span></div>${isAdmin?`<button class="del-btn" onclick="deleteDoc('game_events','${e.id}')">🗑</button>`:''}</div>`;
             });
         });
     }
 
     async function sendGameComment() {
-        const nr = document.getElementById('admin-player-select').value;
-        const text = document.getElementById('com-text').value;
-        if(!nr || !text) return alert("Spieler und Text fehlen!");
-        await db.collection("game_comments").add({ gameId, targetNr: nr, text, author: user.name, authorNr: user.nr, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        const nr = document.getElementById('admin-player-select').value, text = document.getElementById('com-text').value;
+        await db.collection("game_comments").add({ gameId, targetNr: nr, text, author: user.name, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         document.getElementById('com-text').value = "";
     }
 
@@ -216,13 +149,12 @@
             docs.sort((a,b) => parseTimeToSec(a.text) - parseTimeToSec(b.text));
             docs.forEach(c => {
                 const formatted = c.text.replace(/(\d{1,2}):(\d{2}):(\d{2})/g, (m) => `<span class="timestamp" onclick="jumpTo(${parseTimeToSec(m)})">${m}</span>`);
-                inner.innerHTML += `<div class="game-comment"><small>VON: ${c.author}</small><div style="font-size:0.85rem;">${formatted}</div>${isAdmin?`<button class="del-com" onclick="deleteDoc('game_comments','${c.id}')">🗑</button>`:''}</div>`;
+                inner.innerHTML += `<div class="game-comment"><small>VON: ${c.author}</small><div>${formatted}</div>${isAdmin?`<button class="del-btn" onclick="deleteDoc('game_comments','${c.id}')">🗑</button>`:''}</div>`;
             });
         });
     }
 
     async function deleteDoc(col, id) { if(confirm("Löschen?")) await db.collection(col).doc(id).delete(); }
-
     init();
 </script>
 </body>
