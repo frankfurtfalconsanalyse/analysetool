@@ -120,10 +120,18 @@ service cloud.firestore {
       match /game_comments/{id} {
         allow read: if isCoach(team) || (isMember(team) && resource.data.targetNr == nrIn(team));
         allow write: if isCoach(team) || migrating();
+        // Spieler antworten auf ihr eigenes Feedback und dürfen eigene Antworten löschen
+        allow create: if isMember(team) && request.resource.data.targetNr == nrIn(team)
+          && request.resource.data.authorNr == nrIn(team) && request.resource.data.parentId is string;
+        allow delete: if isMember(team) && resource.data.targetNr == nrIn(team) && resource.data.get('authorNr', '') == nrIn(team);
       }
       match /training_comments/{id} {
         allow read: if isCoach(team) || (isMember(team) && resource.data.targetNr == nrIn(team));
         allow write: if isCoach(team) || migrating();
+        // Spieler antworten auf ihr eigenes Feedback und dürfen eigene Antworten löschen
+        allow create: if isMember(team) && request.resource.data.targetNr == nrIn(team)
+          && request.resource.data.authorNr == nrIn(team) && request.resource.data.parentId is string;
+        allow delete: if isMember(team) && resource.data.targetNr == nrIn(team) && resource.data.get('authorNr', '') == nrIn(team);
       }
 
       // ------------------ Fortschritt / Gesehen (Dokument-ID = eigene Nummer)

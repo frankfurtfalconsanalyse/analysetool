@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108f">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108g">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108f"></script>
-    <script src="assets/js/core.js?v=20261108f"></script>
+    <script src="assets/js/config.js?v=20261108g"></script>
+    <script src="assets/js/core.js?v=20261108g"></script>
     <style>
         .help h2 { font-size: 18px; display: flex; align-items: center; gap: 10px; }
         .help h3 { font-size: 15px; margin: 22px 0 6px; }
@@ -88,11 +88,12 @@
             <li>Unter jedem Clip kannst du Feedback schreiben. <kbd>Enter</kbd> sendet, <kbd>Shift</kbd>+<kbd>Enter</kbd> macht eine neue Zeile.</li>
             <li><kbd>@19</kbd> markiert die Nummer 19 – der Name wird automatisch ergänzt und <span class="mention">blau</span> hervorgehoben.</li>
             <li>Zeitangaben im Format <kbd>0:15:30</kbd> werden zu <span class="ts">0:15:30</span> – ein Klick springt im Video an diese Stelle (bei YouTube).</li>
+            <li>Mit <b>Antworten</b> unter einem Kommentar entsteht ein Gesprächsverlauf – z. B. für eine Rückfrage an den Coach. Auch auf dein privates Feedback in Spielen und Trainings kannst du antworten (sehen nur du und die Coaches).</li>
             <li>Wurdest du markiert, erscheint <b>Abhaken</b>. Damit bestätigst du, dass du das Feedback umgesetzt hast. Mit <b>Erledigt</b> kannst du es rückgängig machen.</li>
         </ul>
 
         <h3>Analyse-Modus</h3>
-        <p>Über <b>Analyse-Modus</b> öffnest du einen Clip groß. Mit <b>Zeichnen</b> malst du Laufwege direkt auf das Video (Farben Rot, Gelb, Cyan, Weiß). Solange der Zeichenmodus aktiv ist, lässt sich das Video nicht bedienen – klick auf <b>Fertig</b>.</p>
+        <p>Über <b>Analyse-Modus</b> öffnest du einen Clip groß. Mit <b>Zeichnen</b> malst du Laufwege direkt auf das Video (Rot, Gelb, Cyan, Weiß) – das Video hält dabei an. Mit <b>Zeichnung speichern</b> wird die Zeichnung zusammen mit dem Text aus dem Kommentarfeld und der aktuellen Videozeit als Kommentar gespeichert. Alle sehen dann <b>Zeichnung ansehen</b>: Ein Klick springt genau an die Stelle, hält an und blendet die Zeichnung ein.</p>
 
         <h3>Taktikboard</h3>
         <ul>

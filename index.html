@@ -24,14 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108f">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108g">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108f"></script>
-    <script src="assets/js/core.js?v=20261108f"></script>
-    <script src="assets/js/player.js?v=20261108f"></script>
-    <script src="assets/js/migrate.js?v=20261108f"></script>
+    <script src="assets/js/config.js?v=20261108g"></script>
+    <script src="assets/js/core.js?v=20261108g"></script>
+    <script src="assets/js/player.js?v=20261108g"></script>
+    <script src="assets/js/migrate.js?v=20261108g"></script>
     <style>
         /* ---------- Login ---------- */
         .login-screen {
@@ -481,7 +481,7 @@
         unsubComments = F.T('comments').where('videoId', '==', id).onSnapshot(snap => {
             const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => F.parseTime(a.text) - F.parseTime(b.text));
             $('clip-comments').innerHTML = docs.length
-                ? docs.map(c => F.commentHtml(c, { me: user.nr, admin, onRead: 'F.toggleRead', onDelete: 'deleteComment' })).join('')
+                ? F.threadHtml(docs, { me: user.nr, admin, onRead: 'F.toggleRead', onDelete: 'deleteComment', onReply: 'sendReply' })
                 : F.empty('Noch kein Feedback', 'Schreib den ersten Kommentar zu diesem Clip.', 'message');
         });
     }
@@ -506,6 +506,13 @@
         input.value = '';
     }
     function deleteComment(id) { F.deleteDoc('comments', id, 'Kommentar löschen?'); }
+    /** Antwort auf einen Kommentar (gleicher Clip, parentId = Kommentar) */
+    async function sendReply(parentId, raw) {
+        const { text, mentions } = F.resolveMentions(raw, players);
+        await F.T('comments').add({ videoId: currentClip.id, parentId, text, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    }
+    /** Zeichnungen werden im Analyse-Modus angezeigt */
+    F.onDrawing = id => { location.href = `analyze.html?id=${encodeURIComponent(currentClip.id)}&type=${currentClip.type}&c=${id}`; };
 
     boot();
 </script>

@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108f">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108g">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108f"></script>
-    <script src="assets/js/core.js?v=20261108f"></script>
-    <script src="assets/js/player.js?v=20261108f"></script>
+    <script src="assets/js/config.js?v=20261108g"></script>
+    <script src="assets/js/core.js?v=20261108g"></script>
+    <script src="assets/js/player.js?v=20261108g"></script>
     <style>
         #draw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; touch-action: none; }
         #draw-canvas.active { pointer-events: auto; cursor: crosshair; }
@@ -38,6 +38,8 @@
         .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; flex-shrink: 0; box-shadow: inset 0 0 0 2px rgba(0,0,0,.35); }
         .swatch.active { border-color: #fff; }
         #btn-draw.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+        .viewing { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--info); white-space: nowrap; }
+        .viewing button { height: 28px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--border-strong); background: none; color: var(--text-muted); cursor: pointer; font-size: 12px; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -46,7 +48,7 @@
     <div class="workspace-main">
         <div class="workspace-stage" id="stage">
             <canvas id="draw-canvas"></canvas>
-            <div class="drawing-hint hidden" id="draw-hint">Zeichenmodus aktiv – Video-Steuerung wieder mit „Fertig"</div>
+            <div class="drawing-hint hidden" id="draw-hint">Aufs Video zeichnen – dann „Zeichnung speichern“ oder „Fertig“</div>
         </div>
         <div class="stage-bar">
             <button class="btn btn-sm" id="btn-draw" onclick="toggleDrawing()"></button>
@@ -58,6 +60,9 @@
             <span class="sep"></span>
             <button class="btn btn-sm btn-ghost" id="btn-undo" onclick="undo()" title="Rückgängig"></button>
             <button class="btn btn-sm btn-ghost" id="btn-clear" onclick="clearDraw()" title="Zeichnung löschen"></button>
+            <span class="sep"></span>
+            <button class="btn btn-sm btn-primary hidden" id="btn-save-drawing" onclick="saveDrawing()" title="Zeichnung mit Text als Kommentar speichern"></button>
+            <span class="viewing hidden" id="viewing"></span>
         </div>
     </div>
 
@@ -82,11 +87,12 @@
 
     const params = new URLSearchParams(location.search);
     const videoId = params.get('id'), type = params.get('type') || 'drive';
-    let players = {}, admin = false, clip = null;
+    let players = {}, admin = false, clip = null, commentDocs = [], pendingDrawing = params.get('c');
 
     $('crumb').innerHTML = I('arrowLeft', 'icon-sm') + ' Dashboard';
     $('btn-undo').innerHTML = I('undo', 'icon-sm');
     $('btn-clear').innerHTML = I('trash', 'icon-sm');
+    $('btn-save-drawing').innerHTML = I('save', 'icon-sm') + ' Zeichnung speichern';
     $('send-btn').innerHTML = I('send');
     F.submitOnEnter($('com-input'), sendComment);
     F.onTimestamp = jumpTo;
@@ -116,8 +122,10 @@
         $('comments').innerHTML = F.loading();
         F.T('comments').where('videoId', '==', videoId).onSnapshot(snap => {
             const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => F.parseTime(a.text) - F.parseTime(b.text));
+            commentDocs = docs;
+            if (pendingDrawing && docs.some(d => d.id === pendingDrawing)) { const id = pendingDrawing; pendingDrawing = null; setTimeout(() => showDrawing(id), 400); }
             $('comments').innerHTML = docs.length
-                ? docs.map(c => F.commentHtml(c, { me: user.nr, admin, onRead: 'F.toggleRead', onDelete: 'deleteComment' })).join('')
+                ? F.threadHtml(docs, { me: user.nr, admin, onRead: 'F.toggleRead', onDelete: 'deleteComment', onReply: 'sendReply' })
                 : F.empty('Noch kein Feedback', 'Schreib den ersten Kommentar zu diesem Clip.', 'message');
         });
     }
@@ -130,6 +138,11 @@
         input.value = '';
     }
     function deleteComment(id) { F.deleteDoc('comments', id, 'Kommentar löschen?'); }
+    /** Antwort auf einen Kommentar (gleicher Clip, parentId = Kommentar) */
+    async function sendReply(parentId, raw) {
+        const { text, mentions } = F.resolveMentions(raw, players);
+        await F.T('comments').add({ videoId: videoId, parentId, text, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    }
 
     const mediaView = new FalconsPlayer.Media($('stage'));
     function jumpTo(sec) {
@@ -137,48 +150,99 @@
     }
 
     /* ------------------------------------------------------------ Zeichnen */
+    // Striche werden als Vektoren gespeichert (Koordinaten 0…1 relativ zum Video),
+    // so passen gespeicherte Zeichnungen auf jede Bildschirmgröße.
     const canvas = $('draw-canvas'), ctx = canvas.getContext('2d');
-    let drawing = false, pen = '#e30613', stroke = false, history = [];
+    let drawing = false, pen = '#e30613', strokes = [], current = null, history = [], viewingId = null;
 
     function sizeCanvas() {
-        const snapshot = canvas.width ? canvas.toDataURL() : null;
-        canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
-        if (snapshot) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height); img.src = snapshot; }
+        const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(1, Math.round(r.width * dpr)); canvas.height = Math.max(1, Math.round(r.height * dpr));
+        redraw();
+    }
+    function redraw(list = strokes) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const w = canvas.width, h = canvas.height, lw = Math.max(3, w / 320);
+        [...list, ...(current ? [current] : [])].forEach(st => {
+            const p = st.points; if (p.length < 2) return;
+            ctx.beginPath(); ctx.strokeStyle = st.color; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.moveTo(p[0] * w, p[1] * h);
+            for (let i = 2; i + 1 < p.length; i += 2) ctx.lineTo(p[i] * w, p[i + 1] * h);
+            if (p.length === 2) ctx.lineTo(p[0] * w + 0.1, p[1] * h);
+            ctx.stroke();
+        });
+        $('btn-save-drawing').classList.toggle('hidden', !strokes.length || viewingId !== null);
     }
     function setDrawBtn() { $('btn-draw').innerHTML = drawing ? I('check', 'icon-sm') + ' Fertig' : I('pen', 'icon-sm') + ' Zeichnen'; }
     function toggleDrawing() {
+        if (viewingId) closeDrawing();
         drawing = !drawing;
         canvas.classList.toggle('active', drawing);
         $('btn-draw').classList.toggle('active', drawing);
         $('draw-hint').classList.toggle('hidden', !drawing);
-        if (drawing && canvas.width !== canvas.offsetWidth) sizeCanvas();
+        if (drawing) { mediaView.pause(); sizeCanvas(); }
         setDrawBtn();
     }
-    function clearDraw() { history.push(canvas.toDataURL()); ctx.clearRect(0, 0, canvas.width, canvas.height); }
-    function undo() {
-        const prev = history.pop(); if (!prev) return;
-        const img = new Image(); img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); }; img.src = prev;
-    }
+    function clearDraw() { if (viewingId) return closeDrawing(); if (!strokes.length) return; history.push(strokes.slice()); strokes = []; redraw(); }
+    function undo() { if (!history.length) return; strokes = history.pop(); redraw(); }
     document.querySelectorAll('.swatch').forEach(s => s.addEventListener('click', () => {
         document.querySelectorAll('.swatch').forEach(x => x.classList.remove('active'));
         s.classList.add('active'); pen = s.dataset.color;
     }));
 
     function pos(e) {
-        const r = canvas.getBoundingClientRect(), p = e.touches ? e.touches[0] : e;
-        return { x: p.clientX - r.left, y: p.clientY - r.top };
+        const r = canvas.getBoundingClientRect();
+        return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))];
     }
-    function start(e) {
-        if (!drawing) return; e.preventDefault();
-        history.push(canvas.toDataURL()); if (history.length > 30) history.shift();
-        const p = pos(e); stroke = true;
-        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.strokeStyle = pen; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    canvas.addEventListener('pointerdown', e => {
+        if (!drawing) return; e.preventDefault(); canvas.setPointerCapture(e.pointerId);
+        history.push(strokes.slice()); if (history.length > 40) history.shift();
+        current = { color: pen, points: pos(e) };
+    });
+    canvas.addEventListener('pointermove', e => {
+        if (!current) return;
+        const [x, y] = pos(e), p = current.points;
+        if (Math.hypot(x - p[p.length - 2], y - p[p.length - 1]) > 0.002) { p.push(x, y); redraw(); }
+    });
+    const endStroke = () => { if (!current) return; strokes.push({ color: current.color, points: current.points.map(v => Math.round(v * 1000) / 1000) }); current = null; redraw(); };
+    canvas.addEventListener('pointerup', endStroke); canvas.addEventListener('pointercancel', endStroke);
+    window.addEventListener('resize', () => { if (canvas.width > 1) sizeCanvas(); });
+
+    /** Zeichnung + Text als Kommentar speichern (Text aus dem Kommentarfeld) */
+    async function saveDrawing() {
+        if (!strokes.length) return;
+        let raw = $('com-input').value.trim();
+        if (!raw) raw = (prompt('Kurzer Text zur Zeichnung (z. B. „Hier musst du dich anbieten“):', '') || '').trim();
+        if (!raw) return F.toast('Bitte einen Text zur Zeichnung eingeben', 'error');
+        const sec = Math.floor(mediaView.time());
+        if (mediaView.isYouTube && !F.hasTime(raw)) raw = `${F.fmtTime(sec)} ${raw}`;
+        const { text, mentions } = F.resolveMentions(raw, players);
+        const r = canvas.getBoundingClientRect();
+        const data = { videoId, text, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            drawing: { strokes, aspect: Math.round(r.width / r.height * 1000) / 1000 } };
+        if (mediaView.isYouTube) data.drawingTime = sec;
+        await F.T('comments').add(data);
+        $('com-input').value = ''; strokes = []; history = []; redraw();
+        if (drawing) toggleDrawing();
+        F.toast('Zeichnung gespeichert');
     }
-    function move(e) { if (!stroke) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
-    function end() { stroke = false; }
-    canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
-    canvas.addEventListener('touchstart', start, { passive: false }); canvas.addEventListener('touchmove', move, { passive: false }); canvas.addEventListener('touchend', end);
-    window.addEventListener('resize', () => { if (canvas.width) sizeCanvas(); });
+
+    /** Gespeicherte Zeichnung anzeigen: an die Stelle springen, anhalten, Zeichnung einblenden */
+    function showDrawing(id) {
+        const c = commentDocs.find(x => x.id === id); if (!c || !c.drawing) return;
+        if (drawing) toggleDrawing();
+        viewingId = id;
+        if (c.drawingTime !== undefined && mediaView.isYouTube) { mediaView.player.seek(c.drawingTime, { play: false }); mediaView.pause(); }
+        sizeCanvas(); redraw(c.drawing.strokes || []);
+        $('viewing').innerHTML = `${I('pen', 'icon-sm')} Zeichnung von ${F.esc(c.author || '')} <button onclick="closeDrawing()">Ausblenden</button>`;
+        $('viewing').classList.remove('hidden');
+        document.querySelectorAll('.comment').forEach(el => el.classList.toggle('highlight', el.dataset.id === id));
+    }
+    function closeDrawing() {
+        viewingId = null; $('viewing').classList.add('hidden'); redraw();
+        document.querySelectorAll('.comment.highlight').forEach(el => el.classList.remove('highlight'));
+    }
+    F.onDrawing = showDrawing;
 
     setDrawBtn();
     F.ready.then(init);

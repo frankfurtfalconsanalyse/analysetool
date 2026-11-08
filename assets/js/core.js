@@ -510,20 +510,64 @@ const Falcons = (() => {
     const loading = (text = 'Wird geladen …') => `<div class="loading"><div class="spinner"></div>${esc(text)}</div>`;
 
     /** Kommentar-Element (Clips & Sessions) */
-    function commentHtml(c, { me, admin, onRead, onDelete }) {
+    /**
+     * Kommentar-Element.
+     * opts: { me, admin, onRead, onDelete, onReply, label, isReply }
+     *   onRead/onDelete/onReply = Namen globaler Funktionen (werden als onclick aufgerufen)
+     *   Kommentare mit Zeichnung (c.drawing) zeigen „Zeichnung ansehen“ → Falcons.onDrawing(id)
+     */
+    function commentHtml(c, { me, admin, onRead, onDelete, onReply, label, isReply } = {}) {
         const isRead = (c.readBy || []).includes(me);
         const mentioned = (c.mentions || []).includes(me);
         const ts = c.createdAt && c.createdAt.toDate ? fmtDate(c.createdAt) : '';
-        return `<div class="comment ${mentioned && isRead ? 'is-read' : ''}">
+        const canDelete = onDelete && (admin || (c.authorNr && c.authorNr === me));
+        return `<div class="comment ${isReply ? 'reply' : ''} ${mentioned && isRead ? 'is-read' : ''}" data-id="${c.id}">
             <div class="comment-head">
                 <strong>${esc(c.author || 'Unbekannt')}</strong>${c.authorNr ? `<span class="mono">#${esc(c.authorNr)}</span>` : ''}
+                ${label ? `<span>· ${esc(label)}</span>` : ''}
                 ${ts ? `<span>· ${ts}</span>` : ''}
                 <span class="spacer"></span>
                 ${mentioned ? `<button class="check-btn ${isRead ? 'done' : ''}" onclick="${onRead}('${c.id}', ${isRead})">${isRead ? icon('undo', 'icon-sm') + 'Erledigt' : icon('check', 'icon-sm') + 'Abhaken'}</button>` : ''}
-                ${admin ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger del" title="Löschen" onclick="${onDelete}('${c.id}')">${icon('trash', 'icon-sm')}</button>` : ''}
+                ${canDelete ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger del" title="Löschen" onclick="${onDelete}('${c.id}')">${icon('trash', 'icon-sm')}</button>` : ''}
             </div>
             <div class="comment-text">${formatText(c.text)}</div>
+            ${c.drawing ? `<button class="drawing-chip" onclick="Falcons.onDrawing && Falcons.onDrawing('${c.id}')">${icon('pen', 'icon-sm')} Zeichnung ansehen${c.drawingTime !== undefined ? ' · ' + fmtTime(c.drawingTime) : ''}</button>` : ''}
+            ${onReply && !isReply ? `<button class="reply-btn" onclick="Falcons.openReply('${c.id}', '${onReply}', this)">${icon('message', 'icon-sm')} Antworten</button>` : ''}
         </div>`;
+    }
+
+    /** Kommentare als Gesprächsverläufe: Antworten (parentId) stehen eingerückt unter dem Kommentar */
+    function threadHtml(docs, opts = {}, sortTop = (a, b) => parseTime(a.text) - parseTime(b.text)) {
+        const ids = new Set(docs.map(d => d.id));
+        const tops = docs.filter(d => !d.parentId || !ids.has(d.parentId)).sort(sortTop);
+        const created = d => (d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().getTime() : 0) || Infinity;
+        const kids = {};
+        docs.filter(d => d.parentId && ids.has(d.parentId)).forEach(d => (kids[d.parentId] = kids[d.parentId] || []).push(d));
+        return tops.map(c => {
+            const r = (kids[c.id] || []).sort((a, b) => created(a) - created(b));
+            return `<div class="thread">${commentHtml(c, typeof opts === 'function' ? opts(c) : opts)}${r.map(x => commentHtml(x, { ...(typeof opts === 'function' ? opts(x) : opts), isReply: true })).join('')}</div>`;
+        }).join('');
+    }
+
+    /** Antwortfeld unter einem Kommentar öffnen; sendFn(parentId, text) ist eine globale Funktion */
+    function openReply(parentId, sendFn, btn) {
+        const box = btn.closest('.comment');
+        const open = box.parentElement.querySelector('.reply-box');
+        if (open) { open.remove(); return; }
+        const el = document.createElement('div');
+        el.className = 'reply-box';
+        el.innerHTML = `<textarea class="textarea" placeholder="Antwort schreiben … (Enter = senden)"></textarea><button class="btn btn-primary btn-icon" title="Senden">${icon('send')}</button>`;
+        box.insertAdjacentElement('afterend', el);
+        const ta = el.querySelector('textarea');
+        const send = async () => {
+            const text = ta.value.trim(); if (!text) return;
+            el.querySelector('button').disabled = true;
+            try { await window[sendFn](parentId, text); el.remove(); }
+            catch (e) { console.error(e); toast('Senden fehlgeschlagen', 'error'); el.querySelector('button').disabled = false; }
+        };
+        el.querySelector('button').onclick = send;
+        submitOnEnter(ta, send);
+        ta.focus();
     }
 
     async function toggleRead(commentId, isRead) {
@@ -544,8 +588,8 @@ const Falcons = (() => {
         toDate, season, fmtTime, dueInfo,
         icon, getUser, setUser, logout, requireUser, isAdmin, mountShell, authState, signIn, register, authError,
         esc, parseTime, hasTime, formatText, resolveMentions, parseYouTube, ytThumb, fmtDate, playerMap,
-        loadMedia, mediaCard, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
-        onTimestamp: null, openClip: null
+        loadMedia, mediaCard, threadHtml, openReply, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
+        onTimestamp: null, openClip: null, onDrawing: null
     };
     return api;
 })();

@@ -108,6 +108,13 @@ await t('others feedback', assertFails(getDocs(query(collection(max, 'teams/herr
 await t('coach all feedback', assertSucceeds(getDocs(collection(coach, 'teams/herren/game_comments'))));
 await t('coach of other team no feedback', assertFails(getDocs(collection(regioCoach, 'teams/herren/game_comments'))));
 
+await t('player replies to own feedback', assertSucceeds(addDoc(collection(max, 'teams/herren/game_comments'), { gameId: 'g', targetNr: '07', authorNr: '07', parentId: 'g1', text: 'Danke!' })));
+await t('player reply without parent', assertFails(addDoc(collection(max, 'teams/herren/game_comments'), { gameId: 'g', targetNr: '07', authorNr: '07', text: 'eigenes Feedback' })));
+await t('player replies to others feedback', assertFails(addDoc(collection(max, 'teams/herren/game_comments'), { gameId: 'g', targetNr: '31', authorNr: '07', parentId: 'g2', text: 'x' })));
+await t('player cannot delete coach feedback', assertFails(deleteDoc(doc(max, 'teams/herren/game_comments/g1'))));
+await t('comment with drawing', assertSucceeds(addDoc(collection(max, 'teams/herren/comments'), { videoId: 'v', text: '0:00:12 hier', authorNr: '07', drawing: { strokes: [{ color: '#e30613', points: [0.1, 0.2, 0.3, 0.4] }], aspect: 1.78 }, drawingTime: 12 })));
+await t('reply to clip comment', assertSucceeds(addDoc(collection(max, 'teams/herren/comments'), { videoId: 'v', parentId: 'x', text: 'ok', authorNr: '07' })));
+
 /* ============================================================ 6. Fortschritt */
 await t('own progress', assertSucceeds(setDoc(doc(max, 'teams/herren/progress/07'), { s1: 1 }, { merge: true })));
 await t('after pin reset no access to that team', assertFails(setDoc(doc(max, 'teams/regio/progress/07'), { s1: 1 }, { merge: true })));

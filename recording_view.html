@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108f">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108g">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108f"></script>
-    <script src="assets/js/core.js?v=20261108f"></script>
-    <script src="assets/js/player.js?v=20261108f"></script>
+    <script src="assets/js/config.js?v=20261108g"></script>
+    <script src="assets/js/core.js?v=20261108g"></script>
+    <script src="assets/js/player.js?v=20261108g"></script>
     <style>
         .time-row { display: flex; gap: 8px; }
         .time-row .input { font-family: var(--mono); }
@@ -422,17 +422,16 @@
         $('feedback-list').innerHTML = F.loading();
         unsubFeedback = F.T(K.comments).where(K.fk, '==', itemId).where('targetNr', '==', nr).onSnapshot(snap => {
             const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => F.parseTime(a.text) - F.parseTime(b.text));
-            $('feedback-list').innerHTML = docs.length ? docs.map(c => `
-                <div class="comment">
-                    <div class="comment-head">
-                        <strong>${F.esc(c.author || 'Trainer')}</strong><span>· privat</span>
-                        <span class="spacer"></span>
-                        ${admin ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger del" onclick="F.deleteDoc('${K.comments}', '${c.id}')">${I('trash', 'icon-sm')}</button>` : ''}
-                    </div>
-                    <div class="comment-text">${F.formatText(c.text)}</div>
-                </div>`).join('')
+            $('feedback-list').innerHTML = docs.length ? F.threadHtml(docs, c => ({ me: user.nr, admin, onDelete: 'deleteFeedback', onReply: 'sendFeedbackReply', label: c.authorNr === nr ? '' : 'privat' }))
                 : F.empty('Kein Feedback', admin ? 'Für diesen Spieler gibt es noch kein Feedback.' : 'Für dich gibt es zu dieser Aufzeichnung noch kein persönliches Feedback.', 'message');
         });
+    }
+
+    function deleteFeedback(id) { F.deleteDoc(K.comments, id, 'Löschen?'); }
+    /** Antwort auf privates Feedback – Spieler antworten auf ihr eigenes, Coaches im gewählten Spieler */
+    async function sendFeedbackReply(parentId, text) {
+        const targetNr = admin ? $('player-select').value : user.nr;
+        await F.T(K.comments).add({ [K.fk]: itemId, targetNr, parentId, text, author: user.name, authorNr: user.nr, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     }
 
     async function saveFeedback() {
