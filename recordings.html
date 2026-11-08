@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108g">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108h">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108g"></script>
-    <script src="assets/js/core.js?v=20261108g"></script>
+    <script src="assets/js/config.js?v=20261108h"></script>
+    <script src="assets/js/core.js?v=20261108h"></script>
 </head>
 <body>
 
@@ -40,9 +40,12 @@
             <h1>Spiele & Trainings</h1>
             <p>Komplette Aufzeichnungen mit Ereignis-Timeline und deinem persönlichen Trainer-Feedback.</p>
         </div>
-        <div class="segmented">
-            <button id="tab-games" onclick="show('games')">Spiele</button>
-            <button id="tab-trainings" onclick="show('trainings')">Trainings</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <select class="select" id="season" style="width:auto"></select>
+            <div class="segmented">
+                <button id="tab-games" onclick="show('games')">Spiele</button>
+                <button id="tab-trainings" onclick="show('trainings')">Trainings</button>
+            </div>
         </div>
     </div>
     <div id="grid" class="grid"></div>
@@ -58,8 +61,10 @@
         trainings: { views: 'training_views', viewType: 'training', label: 'Training', empty: 'Noch keine Trainings hochgeladen.' }
     };
 
+    let season = '', seasonReady = false, currentKind = 'games';
     async function show(kind) {
         if (!KINDS[kind]) kind = 'games';
+        currentKind = kind;
         const k = KINDS[kind];
         history.replaceState(null, '', `?type=${kind}`);
         $('tab-games').classList.toggle('active', kind === 'games');
@@ -67,22 +72,29 @@
         $('grid').className = 'grid';
         $('grid').innerHTML = F.loading();
 
-        const [snap, viewDoc] = await Promise.all([
+        const [snap, viewDoc, oppSnap] = await Promise.all([
             F.T(kind).orderBy('date', 'desc').get(),
-            user.nr ? F.T(k.views).doc(user.nr).get() : Promise.resolve({ exists: false, data: () => ({}) })
+            user.nr ? F.T(k.views).doc(user.nr).get() : Promise.resolve({ exists: false, data: () => ({}) }),
+            kind === 'games' ? F.T('opponents').get().catch(() => null) : null
         ]);
+        const opps = {}; if (oppSnap) oppSnap.forEach(d => opps[d.id] = d.data().name);
+        // Saison-Auswahl beim ersten Laden aufbauen
+        if (!seasonReady) { seasonReady = true; F.seasonSelect($('season'), snap.docs.map(d => d.data().date), sv => { season = sv; show(currentKind); }); return; }
+        const docs = snap.docs.filter(d => F.inSeason(d.data().date, season));
         const seen = viewDoc.exists ? viewDoc.data() : {};
 
-        if (!snap.size) { $('grid').className = ''; $('grid').innerHTML = F.empty('Noch nichts da', k.empty, 'video'); return; }
-        $('grid').innerHTML = snap.docs.map(d => {
+        if (!docs.length) { $('grid').className = ''; $('grid').innerHTML = F.empty(snap.size ? 'Nichts in dieser Saison' : 'Noch nichts da', snap.size ? 'Oben eine andere Saison oder „Alle Saisons (Archiv)“ wählen.' : k.empty, 'video'); return; }
+        $('grid').innerHTML = docs.map(d => {
             const g = d.data();
+            const hasScore = g.scoreFor !== undefined && g.scoreFor !== '' && g.scoreAgainst !== undefined && g.scoreAgainst !== '';
+            const res = hasScore ? (+g.scoreFor > +g.scoreAgainst ? 'badge-success' : +g.scoreFor < +g.scoreAgainst ? 'badge-brand' : '') : null;
             return `<a class="media-card" href="recording_view.html?type=${k.viewType}&id=${d.id}">
                 <div class="media-thumb" style="background-image:url('${F.ytThumb(g.ytId)}')">
                     <div class="play">${I('play')}</div>
                     <div class="corner">${seen[d.id] ? `<span class="badge badge-success">${I('check', 'icon-sm')} Gesehen</span>` : `<span class="badge badge-brand">Neu</span>`}</div>
                 </div>
                 <div class="media-body">
-                    <div class="meta">${I('calendar', 'icon-sm')} ${F.fmtDate(g.date)} · ${k.label}</div>
+                    <div class="meta">${I('calendar', 'icon-sm')} ${F.fmtDate(g.date)} · ${k.label}${g.opponentId && opps[g.opponentId] ? ` · <span role="link" onclick="event.preventDefault(); event.stopPropagation(); location.href='opponents.html?id=${g.opponentId}'" style="text-decoration:underline; cursor:pointer">${F.esc(opps[g.opponentId])}</span>` : ''}${hasScore ? ` <span class="badge ${res}">${+g.scoreFor}:${+g.scoreAgainst}</span>` : ''}</div>
                     <h3>${F.esc(g.title)}</h3>
                 </div>
             </a>`;

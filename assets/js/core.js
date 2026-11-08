@@ -233,9 +233,10 @@ const Falcons = (() => {
         { id: 'dashboard', href: 'index.html', label: 'Dashboard', icon: 'home' },
         { id: 'library', href: 'recordings.html', label: 'Spiele & Trainings', short: 'Videos', icon: 'video' },
         { id: 'tactic', href: 'tactic.html', label: 'Taktikboard', short: 'Taktik', icon: 'clipboard' },
+        { id: 'opponents', href: 'opponents.html', label: 'Gegner', icon: 'shield' },
         { id: 'stats', href: 'stats.html', label: 'Statistik', short: 'Statistik', icon: 'activity' },
         { id: 'admin', href: 'admin.html', label: 'Verwaltung', short: 'Admin', icon: 'sliders', admin: true },
-        { id: 'help', href: 'help.html', label: 'Hilfe', icon: 'help' }
+        { id: 'help', href: 'help.html', label: 'Hilfe', icon: 'help', noBottom: true }
     ];
 
     /**
@@ -245,7 +246,7 @@ const Falcons = (() => {
      */
     function mountShell(active, opts = {}) {
         const u = getUser();
-        const links = (cls) => NAV.map(n =>
+        const links = (cls) => NAV.filter(n => cls === 'nav-link' || !n.noBottom).map(n =>
             `<a href="${n.href}" class="${cls} ${n.id === active ? 'active' : ''} ${n.admin ? 'admin-only hidden' : ''}">${icon(n.icon)}<span>${cls === 'nav-link' ? n.label : (n.short || n.label)}</span></a>`
         ).join('');
 
@@ -389,6 +390,23 @@ const Falcons = (() => {
         const y = x.getMonth() + 1 >= (CFG.seasonStartMonth || 8) ? x.getFullYear() : x.getFullYear() - 1;
         return `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
     }
+    /**
+     * Saison-Auswahl in ein <select> einbauen. dates = Daten der Inhalte (für die Liste der Saisons).
+     * Die Wahl wird gemerkt; '' = alle Saisons. onChange(season) wird sofort einmal aufgerufen.
+     */
+    function seasonSelect(select, dates, onChange) {
+        const now = season(new Date());
+        const list = new Set([now]);
+        dates.forEach(d => { const x = season(d); if (x) list.add(x); });
+        let chosen = now;
+        try { const saved = localStorage.getItem('falcons_season'); if (saved !== null && (saved === '' || list.has(saved))) chosen = saved; } catch (e) {}
+        select.innerHTML = [...list].sort().reverse().map(x => `<option value="${x}">Saison ${x}${x === now ? ' (aktuell)' : ''}</option>`).join('') + `<option value="">Alle Saisons (Archiv)</option>`;
+        select.value = chosen;
+        select.onchange = () => { try { localStorage.setItem('falcons_season', select.value); } catch (e) {} onChange(select.value); };
+        onChange(chosen);
+    }
+    const inSeason = (d, s) => !s || season(d) === s;
+
     /** Sekunden → "0:12:05" */
     function fmtTime(s) { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; }
 
@@ -585,7 +603,7 @@ const Falcons = (() => {
         get ready() { return ready(); },
         get ctx() { return ctx; }, openLinkTeam,
         CFG, TEAMS, T, teamName, currentTeam, setTeam, switchTeam, linkTeam, migrated, isClubAdmin,
-        toDate, season, fmtTime, dueInfo,
+        toDate, season, seasonSelect, inSeason, fmtTime, dueInfo,
         icon, getUser, setUser, logout, requireUser, isAdmin, mountShell, authState, signIn, register, authError,
         esc, parseTime, hasTime, formatText, resolveMentions, parseYouTube, ytThumb, fmtDate, playerMap,
         loadMedia, mediaCard, threadHtml, openReply, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,

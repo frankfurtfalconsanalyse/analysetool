@@ -107,6 +107,7 @@ service cloud.firestore {
       match /trainings/{id}       { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
       match /game_events/{id}     { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
       match /training_events/{id} { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
+      match /opponents/{id}       { allow read: if canRead(team); allow write: if isCoach(team); }
 
       // ----------------------------------------------- Kommentare zu Clips
       match /comments/{id} {

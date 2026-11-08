@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108g">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108h">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108g"></script>
-    <script src="assets/js/core.js?v=20261108g"></script>
+    <script src="assets/js/config.js?v=20261108h"></script>
+    <script src="assets/js/core.js?v=20261108h"></script>
     <style>
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
@@ -163,10 +163,12 @@
                 <div class="field"><label>Spiel</label><input id="g-title" class="input" placeholder="Falcons vs. Gegner"></div>
                 <div class="field"><label>YouTube-Link</label><input id="g-url" class="input" placeholder="https://youtu.be/…"></div>
                 <div class="field"><label>Datum</label><input id="g-date" class="input" type="date"></div>
+                <div class="field"><label>Gegner</label><select id="g-opp" class="select"></select></div>
+                <div class="field"><label>Ergebnis (optional)</label><div style="display:flex; gap:6px; align-items:center"><input id="g-for" class="input" inputmode="numeric" placeholder="Falcons" style="width:80px">:<input id="g-against" class="input" inputmode="numeric" placeholder="Gegner" style="width:80px"></div></div>
                 <button class="btn btn-primary" onclick="addRecording('games')">Speichern</button>
             </div></div>
         </div>
-        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Spiel</th><th>Datum</th><th></th></tr></thead><tbody id="games-table"></tbody></table></div></div>
+        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Spiel</th><th>Datum</th><th>Gegner</th><th>Ergebnis</th><th></th></tr></thead><tbody id="games-table"></tbody></table></div></div>
     </section>
 
     <!-- TRAININGS -->
@@ -202,7 +204,7 @@
     const user = F.requireUser();
     F.mountShell('admin');
 
-    let players = [], ctx = null, media = [], sessions = [], games = [], trainings = [], selected = [], statusMode = 'sessions';
+    let players = [], ctx = null, opponents = [], media = [], sessions = [], games = [], trainings = [], selected = [], statusMode = 'sessions';
     const SOURCE = { drive: 'Drive', youtube: 'YouTube', tactic: 'Taktik' };
 
     /* ------------------------------------------------------------ Start */
@@ -227,11 +229,14 @@
 
     async function loadAll() {
         $('status-list').innerHTML = F.loading();
-        const [pSnap, aSnap, m, sSnap, gSnap, tSnap] = await Promise.all([
+        const [pSnap, aSnap, m, sSnap, gSnap, tSnap, oSnap] = await Promise.all([
             F.T('players').get(), F.ready, F.loadMedia({ tactics: true }),
             F.T('sessions').orderBy('createdAt', 'desc').get(),
-            F.T('games').orderBy('date', 'desc').get(), F.T('trainings').orderBy('date', 'desc').get()
+            F.T('games').orderBy('date', 'desc').get(), F.T('trainings').orderBy('date', 'desc').get(),
+            F.T('opponents').get()
         ]);
+        opponents = oSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+        $('g-opp').innerHTML = `<option value="">– kein Gegner –</option>` + opponents.map(o => `<option value="${o.id}">${F.esc(o.name)}</option>`).join('');
         players = pSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.id.localeCompare(b.id));
         ctx = aSnap;
         $('team-eyebrow').textContent = `Coach-Bereich · ${F.teamName(ctx.team)}`;
@@ -406,13 +411,24 @@
     /* ------------------------------------------------ Spiele & Trainings */
     function renderRecordings(col) {
         const list = col === 'games' ? games : trainings, view = col === 'games' ? 'game' : 'training';
+        const oppOptions = sel => `<option value="">–</option>` + opponents.map(o => `<option value="${o.id}" ${o.id === sel ? 'selected' : ''}>${F.esc(o.name)}</option>`).join('');
         $(col + '-table').innerHTML = list.length ? list.map(r => `<tr>
             <td><strong>${F.esc(r.title)}</strong></td>
             <td class="muted">${F.fmtDate(r.date)}</td>
+            ${col === 'games' ? `<td><select class="select" onchange="updateGame('${r.id}', { opponentId: this.value })">${oppOptions(r.opponentId)}</select></td>
+            <td style="white-space:nowrap"><input class="input" style="width:52px; height:32px" inputmode="numeric" value="${r.scoreFor ?? ''}" onchange="updateGame('${r.id}', { scoreFor: this.value })"> : <input class="input" style="width:52px; height:32px" inputmode="numeric" value="${r.scoreAgainst ?? ''}" onchange="updateGame('${r.id}', { scoreAgainst: this.value })"></td>` : ''}
             <td class="actions">
                 <a class="btn btn-ghost btn-sm" href="recording_view.html?type=${view}&id=${r.id}">${I('pen', 'icon-sm')} Bearbeiten</a>
                 <button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('${col}','${r.id}')">${I('trash', 'icon-sm')}</button>
-            </td></tr>`).join('') : `<tr><td colspan="3" class="muted">Noch keine Einträge.</td></tr>`;
+            </td></tr>`).join('') : `<tr><td colspan="5" class="muted">Noch keine Einträge.</td></tr>`;
+    }
+
+    async function updateGame(id, data) {
+        const clean = {};
+        for (const [k, v] of Object.entries(data)) clean[k] = k.startsWith('score') ? (v === '' ? firebase.firestore.FieldValue.delete() : Math.max(0, parseInt(v) || 0)) : (v || firebase.firestore.FieldValue.delete());
+        await F.T('games').doc(id).update(clean);
+        const g = games.find(x => x.id === id); if (g) Object.entries(data).forEach(([k, v]) => g[k] = v);
+        F.toast('Spiel aktualisiert');
     }
 
     async function addRecording(col) {
@@ -421,7 +437,13 @@
         if (!title) return F.toast('Bitte einen Titel eingeben', 'error');
         if (!id) return F.toast('Ungültiger YouTube-Link', 'error');
         if (!date) return F.toast('Bitte ein Datum wählen', 'error');
-        await F.T(col).add({ title, ytId: id, date, createdAt: new Date() });
+        const data = { title, ytId: id, date, createdAt: new Date() };
+        if (col === 'games') {
+            if ($('g-opp').value) data.opponentId = $('g-opp').value;
+            if ($('g-for').value !== '' && $('g-against').value !== '') { data.scoreFor = parseInt($('g-for').value) || 0; data.scoreAgainst = parseInt($('g-against').value) || 0; }
+            $('g-for').value = $('g-against').value = ''; $('g-opp').value = '';
+        }
+        await F.T(col).add(data);
         $(p + '-title').value = $(p + '-url').value = $(p + '-date').value = '';
         F.toast('Gespeichert'); loadAll();
     }

@@ -115,6 +115,12 @@ await t('player cannot delete coach feedback', assertFails(deleteDoc(doc(max, 't
 await t('comment with drawing', assertSucceeds(addDoc(collection(max, 'teams/herren/comments'), { videoId: 'v', text: '0:00:12 hier', authorNr: '07', drawing: { strokes: [{ color: '#e30613', points: [0.1, 0.2, 0.3, 0.4] }], aspect: 1.78 }, drawingTime: 12 })));
 await t('reply to clip comment', assertSucceeds(addDoc(collection(max, 'teams/herren/comments'), { videoId: 'v', parentId: 'x', text: 'ok', authorNr: '07' })));
 
+await t('player reads opponents', assertSucceeds(getDocs(collection(max, 'teams/herren/opponents'))));
+await t('player cannot write opponent', assertFails(addDoc(collection(max, 'teams/herren/opponents'), { name: 'x' })));
+await t('coach writes opponent', assertSucceeds(addDoc(collection(coach, 'teams/herren/opponents'), { name: 'Red Devils' })));
+await t('other team cannot read opponents', assertFails(getDocs(collection(regioCoach, 'teams/herren/opponents'))));
+await t('player team boards by opponent', assertSucceeds(getDocs(query(collection(max, 'teams/herren/tactics'), where('visibility', '==', 'team'), where('opponentId', '==', 'o1')))));
+
 /* ============================================================ 6. Fortschritt */
 await t('own progress', assertSucceeds(setDoc(doc(max, 'teams/herren/progress/07'), { s1: 1 }, { merge: true })));
 await t('after pin reset no access to that team', assertFails(setDoc(doc(max, 'teams/regio/progress/07'), { s1: 1 }, { merge: true })));

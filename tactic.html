@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108g">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108h">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108g"></script>
-    <script src="assets/js/core.js?v=20261108g"></script>
-    <script src="assets/js/tactic-board.js?v=20261108g"></script>
+    <script src="assets/js/config.js?v=20261108h"></script>
+    <script src="assets/js/core.js?v=20261108h"></script>
+    <script src="assets/js/tactic-board.js?v=20261108h"></script>
     <style>
         body { overflow: hidden; }
         .tac { display: flex; height: calc(100vh - var(--header-h)); height: calc(100dvh - var(--header-h)); }
@@ -170,6 +170,7 @@
             <div class="side-title" style="margin:0">Board</div>
             <div class="field"><label>Titel</label><input id="b-title" class="input" placeholder="z. B. Breakout über links"></div>
             <div class="field"><label>Kategorie</label><select id="b-cat" class="select"></select></div>
+            <div class="field"><label>Gegner (optional)</label><select id="b-opp" class="select"><option value="">– kein Gegner –</option></select></div>
             <div class="field admin-only hidden"><label>Sichtbar für</label>
                 <select id="b-vis" class="select"><option value="team">Ganzes Team</option><option value="club">Alle Teams</option><option value="private">Nur mich</option></select>
             </div>
@@ -305,6 +306,7 @@
         savedJson = JSON.stringify(board.data());
         $('b-title').value = b.title || '';
         $('b-cat').value = cats.includes(b.category) ? b.category : 'Sonstiges';
+        $('b-opp').value = b.opponentId || '';
         $('b-vis').value = b.visibility || 'team';
         if (b.visibility === 'private' && b.ownerNr === user.nr) libTab = 'mine';
         history.replaceState(null, '', '?id=' + id);
@@ -314,7 +316,7 @@
     function newBoard() {
         if (!confirmLeave()) return;
         active = null; board.reset(); savedJson = JSON.stringify(board.data());
-        $('b-title').value = ''; $('b-cat').value = cats[0]; $('b-vis').value = admin ? 'team' : 'private';
+        $('b-title').value = ''; $('b-cat').value = cats[0]; $('b-vis').value = admin ? 'team' : 'private'; $('b-opp').value = '';
         history.replaceState(null, '', location.pathname);
         applyPermissions(); renderLib(); toggleLib(false);
     }
@@ -343,6 +345,9 @@
         const visibility = admin ? $('b-vis').value : 'private';
         const data = board.data();
         const payload = { ...data, title, category: $('b-cat').value, visibility, updatedAt: new Date() };
+        // Gegner gehören zu einem Team → bei „Alle Teams“ nicht übernehmen
+        if ($('b-opp').value && visibility !== 'club') payload.opponentId = $('b-opp').value;
+        else if (active && !asNew && active.opponentId) payload.opponentId = firebase.firestore.FieldValue.delete();
         // „Alle Teams" liegt in einer eigenen Collection (club_tactics), sonst im Team (tactics)
         const colFor = v => v === 'club' ? 'club_tactics' : 'tactics';
         const target = colFor(visibility);
@@ -388,8 +393,13 @@
     window.addEventListener('beforeunload', e => { if (dirty() && !board.isEmpty()) { e.preventDefault(); e.returnValue = ''; } });
 
     applyPermissions();
-    F.ready.then(loadBoards).then(() => {
+    F.ready.then(loadBoards).then(async () => {
         $('b-vis').value = admin ? 'team' : 'private';
+        // Gegner-Liste (Scouting) + Vorbelegung über ?opponent=
+        const opps = await F.T('opponents').get().catch(() => null);
+        if (opps) $('b-opp').innerHTML = `<option value="">– kein Gegner –</option>` + opps.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de')).map(o => `<option value="${o.id}">${F.esc(o.name)}</option>`).join('');
+        const preOpp = new URLSearchParams(location.search).get('opponent');
+        if (preOpp) { $('b-opp').value = preOpp; $('b-cat').value = 'Sonstiges'; }
         const id = new URLSearchParams(location.search).get('id');
         if (id && boards.some(b => b.id === id)) openBoard(id, true);
         applyPermissions();

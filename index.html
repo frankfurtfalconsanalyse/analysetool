@@ -24,14 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108g">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108h">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108g"></script>
-    <script src="assets/js/core.js?v=20261108g"></script>
-    <script src="assets/js/player.js?v=20261108g"></script>
-    <script src="assets/js/migrate.js?v=20261108g"></script>
+    <script src="assets/js/config.js?v=20261108h"></script>
+    <script src="assets/js/core.js?v=20261108h"></script>
+    <script src="assets/js/player.js?v=20261108h"></script>
+    <script src="assets/js/migrate.js?v=20261108h"></script>
     <style>
         /* ---------- Login ---------- */
         .login-screen {
@@ -181,7 +181,7 @@
         </section>
 
         <section class="section">
-            <div class="section-head"><h2>Sessions <span class="count" id="session-count">0</span></h2></div>
+            <div class="section-head"><h2>Sessions <span class="count" id="session-count">0</span></h2><select class="select" id="season" style="width:auto; height:34px; font-size:13px"></select></div>
             <div id="session-grid" class="grid"></div>
         </section>
 
@@ -363,7 +363,15 @@
         ]);
         media = m; players = F.playerMap(pSnap); admin = isAdm;
 
-        renderSessions(sessSnap, progSnap.exists ? progSnap.data() : {});
+        const progress = progSnap.exists ? progSnap.data() : {};
+        F.seasonSelect($('season'), sessSnap.docs.map(d => d.data().createdAt), sv => {
+            // Saison-Filter; offene Sessions mit Frist bleiben immer sichtbar
+            const docs = sessSnap.docs.filter(d => {
+                const x = d.data(), total = (x.videoIds || []).length;
+                return F.inSeason(x.createdAt, sv) || (x.dueDate && (progress[d.id] || 0) < total);
+            });
+            renderSessions({ docs, size: docs.length }, progress);
+        });
         renderTiles();
         loadMentions();
     }
@@ -372,9 +380,11 @@
         $('session-count').textContent = snap.size;
         if (!snap.size) {
             $('hero-wrap').classList.add('hidden');
-            $('session-grid').outerHTML = `<div id="session-grid">${F.empty('Noch keine Sessions', 'Sobald ein Trainer eine Session erstellt, erscheint sie hier.', 'layers')}</div>`;
+            $('session-grid').className = '';
+            $('session-grid').innerHTML = F.empty('Keine Sessions', 'In dieser Saison gibt es keine Sessions. Oben rechts kannst du ältere Saisons (Archiv) auswählen.', 'layers');
             return;
         }
+        $('hero-wrap').classList.remove('hidden'); $('session-grid').className = 'grid';
         const items = snap.docs.map(d => {
             const s = d.data(), total = (s.videoIds || []).length, done = Math.min(progress[d.id] || 0, total);
             const complete = total > 0 && done >= total;

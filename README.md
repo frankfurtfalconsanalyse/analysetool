@@ -16,6 +16,8 @@ Mehrere Teams (Herren, Damen, Herren Regio) mit eigenem Kader und eigenen Inhalt
 | `recordings.html?type=games\|trainings` | Übersicht der Spiel- und Trainingsaufzeichnungen | alle |
 | `recording_view.html?type=game\|training&id=…` | Aufzeichnung mit Ereignis-Timeline und privatem Feedback | alle (Eintragen: Admin) |
 | `tactic.html?id=…` | Taktikboard: Figuren, Zeichenwerkzeuge, Phasen + Abspielen; Team-Boards und private „Meine Boards“ | alle (Team-Boards: Admin) |
+| `opponents.html?id=…` | Gegner-Scouting: Bericht, Spiele + Bilanz, Boards und Clips je Gegner | alle (Pflege: Coach) |
+| `stats.html` | Meine Szenen (markierte Ereignisse/Clips) und Team-Statistik pro Saison | alle |
 | `admin.html` | Verwaltung des aktuellen Teams: Status-Check, Sessions, Clips, Spiele, Trainings, Kader/Rollen | Coach |
 | `help.html` | Anleitung | alle |
 
@@ -27,6 +29,7 @@ assets/
   js/config.js    Firebase-Konfiguration, Teams (inkl. Drive-Script-URL je Team), Kategorien/Positionen
   js/core.js      Login, Teams/Rollen, Navigation, Kommentar-Formatierung, Clip-Bibliothek
   js/migrate.js   Einmalige Umstellung der alten Daten auf Teams
+  js/player.js   Video-Player (Zeitlupe, Bild für Bild, A–B-Schleife, Tastenkürzel)
   js/tactic-board.js  Taktikboard-Engine (SVG-Feld, Figuren, Werkzeuge, Phasen, Animation)
   img/favicon.svg
 ```
@@ -55,12 +58,13 @@ Trikotnummern gelten nur innerhalb eines Teams – #22 bei den Herren ist nicht 
 | `teams/{team}` | Team-Infos (`name`) |
 | `teams/{team}/players/{nr}` | `name`, `nr`, `role` (`player`/`coach`), `clubAdmin`, `uid` + `login` (verknüpftes Login-Konto), `authVersion` |
 | `users/{uid}` | `teams: { herren: '22', regio: '07' }` – Nummer des Kontos je Team |
-| `teams/{team}/youtube_clips` | `title`, `ytId`, `startTime`, `category`, `position` |
+| `teams/{team}/youtube_clips` | `title`, `ytId`, `startTime`, `endTime`, `category`, `position`, `players[]`, `source` (Spiel/Training), `opponentId` |
 | `teams/{team}/video_metadata/{driveId}` | `position` für Drive-Clips |
-| `teams/{team}/sessions` | `title`, `description`, `videoIds[]` (Clip- oder Taktik-IDs), `createdAt` |
-| `teams/{team}/comments` | Kommentare zu Clips: `videoId`, `text`, `author`, `authorNr`, `mentions[]`, `readBy[]` |
-| `teams/{team}/games` · `trainings` | `title`, `ytId`, `date` |
-| `teams/{team}/game_events` · `training_events` | Timeline: `gameId`/`trainingId`, `type` (nur Spiele), `time`, `sec`, `desc` |
+| `teams/{team}/sessions` | `title`, `description`, `videoIds[]` (Clip- oder Taktik-IDs), `dueDate`, `createdAt` |
+| `teams/{team}/comments` | Kommentare zu Clips: `videoId`, `text`, `author`, `authorNr`, `mentions[]`, `readBy[]`, `parentId` (Antwort), `drawing` + `drawingTime` |
+| `teams/{team}/games` · `trainings` | `title`, `ytId`, `date`; Spiele zusätzlich `opponentId`, `scoreFor`, `scoreAgainst` |
+| `teams/{team}/opponents` | Gegner: `name`, `strengths`, `weaknesses`, `keyPlayers`, `plan` |
+| `teams/{team}/game_events` · `training_events` | Timeline: `gameId`/`trainingId`, `type` (nur Spiele), `time`, `sec`, `desc`, `scorer`, `assist`, `onIce[]`, `players[]` |
 | `teams/{team}/game_comments` · `training_comments` | privates Feedback: `targetNr`, `text`, `author` |
 | `teams/{team}/tactics` | Taktik-Boards: `title`, `category`, `field`, `visibility` (`team`/`private`), `ownerNr`, `phases[]` |
 | `teams/{team}/progress/{nr}` | Session-Fortschritt `{ sessionId: angesehene Clips }` |
@@ -86,7 +90,7 @@ und werden von der App nicht mehr benutzt.
   Privates Feedback sieht nur der betroffene Spieler, private Boards nur ihr Ersteller.
 - Bekannte Grenze: Eine Nummer, die sich noch nie angemeldet hat, kann von jedem beansprucht werden, der sie kennt.
   Fällt das auf, PIN im Kader zurücksetzen.
-- Die Regeln sind mit dem Firestore-Emulator getestet (`tests/rules`, 64 Fälle).
+- Die Regeln sind mit dem Firestore-Emulator getestet (`tests/rules`, 75 Fälle).
 
 ### Umstellung auf Teams (einmalig)
 
