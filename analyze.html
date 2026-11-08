@@ -2,145 +2,166 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Falcons Pro Analyse</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clip-Analyse · Falcons Analyse-Hub</title>
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/app.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/core.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --panel: #1a1a1a; --border: #333; --mention: #5dade2; --gray: #aaaaaa; }
-        body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-
-        /* BACK BUTTON OVER VIDEO */
-        .btn-hub { position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.6); color: white; border: 1px solid #fff; padding: 10px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 0.8rem; }
-
-        /* VIEWER AREA */
-        .viewer { flex: 1.5; position: relative; background: #000; display: flex; flex-direction: column; }
-        .video-box { position: relative; flex: 1; overflow: hidden; }
-        iframe { position: absolute; top:0; left:0; width: 100%; height: 100%; border:none; z-index: 1; }
-        #draw-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; pointer-events: none; }
-        #draw-canvas.active { pointer-events: auto; }
-
-        /* TOOLBAR - Scrollable on mobile */
-        .toolbar { background: var(--panel); padding: 10px; display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .btn { background: #333; color: white; border: 1px solid #444; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.7rem; white-space: nowrap; }
-        .btn.active { background: var(--red); border-color: white; }
-
-        /* SIDEBAR (Stapelt unten auf mobile) */
-        .sidebar { flex: 1; background: var(--panel); border-top: 2px solid var(--border); display: flex; flex-direction: column; }
-        @media (min-width: 900px) { 
-            body { flex-direction: row; }
-            .viewer { flex: 3; }
-            .sidebar { flex: 1; border-top: none; border-left: 2px solid var(--border); max-width: 400px; }
-        }
-
-        .comment-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #111; }
-        .comment-item { background: #1e1e1e; padding: 12px; border-radius: 8px; border-left: 4px solid var(--red); font-size: 0.85rem; color: var(--gray); position: relative; }
-        .mention { color: var(--mention) !important; font-weight: bold !important; }
-        .timestamp { background: var(--mention); color: white; padding: 2px 5px; border-radius: 4px; cursor: pointer; }
-
-        .input-area { padding: 10px; background: #000; border-top: 1px solid var(--border); display: flex; gap: 5px; }
-        textarea { flex: 1; height: 44px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; padding: 10px; resize: none; font-size: 0.9rem; }
-        
-        .del-btn { background: none; border: none; color: #444; cursor: pointer; float: right; font-size: 1rem; }
-        .del-btn:hover { color: var(--red); }
+        #draw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; touch-action: none; }
+        #draw-canvas.active { pointer-events: auto; cursor: crosshair; }
+        .drawing-hint { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 11; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; background: rgba(0,0,0,.7); border: 1px solid rgba(255,255,255,.15); pointer-events: none; }
+        .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; flex-shrink: 0; box-shadow: inset 0 0 0 2px rgba(0,0,0,.35); }
+        .swatch.active { border-color: #fff; }
+        #btn-draw.active { background: var(--brand); border-color: var(--brand); color: #fff; }
     </style>
 </head>
 <body>
 
-    <div class="viewer">
-        <a href="index.html" class="btn-hub">← HUB</a>
-        <div class="video-box"><iframe id="main-frame" src=""></iframe><canvas id="draw-canvas"></canvas></div>
-        <div class="toolbar">
-            <button class="btn" id="btn-draw" onclick="toggleDrawing()">✏️ ZEICHNEN</button>
-            <button class="btn" onclick="clearDraw()">🗑 LÖSCHEN</button>
-            <div style="background: red; width:24px; height:24px; border-radius:50%;" onclick="penColor='#e30613'"></div>
-            <div style="background: yellow; width:24px; height:24px; border-radius:50%;" onclick="penColor='#ffff00'"></div>
+<div class="workspace">
+    <div class="workspace-main">
+        <div class="workspace-stage">
+            <iframe id="frame" allow="autoplay; fullscreen" allowfullscreen></iframe>
+            <canvas id="draw-canvas"></canvas>
+            <div class="drawing-hint hidden" id="draw-hint">Zeichenmodus aktiv – Video-Steuerung wieder mit „Fertig"</div>
+        </div>
+        <div class="stage-bar">
+            <button class="btn btn-sm" id="btn-draw" onclick="toggleDrawing()"></button>
+            <span class="sep"></span>
+            <div class="swatch active" style="background:#e30613" data-color="#e30613"></div>
+            <div class="swatch" style="background:#ffd400" data-color="#ffd400"></div>
+            <div class="swatch" style="background:#22d3ee" data-color="#22d3ee"></div>
+            <div class="swatch" style="background:#ffffff" data-color="#ffffff"></div>
+            <span class="sep"></span>
+            <button class="btn btn-sm btn-ghost" id="btn-undo" onclick="undo()" title="Rückgängig"></button>
+            <button class="btn btn-sm btn-ghost" id="btn-clear" onclick="clearDraw()" title="Zeichnung löschen"></button>
         </div>
     </div>
 
-    <div class="sidebar">
-        <div class="comment-list" id="comment-display"></div>
-        <div class="input-area">
-            <textarea id="com-input" placeholder="Feedback @Nr..."></textarea>
-            <button class="btn" style="background:var(--red); border:none;" onclick="sendComment()">Senden</button>
+    <aside class="workspace-side">
+        <div class="side-head">
+            <a href="index.html" class="crumb" id="crumb">Dashboard</a>
+            <h1 id="title">Clip-Analyse</h1>
+            <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap" id="badges"></div>
         </div>
-    </div>
+        <div class="side-scroll"><div class="feed" id="comments"></div></div>
+        <div class="composer">
+            <textarea id="com-input" class="textarea" placeholder="Feedback schreiben … (@Nr markiert)"></textarea>
+            <button class="btn btn-primary btn-icon" id="send-btn" onclick="sendComment()" title="Senden"></button>
+        </div>
+    </aside>
+</div>
 
-    <script>
-        const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const params = new URLSearchParams(window.location.search), videoId = params.get('id'), type = params.get('type') || 'drive', user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
-        let playerMap = {}, currentYtId = "", isAdmin = false;
+<script>
+    const F = Falcons, I = F.icon, $ = id => document.getElementById(id);
+    const user = F.requireUser();
+    F.mountShell('dashboard', { bottomNav: false });
 
-        async function init() {
-            // Admin Check
-            const adminDoc = await db.collection("admins").doc(user.nr || "0").get();
-            if (user.nr === "22" || adminDoc.exists) isAdmin = true;
+    const params = new URLSearchParams(location.search);
+    const videoId = params.get('id'), type = params.get('type') || 'drive';
+    let players = {}, admin = false, clip = null;
 
-            const pSnap = await db.collection("players").get();
-            pSnap.forEach(doc => playerMap[doc.id] = doc.data().name);
-            const frame = document.getElementById('main-frame');
-            if(type === 'youtube') {
-                const ytDoc = await db.collection("youtube_clips").doc(videoId).get();
-                currentYtId = ytDoc.data().ytId;
-                frame.src = `https://www.youtube.com/embed/${currentYtId}?start=${ytDoc.data().startTime}&autoplay=1`;
-            } else { frame.src = `https://drive.google.com/file/d/${videoId}/preview`; }
-            listenForComments();
-        }
+    $('crumb').innerHTML = I('arrowLeft', 'icon-sm') + ' Dashboard';
+    $('btn-undo').innerHTML = I('undo', 'icon-sm');
+    $('btn-clear').innerHTML = I('trash', 'icon-sm');
+    $('send-btn').innerHTML = I('send');
+    F.submitOnEnter($('com-input'), sendComment);
+    F.onTimestamp = jumpTo;
 
-        async function sendComment() {
-            const input = document.getElementById('com-input'); let text = input.value.trim(); if(!text) return;
-            let mentions = [];
-            let resolvedText = text.replace(/@(\d+)/g, (match, nr) => { mentions.push(nr); return playerMap[nr] ? `@${nr} | ${playerMap[nr]}*` : `${match}*`; });
-            await db.collection("comments").add({ videoId, text: resolvedText, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-            input.value = "";
-        }
+    async function init() {
+        if (!videoId) return location.replace('index.html');
+        const [pSnap, isAdm, media] = await Promise.all([db.collection('players').get(), F.isAdmin(), F.loadMedia()]);
+        players = F.playerMap(pSnap); admin = isAdm;
 
-        function listenForComments() {
-            db.collection("comments").where("videoId", "==", videoId).onSnapshot(snap => {
-                const display = document.getElementById('comment-display'); display.innerHTML = "";
-                let docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
-                docs.sort((a,b) => parseTime(a.text) - parseTime(b.text));
-                docs.forEach(c => {
-                    const formatted = c.text.replace(/(\d{1,2}:\d{2}:\d{2})/g, '<span class="timestamp" onclick="jumpTo(\'$1\')">$1</span>').replace(/(@\d+ \| [^*]+|@\d+)\*/g, '<span class="mention">$1</span>');
-                    const delBtn = isAdmin ? `<button class="del-btn" onclick="deleteComment('${c.id}')">🗑</button>` : '';
-                    display.innerHTML += `<div class="comment-item">${delBtn}<small>${c.author}</small><div>${formatted}</div></div>`;
-                });
-                display.scrollTop = display.scrollHeight;
-            });
-        }
+        clip = media.find(m => m.id === videoId) || (type === 'drive'
+            ? { id: videoId, type: 'drive', title: 'Clip', embedUrl: `https://drive.google.com/file/d/${videoId}/preview` }
+            : null);
+        if (!clip) { $('comments').innerHTML = F.empty('Clip nicht gefunden', '', 'video'); return; }
 
-        async function deleteComment(id) {
-            if(confirm("Kommentar löschen?")) {
-                await db.collection("comments").doc(id).delete();
-            }
-        }
+        $('frame').src = clip.embedUrl;
+        $('title').textContent = clip.title;
+        document.title = `${clip.title} · Falcons Analyse-Hub`;
+        $('badges').innerHTML = [clip.category, clip.position !== 'Alle' && clip.position, clip.type === 'youtube' ? 'YouTube' : 'Drive']
+            .filter(Boolean).map(b => `<span class="badge">${F.esc(b)}</span>`).join('');
+        F.markViewed('video_views', videoId);
+        listen();
+    }
 
-        function jumpTo(ts) { if(type === 'youtube') document.getElementById('main-frame').src = `https://www.youtube.com/embed/${currentYtId}?start=${parseTime(ts)}&autoplay=1`; }
-        function parseTime(t) { const m = t.match(/(\d{1,2}):(\d{2}):(\d{2})/); return m ? (+m[1])*3600+(+m[2])*60+(+m[3]) : 0; }
+    function listen() {
+        $('comments').innerHTML = F.loading();
+        db.collection('comments').where('videoId', '==', videoId).onSnapshot(snap => {
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => F.parseTime(a.text) - F.parseTime(b.text));
+            $('comments').innerHTML = docs.length
+                ? docs.map(c => F.commentHtml(c, { me: user.nr, admin, onRead: 'F.toggleRead', onDelete: 'deleteComment' })).join('')
+                : F.empty('Noch kein Feedback', 'Schreib den ersten Kommentar zu diesem Clip.', 'message');
+        });
+    }
 
-        const canvas = document.getElementById('draw-canvas'), ctx = canvas.getContext('2d');
-        let isDrawing = false, penColor = "#e30613";
-        function toggleDrawing() { isDrawing = !isDrawing; canvas.classList.toggle('active', isDrawing); document.getElementById('btn-draw').classList.toggle('active', isDrawing); canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
-        function clearDraw() { ctx.clearRect(0,0,canvas.width,canvas.height); }
+    async function sendComment() {
+        const input = $('com-input'), raw = input.value.trim();
+        if (!raw) return;
+        const { text, mentions } = F.resolveMentions(raw, players);
+        await db.collection('comments').add({ videoId, text, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        input.value = '';
+    }
+    function deleteComment(id) { F.deleteDoc('comments', id, 'Kommentar löschen?'); }
 
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
-        }
+    function jumpTo(sec) {
+        if (clip && clip.type === 'youtube') $('frame').src = `https://www.youtube.com/embed/${clip.ytId}?start=${sec}&autoplay=1&rel=0`;
+        else F.toast('Springen ist nur bei YouTube-Clips möglich', 'error');
+    }
 
-        function start(e) { if(!isDrawing) return; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.strokeStyle=penColor; ctx.lineWidth=4; ctx.lineCap="round"; }
-        function move(e) { if(!isDrawing || (e.buttons !== 1 && !e.touches)) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
-        
-        canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move);
-        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); }, {passive:false});
-        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e); }, {passive:false});
+    /* ------------------------------------------------------------ Zeichnen */
+    const canvas = $('draw-canvas'), ctx = canvas.getContext('2d');
+    let drawing = false, pen = '#e30613', stroke = false, history = [];
 
-        window.onload = init;
-    </script>
+    function sizeCanvas() {
+        const snapshot = canvas.width ? canvas.toDataURL() : null;
+        canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+        if (snapshot) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height); img.src = snapshot; }
+    }
+    function setDrawBtn() { $('btn-draw').innerHTML = drawing ? I('check', 'icon-sm') + ' Fertig' : I('pen', 'icon-sm') + ' Zeichnen'; }
+    function toggleDrawing() {
+        drawing = !drawing;
+        canvas.classList.toggle('active', drawing);
+        $('btn-draw').classList.toggle('active', drawing);
+        $('draw-hint').classList.toggle('hidden', !drawing);
+        if (drawing && canvas.width !== canvas.offsetWidth) sizeCanvas();
+        setDrawBtn();
+    }
+    function clearDraw() { history.push(canvas.toDataURL()); ctx.clearRect(0, 0, canvas.width, canvas.height); }
+    function undo() {
+        const prev = history.pop(); if (!prev) return;
+        const img = new Image(); img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); }; img.src = prev;
+    }
+    document.querySelectorAll('.swatch').forEach(s => s.addEventListener('click', () => {
+        document.querySelectorAll('.swatch').forEach(x => x.classList.remove('active'));
+        s.classList.add('active'); pen = s.dataset.color;
+    }));
+
+    function pos(e) {
+        const r = canvas.getBoundingClientRect(), p = e.touches ? e.touches[0] : e;
+        return { x: p.clientX - r.left, y: p.clientY - r.top };
+    }
+    function start(e) {
+        if (!drawing) return; e.preventDefault();
+        history.push(canvas.toDataURL()); if (history.length > 30) history.shift();
+        const p = pos(e); stroke = true;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.strokeStyle = pen; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    }
+    function move(e) { if (!stroke) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+    function end() { stroke = false; }
+    canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', start, { passive: false }); canvas.addEventListener('touchmove', move, { passive: false }); canvas.addEventListener('touchend', end);
+    window.addEventListener('resize', () => { if (canvas.width) sizeCanvas(); });
+
+    setDrawBtn();
+    init();
+</script>
 </body>
 </html>

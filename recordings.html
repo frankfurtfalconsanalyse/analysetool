@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Spiele & Trainings · Falcons Analyse-Hub</title>
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/app.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/core.js"></script>
+</head>
+<body>
+
+<main class="page">
+    <div class="page-head">
+        <div>
+            <div class="eyebrow">Aufzeichnungen</div>
+            <h1>Spiele & Trainings</h1>
+            <p>Komplette Aufzeichnungen mit Ereignis-Timeline und deinem persönlichen Trainer-Feedback.</p>
+        </div>
+        <div class="segmented">
+            <button id="tab-games" onclick="show('games')">Spiele</button>
+            <button id="tab-trainings" onclick="show('trainings')">Trainings</button>
+        </div>
+    </div>
+    <div id="grid" class="grid"></div>
+</main>
+
+<script>
+    const F = Falcons, I = F.icon, $ = id => document.getElementById(id);
+    const user = F.requireUser();
+    F.mountShell('library');
+
+    const KINDS = {
+        games:     { views: 'game_views',     viewType: 'game',     label: 'Spiel',    empty: 'Noch keine Spiele hochgeladen.' },
+        trainings: { views: 'training_views', viewType: 'training', label: 'Training', empty: 'Noch keine Trainings hochgeladen.' }
+    };
+
+    async function show(kind) {
+        if (!KINDS[kind]) kind = 'games';
+        const k = KINDS[kind];
+        history.replaceState(null, '', `?type=${kind}`);
+        $('tab-games').classList.toggle('active', kind === 'games');
+        $('tab-trainings').classList.toggle('active', kind === 'trainings');
+        $('grid').className = 'grid';
+        $('grid').innerHTML = F.loading();
+
+        const [snap, viewDoc] = await Promise.all([
+            db.collection(kind).orderBy('date', 'desc').get(),
+            db.collection(k.views).doc(user.nr).get()
+        ]);
+        const seen = viewDoc.exists ? viewDoc.data() : {};
+
+        if (!snap.size) { $('grid').className = ''; $('grid').innerHTML = F.empty('Noch nichts da', k.empty, 'video'); return; }
+        $('grid').innerHTML = snap.docs.map(d => {
+            const g = d.data();
+            return `<a class="media-card" href="recording_view.html?type=${k.viewType}&id=${d.id}">
+                <div class="media-thumb" style="background-image:url('${F.ytThumb(g.ytId)}')">
+                    <div class="play">${I('play')}</div>
+                    <div class="corner">${seen[d.id] ? `<span class="badge badge-success">${I('check', 'icon-sm')} Gesehen</span>` : `<span class="badge badge-brand">Neu</span>`}</div>
+                </div>
+                <div class="media-body">
+                    <div class="meta">${I('calendar', 'icon-sm')} ${F.fmtDate(g.date)} · ${k.label}</div>
+                    <h3>${F.esc(g.title)}</h3>
+                </div>
+            </a>`;
+        }).join('');
+    }
+
+    show(new URLSearchParams(location.search).get('type') || 'games');
+</script>
+</body>
+</html>

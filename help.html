@@ -1,123 +1,106 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8"><title>Falcons Hub | Hilfe</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hilfe · Falcons Analyse-Hub</title>
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/app.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/core.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --border: #333; --blue: #5dade2; }
-        body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; line-height: 1.6; }
-        
-        header { background: #000; padding: 20px 40px; border-bottom: 4px solid var(--red); display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 100; }
-        .logo { font-weight: 900; letter-spacing: 2px; text-transform: uppercase; font-size: 1.2rem; }
-        .btn-back { text-decoration: none; color: white; background: #333; padding: 10px 20px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; transition: 0.2s; }
-        .btn-back:hover { background: #444; }
-        
-        .container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
-        .help-card { background: var(--card); border-radius: 15px; padding: 30px; border: 1px solid var(--border); margin-bottom: 30px; position: relative; overflow: hidden; }
-        .help-card::before { content: ""; position: absolute; left: 0; top: 0; height: 100%; width: 5px; background: var(--red); }
-        
-        h2 { color: var(--red); text-transform: uppercase; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; font-size: 1.4rem; }
-        h3 { margin-top: 25px; color: #fff; border-left: 3px solid var(--red); padding-left: 10px; font-size: 1.1rem; }
-        p { color: #ccc; font-size: 0.95rem; }
-        ul { padding-left: 20px; color: #ccc; }
-        li { margin-bottom: 12px; }
-        
-        b { color: white; }
-        .highlight-blue { color: var(--blue); font-weight: bold; }
-        .highlight-red { color: var(--red); font-weight: bold; }
-        
-        .admin-only { border: 2px dashed var(--red); display: none; background: rgba(227, 6, 19, 0.05); }
-        .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 900; vertical-align: middle; margin-left: 10px; text-transform: uppercase; }
-        .badge-player { background: #444; color: #fff; }
-        .badge-admin { background: var(--red); color: #fff; }
-
-        .icon-box { background: #222; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-weight: bold; border: 1px solid #444; }
+        .help h2 { font-size: 18px; display: flex; align-items: center; gap: 10px; }
+        .help h3 { font-size: 15px; margin: 22px 0 6px; }
+        .help p, .help li { color: #c5cad2; font-size: 14.5px; line-height: 1.65; }
+        .help ul { padding-left: 20px; margin: 8px 0 0; }
+        .help li + li { margin-top: 6px; }
+        .help b { color: var(--text); }
+        .help .card + .card { margin-top: 20px; }
+        kbd { font-family: var(--mono); font-size: 12.5px; padding: 1px 7px; border-radius: 5px; background: var(--surface-3); border: 1px solid var(--border-strong); }
     </style>
 </head>
 <body>
 
-<header>
-    <div class="logo">FALCONS <span>HILFE</span></div>
-    <a href="index.html" class="btn-back">ZURÜCK ZUM HUB</a>
-</header>
-
-<div class="container">
-
-    <div class="help-card">
-        <h2>Einstieg & Login</h2>
-        <p>Willkommen im Video-Analyse-System der Frankfurt Falcons. Dieses Tool dient dazu, Spielzüge zu verstehen und individuelles Feedback umzusetzen.</p>
-        <ul>
-            <li><b>Zweistelliger Login:</b> Gib beim Einloggen deine Trikotnummer immer zweistellig ein. Die Nummer 1 ist <span class="icon-box">01</span>, die Nummer 22 ist <span class="icon-box">22</span>.</li>
-            <li><b>Dashboard:</b> Nach dem Login siehst du oben deine <b>Sessions</b> (aktuelle Playlists) und darunter Clips, in denen du persönlich markiert wurdest.</li>
-        </ul>
+<main class="page page-narrow help">
+    <div class="page-head">
+        <div>
+            <div class="eyebrow">Anleitung</div>
+            <h1>So funktioniert der Analyse-Hub</h1>
+            <p>Video-Analyse der Frankfurt Falcons: Spielzüge verstehen und individuelles Feedback umsetzen.</p>
+        </div>
     </div>
 
-    <div class="help-card">
-        <h2>Funktionen für Spieler <span class="badge badge-player">Standard</span></h2>
-        
-        <h3>1. Kommentare & @Mentions</h3>
-        <p>In jedem Video-Fenster (Modal oder Analyse-Seite) kannst du Feedback schreiben. 
-        Tippst du <span class="highlight-blue">@</span> gefolgt von einer Trikotnummer (z.B. @19), wird der Spieler automatisch mit vollem Namen markiert. 
-        Markierungen erscheinen im Text <span class="highlight-blue">blau</span>, der restliche Text bleibt <span style="color: #888;">grau</span>.</p>
-
-        <h3>2. Feedback abhaken (✓)</h3>
-        <p>Wenn ein Trainer dich markiert hat, erscheint neben dem Kommentar ein grüner Haken <span style="color:#28a745">✓</span>. 
-        Klicke darauf, um zu bestätigen, dass du das Feedback gelesen hast. Der Kommentar wird blass. 
-        Falls du dich verklickt hast, kannst du den Haken mit <span style="color:#888">↺</span> wieder entfernen.</p>
-
-        <h3>3. Pro-Analyse & Zeichnen</h3>
-        <p>Klicke unter einem Video auf <b>"ZUR ANALYSE"</b>, um in den Editor-Modus zu wechseln. Hier kannst du:</p>
+    <div class="card"><div class="card-body">
+        <h2>Login <span class="badge">Alle</span></h2>
         <ul>
-            <li>Den <b>Zeichnen-Modus</b> aktivieren, um mit der Maus Laufwege oder Fehler direkt auf das Video zu malen.</li>
-            <li>Über die Farb-Punkte die Stiftfarbe ändern (Rot, Gelb, Cyan).</li>
-            <li>Das Video in Zeitlupe schauen (Nutze die Player-Einstellungen unten rechts im Bild).</li>
+            <li>Gib deine <b>Trikotnummer zweistellig</b> ein – die 7 ist <kbd>07</kbd>, die 22 ist <kbd>22</kbd>.</li>
+            <li>Beim <b>ersten Login</b> wählst du eine 4-stellige PIN. Danach meldest du dich immer mit Nummer + PIN an.</li>
+            <li>PIN vergessen? Ein Trainer kann sie im Kader zurücksetzen.</li>
+        </ul>
+    </div></div>
+
+    <div class="card"><div class="card-body">
+        <h2>Für Spieler <span class="badge">Alle</span></h2>
+
+        <h3>Dashboard</h3>
+        <p>Oben siehst du die <b>neueste Session</b>, darunter alle Clips, in denen du <b>markiert</b> wurdest, alle Sessions mit deinem Fortschritt und die <b>Clip-Bibliothek</b> nach Spielsituation und Position.</p>
+
+        <h3>Sessions</h3>
+        <p>Eine Session ist eine vom Trainer zusammengestellte Playlist aus Clips und Taktik-Boards. Mit <b>Weiter</b> / <b>Zurück</b> (oder den Pfeiltasten <kbd>←</kbd> <kbd>→</kbd>) gehst du sie durch. Dein Fortschritt wird gespeichert – beim nächsten Öffnen geht es dort weiter.</p>
+
+        <h3>Kommentare, @Markierungen & Zeitstempel</h3>
+        <ul>
+            <li>Unter jedem Clip kannst du Feedback schreiben. <kbd>Enter</kbd> sendet, <kbd>Shift</kbd>+<kbd>Enter</kbd> macht eine neue Zeile.</li>
+            <li><kbd>@19</kbd> markiert die Nummer 19 – der Name wird automatisch ergänzt und <span class="mention">blau</span> hervorgehoben.</li>
+            <li>Zeitangaben im Format <kbd>0:15:30</kbd> werden zu <span class="ts">0:15:30</span> – ein Klick springt im Video an diese Stelle (bei YouTube).</li>
+            <li>Wurdest du markiert, erscheint <b>Abhaken</b>. Damit bestätigst du, dass du das Feedback umgesetzt hast. Mit <b>Erledigt</b> kannst du es rückgängig machen.</li>
         </ul>
 
-        <h3>4. Game Hub</h3>
-        <p>Hier liegen die Aufzeichnungen ganzer Spiele. Der Game Hub bietet <b>privates Feedback</b>: Nur du siehst die Kommentare, die der Trainer für deine Nummer hinterlegt hat.</p>
-    </div>
+        <h3>Analyse-Modus</h3>
+        <p>Über <b>Analyse-Modus</b> öffnest du einen Clip groß. Mit <b>Zeichnen</b> malst du Laufwege direkt auf das Video (Farben Rot, Gelb, Cyan, Weiß). Solange der Zeichenmodus aktiv ist, lässt sich das Video nicht bedienen – klick auf <b>Fertig</b>.</p>
 
-    <!-- ADMIN BEREICH (Wird per JS eingeblendet) -->
-    <div id="admin-help" class="help-card admin-only">
-        <h2>Trainer & Admin Bereich <span class="badge badge-admin">Privilegiert</span></h2>
-        
-        <h3>1. Sessions Editor (Playlists)</h3>
-        <p>Erstelle geführte Analysen, indem du Clips aus Drive und YouTube kombinierst. Spieler sehen ihren Fortschritt (roter Punkt), sobald sie die Session starten.</p>
+        <h3>Spiele & Trainings</h3>
+        <p>Komplette Aufzeichnungen mit einer <b>Timeline</b> (Tore, Über-/Unterzahl bzw. Übungen) – ein Klick springt zur Szene. Unter <b>Mein Feedback</b> siehst du <b>privates Feedback</b>, das nur du und die Trainer sehen.</p>
+    </div></div>
 
-        <h3>2. Game Hub & Zeitstempel</h3>
-        <p>Wenn du ein komplettes Spiel im Game Hub analysierst:</p>
+    <div class="card admin-only hidden" style="border-color:#3a1a1d"><div class="card-body">
+        <h2>Für Trainer & Admins <span class="badge badge-brand">Admin</span></h2>
+
+        <h3>Sessions erstellen</h3>
+        <p>Verwaltung → <b>Sessions</b>: Titel und Anweisungen eingeben und Inhalte anhaken. Die <b>Reihenfolge der Auswahl</b> ist die Reihenfolge in der Session. Auch Taktik-Boards können eingebunden werden.</p>
+
+        <h3>Clips</h3>
         <ul>
-            <li>Wähle oben im Dropdown den Spieler aus, den du coachen willst.</li>
-            <li>Schreibe Zeitstempel im Format <span class="highlight-blue">H:M:S</span> (z.B. 0:15:30). Diese werden automatisch blau hinterlegt.</li>
-            <li>Klickt der Spieler auf die Zeit, springt das Video exakt an diese Stelle.</li>
+            <li><b>Drive-Clips</b> kommen automatisch aus dem Google-Drive-Ordner (Kategorie = Ordner).</li>
+            <li><b>YouTube-Clips</b> fügst du in der Verwaltung hinzu. Ein Link mit <kbd>?t=95</kbd> startet bei Sekunde 95.</li>
+            <li>Für jeden Clip kannst du eine <b>Position</b> festlegen – „Alle" zeigt ihn bei jeder Position.</li>
         </ul>
 
-        <h3>3. Status-Check</h3>
-        <p>Über das Admin-Panel kannst du unter "Status-Check" einsehen, wer welche Session oder welches Einzelvideo bereits angeschaut hat. Spieler werden automatisch in <b>Gesehen</b> und <b>Offen</b> sortiert.</p>
+        <h3>Spiele & Trainings analysieren</h3>
+        <ul>
+            <li>Spiel/Training in der Verwaltung mit YouTube-Link und Datum anlegen.</li>
+            <li>In der Aufzeichnung unten <b>Ereignisse/Übungen</b> mit Zeit eintragen. Der <b>Uhr-Button</b> übernimmt die aktuelle Videozeit.</li>
+            <li>Unter <b>Spieler-Feedback</b> einen Spieler wählen und privates Feedback schreiben – Zeitstempel werden klickbar.</li>
+        </ul>
 
-        <h3>4. Kader & Admins</h3>
-        <p>Hier verwaltest du das Team. Du kannst neue Spieler anlegen oder anderen Trainern Admin-Rechte gewähren.</p>
-    </div>
+        <h3>Status-Check</h3>
+        <p>Zeigt pro Session, Clip, Spiel und Training, welche Spieler es <b>gesehen</b> haben und wer noch <b>offen</b> ist. Eine Session zählt als gesehen, wenn alle Clips durchgeklickt wurden.</p>
 
-</div>
+        <h3>Kader & Admins</h3>
+        <p>Spieler anlegen, PINs zurücksetzen und per Schalter <b>Admin-Rechte</b> vergeben. Admins sehen Verwaltung und Taktikboard und können Kommentare löschen.</p>
+
+        <h3>Taktikboard</h3>
+        <p>Figuren aus der Seitenleiste aufs Feld ziehen, mit dem Stift Laufwege zeichnen, speichern. Zum Entfernen eine Figur auf den Papierkorb ziehen. Gespeicherte Boards können in Sessions eingebaut werden.</p>
+    </div></div>
+</main>
 
 <script>
-    const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
-
-    async function checkAdmin() {
-        if(!user.nr) return;
-        const adminDoc = await db.collection("admins").doc(user.nr).get();
-        // Super-Admin 22 oder in Admin-Collection eingetragen
-        if(user.nr === "22" || adminDoc.exists) {
-            document.getElementById('admin-help').style.display = "block";
-        }
-    }
-    checkAdmin();
+    Falcons.requireUser();
+    Falcons.mountShell('help');
 </script>
 </body>
 </html>

@@ -1,234 +1,404 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8"><title>Falcons Admin | Zentrale</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verwaltung · Falcons Analyse-Hub</title>
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/app.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/core.js"></script>
     <style>
-        :root { --red: #e30613; --bg: #0d0d0d; --card: #1a1a1a; --border: #333; --green: #28a745; }
-        body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: none; padding-bottom: 120px; }
-        header { background: #000; padding: 20px 40px; border-bottom: 4px solid var(--red); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        .logo { font-weight: 900; letter-spacing: 2px; text-transform: uppercase; font-size: 1.2rem; }
-        .btn-hub { text-decoration: none; color: white; background: #333; padding: 8px 15px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; }
-        .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
-        .tab-nav { display: flex; gap: 5px; margin-bottom: 30px; border-bottom: 1px solid var(--border); overflow-x: auto; padding-bottom: 5px; }
-        .tab-btn { background: none; border: none; color: #666; padding: 12px 20px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.75rem; white-space: nowrap; transition: 0.3s; }
-        .tab-btn.active { color: var(--red); border-bottom: 3px solid var(--red); }
-        .tab-content { display: none; animation: fadeIn 0.3s ease; }
-        .tab-content.active { display: block; }
-        .admin-card { background: var(--card); border-radius: 12px; padding: 25px; border: 1px solid var(--border); margin-bottom: 25px; }
-        h3 { margin-top: 0; text-transform: uppercase; font-size: 0.9rem; color: var(--red); letter-spacing: 1px; margin-bottom: 20px; border-left: 3px solid var(--red); padding-left: 10px; font-weight: 400; }
-        .form-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 15px; }
-        input, select, textarea { background: #222; border: 1px solid #444; color: white; padding: 12px; border-radius: 5px; font-family: inherit; }
-        .btn-action { background: #444; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.75rem; transition: 0.2s; }
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; font-size: 0.65rem; color: #555; text-transform: uppercase; padding: 12px 10px; border-bottom: 1px solid var(--border); }
-        td { padding: 12px 10px; border-bottom: 1px solid #222; font-size: 0.85rem; }
-        .status-row { background: #111; margin-bottom: 10px; border-radius: 8px; border: 1px solid #222; overflow: hidden; }
-        .status-header { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
-        .status-header:hover { background: #1a1a1a; }
-        .status-content { display: none; padding: 20px; background: #0a0a0a; border-top: 1px solid #222; }
-        .player-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-        .player-tag { background: #1a1a1a; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; border: 1px solid #333; font-size: 0.8rem; }
-        .pin-badge { font-size: 0.6rem; padding: 2px 6px; border-radius: 3px; font-weight: 900; margin-left: 10px; text-transform: uppercase; }
-        .pin-set { background: var(--green); color: white; }
-        .pin-none { background: #444; color: #aaa; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Status-Check */
+        .status-row { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); overflow: hidden; }
+        .status-row + .status-row { margin-top: 8px; }
+        .status-head { display: grid; grid-template-columns: 1fr 160px 70px 20px; gap: 16px; align-items: center; padding: 12px 16px; cursor: pointer; }
+        .status-head:hover { background: var(--surface-3); }
+        .status-head .title { font-weight: 600; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .status-head .ratio { font-size: 13px; color: var(--text-muted); text-align: right; font-family: var(--mono); }
+        .status-head .chev { color: var(--text-faint); transition: transform .2s; }
+        .status-row.open .chev { transform: rotate(180deg); }
+        .status-body { display: none; padding: 16px; border-top: 1px solid var(--border); background: var(--surface); }
+        .status-row.open .status-body { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .status-body h5 { margin: 0 0 10px; font-size: 11px; letter-spacing: .8px; text-transform: uppercase; display: flex; gap: 8px; align-items: center; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--border); }
+        .chip .mono { color: var(--text-faint); margin-right: 4px; }
+        @media (max-width: 640px) {
+            .status-head { grid-template-columns: 1fr 60px 16px; }
+            .status-head .progress { display: none; }
+            .status-row.open .status-body { grid-template-columns: 1fr; }
+        }
+
+        /* Clip-Auswahl für Sessions */
+        .picker { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); }
+        .picker-search { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; }
+        .picker-search:focus { box-shadow: none; border-color: var(--border); }
+        .picker-list { max-height: 280px; overflow-y: auto; padding: 6px; }
+        .pick { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; }
+        .pick:hover { background: var(--surface-2); }
+        .pick input { accent-color: var(--brand); width: 16px; height: 16px; }
+        .pick .order { margin-left: auto; font-size: 11px; font-weight: 700; color: #fff; background: var(--brand); border-radius: 999px; padding: 1px 7px; }
+        .switch { position: relative; width: 36px; height: 20px; display: inline-block; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .switch span { position: absolute; inset: 0; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--border-strong); cursor: pointer; transition: .2s; }
+        .switch span::after { content: ""; position: absolute; width: 14px; height: 14px; left: 2px; top: 2px; border-radius: 50%; background: var(--text-muted); transition: .2s; }
+        .switch input:checked + span { background: var(--brand); border-color: var(--brand); }
+        .switch input:checked + span::after { transform: translateX(16px); background: #fff; }
+        .switch input:disabled + span { opacity: .5; cursor: not-allowed; }
+        .table .select { height: 32px; font-size: 13px; width: auto; min-width: 140px; }
+        .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .kpi { padding: 16px 18px; }
+        .kpi small { display: block; font-size: 12px; color: var(--text-muted); }
+        .kpi strong { font-size: 24px; font-weight: 700; font-family: var(--font-display); }
     </style>
 </head>
 <body>
 
-<header>
-    <div class="logo">Falcons <span>Admin</span></div>
-    <div class="header-right"><a href="index.html" class="btn-hub">HUB ÖFFNEN</a></div>
-</header>
+<main class="page hidden" id="app">
+    <div class="page-head">
+        <div>
+            <div class="eyebrow">Trainer-Bereich</div>
+            <h1>Verwaltung</h1>
+            <p>Inhalte pflegen, Kader verwalten und sehen, wer was angeschaut hat.</p>
+        </div>
+    </div>
 
-<div class="container">
-    <nav class="tab-nav">
-        <button class="tab-btn active" id="tab-btn-status" onclick="openTab('status')">Status-Check</button>
-        <button class="tab-btn" id="tab-btn-sessions" onclick="openTab('sessions')">Sessions</button>
-        <button class="tab-btn" id="tab-btn-yt" onclick="openTab('yt')">Clips</button>
-        <button class="tab-btn" id="tab-btn-games" onclick="openTab('games')">Spiele</button>
-        <button class="tab-btn" id="tab-btn-trainings" onclick="openTab('trainings')">Trainings</button>
-        <button class="tab-btn" id="tab-btn-kader" onclick="openTab('kader')">Kader</button>
+    <div class="kpis" id="kpis"></div>
+
+    <nav class="tabs" id="tabs">
+        <button data-tab="status">Status-Check</button>
+        <button data-tab="sessions">Sessions</button>
+        <button data-tab="clips">Clips</button>
+        <button data-tab="games">Spiele</button>
+        <button data-tab="trainings">Trainings</button>
+        <button data-tab="kader">Kader</button>
     </nav>
 
-    <div id="status" class="tab-content active">
-        <div class="admin-card">
-            <h3>Konsum prüfen</h3>
-            <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap: wrap;">
-                <button id="mode-sessions" class="btn-action" onclick="loadStatusData('sessions')">Sessions</button>
-                <button id="mode-clips" class="btn-action" onclick="loadStatusData('clips')">Einzelclips</button>
-                <button id="mode-games" class="btn-action" onclick="loadStatusData('games')">Spiele Hub</button>
-                <button id="mode-trainings" class="btn-action" onclick="loadStatusData('trainings')">Trainings Hub</button>
+    <!-- STATUS-CHECK -->
+    <section class="tab-panel" id="tab-status">
+        <div class="card">
+            <div class="card-head">
+                <div><h3>Wer hat was gesehen?</h3><p>Klick auf eine Zeile zeigt die Spieler im Detail.</p></div>
+                <div class="segmented" id="status-modes">
+                    <button data-mode="sessions">Sessions</button>
+                    <button data-mode="clips">Einzelclips</button>
+                    <button data-mode="games">Spiele</button>
+                    <button data-mode="trainings">Trainings</button>
+                </div>
             </div>
-            <div id="status-list-container">Wähle eine Kategorie...</div>
+            <div class="card-body" id="status-list"></div>
         </div>
-    </div>
+    </section>
 
-    <!-- TABS INHALTE -->
-    <div id="sessions" class="tab-content">
-        <div class="admin-card">
-            <h3>Neue Session erstellen</h3>
-            <input type="text" id="s-title" placeholder="Titel" style="width:100%; margin-bottom:10px;">
-            <textarea id="s-desc" placeholder="Anweisungen..." style="width:100%; height:60px; margin-bottom:15px;"></textarea>
-            <div id="s-video-list" style="max-height:200px; overflow-y:auto; background:#111; padding:10px; border:1px solid #333; margin-bottom:15px;"></div>
-            <button class="btn-action" style="background:var(--red)" onclick="saveSession()">Speichern</button>
-        </div>
-        <div class="admin-card"><table id="session-table"><thead><tr><th>Titel</th><th>Löschen</th></tr></thead><tbody></tbody></table></div>
-    </div>
-
-    <div id="yt" class="tab-content">
-        <div class="admin-card">
-            <h3>Clip hinzufügen</h3>
-            <div class="form-row">
-                <input type="text" id="yt-title" placeholder="Titel">
-                <input type="text" id="yt-url" placeholder="Link">
-                <select id="yt-cat-in"><option value="Offense">Offense</option><option value="Defense">Defense</option><option value="Powerplay">Powerplay</option><option value="Penalty Kill">Penalty Kill</option><option value="Setplays">Setplays</option></select>
-                <button class="btn-action" style="background:var(--red)" onclick="addYT()">Hinzufügen</button>
+    <!-- SESSIONS -->
+    <section class="tab-panel" id="tab-sessions">
+        <div class="card">
+            <div class="card-head"><div><h3>Neue Session erstellen</h3><p>Eine geführte Playlist aus Clips und Taktik-Boards. Die Reihenfolge entspricht der Auswahl-Reihenfolge.</p></div></div>
+            <div class="card-body" style="display:flex; flex-direction:column; gap:14px">
+                <div class="field"><label>Titel</label><input id="s-title" class="input" placeholder="z. B. Videoanalyse Spieltag 5"></div>
+                <div class="field"><label>Anweisungen für die Spieler</label><textarea id="s-desc" class="textarea" placeholder="Worauf sollen die Spieler achten?"></textarea></div>
+                <div class="field">
+                    <label>Inhalte auswählen <span id="s-count" class="faint"></span></label>
+                    <div class="picker">
+                        <input id="s-search" class="input picker-search" placeholder="Suchen …" oninput="renderPicker()">
+                        <div class="picker-list" id="s-picker"></div>
+                    </div>
+                </div>
+                <div><button class="btn btn-primary" onclick="saveSession()" id="btn-save-session">Session speichern</button></div>
             </div>
         </div>
-        <div class="admin-card"><table id="yt-table"><thead><tr><th>Clip</th><th>Löschen</th></tr></thead><tbody></tbody></table></div>
-    </div>
+        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Titel</th><th>Inhalte</th><th>Erstellt</th><th></th></tr></thead><tbody id="session-table"></tbody></table></div></div>
+    </section>
 
-    <div id="games" class="tab-content">
-        <div class="admin-card"><h3>Spiel hinzufügen</h3><div class="form-row"><input type="text" id="g-title" placeholder="Spiel"><input type="text" id="g-url" placeholder="Link"><input type="date" id="g-date"><button class="btn-action" style="background:var(--red)" onclick="addGame()">Speichern</button></div></div>
-        <div class="admin-card"><table id="games-table"><tbody></tbody></table></div>
-    </div>
-
-    <div id="trainings" class="tab-content">
-        <div class="admin-card"><h3>Training hinzufügen</h3><div class="form-row"><input type="text" id="t-title" placeholder="Fokus"><input type="text" id="t-url" placeholder="Link"><input type="date" id="t-date"><button class="btn-action" style="background:var(--red)" onclick="addTraining()">Speichern</button></div></div>
-        <div class="admin-card"><table id="trainings-table"><tbody></tbody></table></div>
-    </div>
-
-    <div id="kader" class="tab-content">
-        <div class="admin-card">
-            <h3>Mitglied hinzufügen</h3>
-            <div class="form-row">
-                <input type="number" id="p-nr" placeholder="Nr." style="width:70px;">
-                <input type="text" id="p-name" placeholder="Name">
-                <button class="btn-action" style="background:var(--red)" onclick="addMember()">Speichern</button>
+    <!-- CLIPS -->
+    <section class="tab-panel" id="tab-clips">
+        <div class="card">
+            <div class="card-head"><div><h3>YouTube-Clip hinzufügen</h3><p>Startzeit wird aus dem Link übernommen (z. B. <span class="mono">?t=95</span>). Drive-Clips kommen automatisch aus dem Google-Drive-Ordner.</p></div></div>
+            <div class="card-body">
+                <div class="form-grid">
+                    <div class="field"><label>Titel</label><input id="yt-title" class="input" placeholder="z. B. Konter über links"></div>
+                    <div class="field"><label>YouTube-Link</label><input id="yt-url" class="input" placeholder="https://youtu.be/…"></div>
+                    <div class="field"><label>Spielsituation</label><select id="yt-cat" class="select"></select></div>
+                    <div class="field"><label>Position</label><select id="yt-pos" class="select"></select></div>
+                    <button class="btn btn-primary" onclick="addClip()">Hinzufügen</button>
+                </div>
             </div>
-            <div id="pin-stats" style="margin-top:10px; font-size:0.75rem; color:#888;"></div>
         </div>
-        <div class="admin-card">
-            <table id="full-member-table">
-                <thead><tr><th>Nr.</th><th>Name / Passwort-Status</th><th style="text-align:right;">Aktion</th></tr></thead>
-                <tbody></tbody>
-            </table>
+        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Clip</th><th>Quelle</th><th>Situation</th><th>Position</th><th></th></tr></thead><tbody id="clip-table"></tbody></table></div></div>
+    </section>
+
+    <!-- SPIELE -->
+    <section class="tab-panel" id="tab-games">
+        <div class="card">
+            <div class="card-head"><div><h3>Spiel hinzufügen</h3><p>Komplette Spielaufzeichnung von YouTube. Ereignisse & Feedback trägst du danach direkt im Spiel ein.</p></div></div>
+            <div class="card-body"><div class="form-grid">
+                <div class="field"><label>Spiel</label><input id="g-title" class="input" placeholder="Falcons vs. Gegner"></div>
+                <div class="field"><label>YouTube-Link</label><input id="g-url" class="input" placeholder="https://youtu.be/…"></div>
+                <div class="field"><label>Datum</label><input id="g-date" class="input" type="date"></div>
+                <button class="btn btn-primary" onclick="addRecording('games')">Speichern</button>
+            </div></div>
         </div>
-    </div>
-</div>
+        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Spiel</th><th>Datum</th><th></th></tr></thead><tbody id="games-table"></tbody></table></div></div>
+    </section>
+
+    <!-- TRAININGS -->
+    <section class="tab-panel" id="tab-trainings">
+        <div class="card">
+            <div class="card-head"><div><h3>Training hinzufügen</h3><p>Trainingsaufzeichnung von YouTube. Übungen & Feedback trägst du danach direkt im Training ein.</p></div></div>
+            <div class="card-body"><div class="form-grid">
+                <div class="field"><label>Fokus / Titel</label><input id="t-title" class="input" placeholder="z. B. Powerplay-Training"></div>
+                <div class="field"><label>YouTube-Link</label><input id="t-url" class="input" placeholder="https://youtu.be/…"></div>
+                <div class="field"><label>Datum</label><input id="t-date" class="input" type="date"></div>
+                <button class="btn btn-primary" onclick="addRecording('trainings')">Speichern</button>
+            </div></div>
+        </div>
+        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Training</th><th>Datum</th><th></th></tr></thead><tbody id="trainings-table"></tbody></table></div></div>
+    </section>
+
+    <!-- KADER -->
+    <section class="tab-panel" id="tab-kader">
+        <div class="card">
+            <div class="card-head"><div><h3>Mitglied hinzufügen</h3><p id="pin-stats"></p></div></div>
+            <div class="card-body"><div class="form-grid" style="grid-template-columns: 100px 1fr auto">
+                <div class="field"><label>Nr.</label><input id="p-nr" class="input" inputmode="numeric" maxlength="2" placeholder="07"></div>
+                <div class="field"><label>Name</label><input id="p-name" class="input" placeholder="Vorname Nachname"></div>
+                <button class="btn btn-primary" onclick="addMember()">Speichern</button>
+            </div></div>
+        </div>
+        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Nr.</th><th>Name</th><th>PIN</th><th>Trainer/Admin</th><th></th></tr></thead><tbody id="kader-table"></tbody></table></div></div>
+    </section>
+</main>
 
 <script>
-    const firebaseConfig = { apiKey: "AIzaSyBeH17b81pzmeS0NzdkG8QwwusfH1EyHzU", authDomain: "falcons-video-tool.firebaseapp.com", projectId: "falcons-video-tool", storageBucket: "falcons-video-tool.firebasestorage.app", messagingSenderId: "306689889088", appId: "1:306689889088:web:ad525fecd0682069c6e0a5" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const user = JSON.parse(localStorage.getItem('falcons_user') || '{}');
+    const F = Falcons, I = F.icon, $ = id => document.getElementById(id);
+    const user = F.requireUser();
+    F.mountShell('admin');
 
-    let allPlayers = [], allVideos = [], selectedForSession = [];
+    let players = [], admins = new Set(), media = [], sessions = [], games = [], trainings = [], selected = [], statusMode = 'sessions';
+    const SOURCE = { drive: 'Drive', youtube: 'YouTube', tactic: 'Taktik' };
 
-    async function checkAuth() {
-        const adminDoc = await db.collection("admins").doc(user.nr || "0").get();
-        if (user.nr === "22" || adminDoc.exists) { document.body.style.display = "block"; loadBaseData(); }
-        else { alert("Kein Zugriff!"); window.location.href = "index.html"; }
-    }
+    /* ------------------------------------------------------------ Start */
+    F.isAdmin().then(ok => {
+        if (!ok) { document.body.insertAdjacentHTML('beforeend', `<main class="page">${F.empty('Kein Zugriff', 'Dieser Bereich ist nur für Trainer und Admins.', 'lock')}</main>`); return; }
+        $('app').classList.remove('hidden');
+        $('yt-cat').innerHTML = F.CFG.categories.map(c => `<option>${c}</option>`).join('');
+        $('yt-pos').innerHTML = ['Alle', ...F.CFG.positions].map(p => `<option>${p}</option>`).join('');
+        $('p-nr').addEventListener('input', e => e.target.value = e.target.value.replace(/\D/g, ''));
+        document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => openTab(b.dataset.tab));
+        document.querySelectorAll('#status-modes button').forEach(b => b.onclick = () => loadStatus(b.dataset.mode));
+        openTab(location.hash.slice(1) || 'status');
+        loadAll();
+    });
 
     function openTab(id) {
-        document.querySelectorAll('.tab-content, .tab-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        document.getElementById('tab-btn-' + id).classList.add('active');
+        if (!$('tab-' + id)) id = 'status';
+        document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + id));
+        history.replaceState(null, '', '#' + id);
     }
 
-    async function loadBaseData() {
-        const [pSnap, ytSnap, gSnap, trSnap, driveRes] = await Promise.all([
-            db.collection("players").get(), db.collection("youtube_clips").get(),
-            db.collection("games").orderBy("date", "desc").get(), db.collection("trainings").orderBy("date", "desc").get(),
-            fetch('https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec').then(r => r.json())
+    async function loadAll() {
+        $('status-list').innerHTML = F.loading();
+        const [pSnap, aSnap, m, sSnap, gSnap, tSnap] = await Promise.all([
+            db.collection('players').get(), db.collection('admins').get(), F.loadMedia({ tactics: true }),
+            db.collection('sessions').orderBy('createdAt', 'desc').get(),
+            db.collection('games').orderBy('date', 'desc').get(), db.collection('trainings').orderBy('date', 'desc').get()
         ]);
-        allPlayers = pSnap.docs.map(d => ({id: d.id, ...d.data()}));
-        allVideos = [
-            ...driveRes.map(v => ({ id: v.link.split('/d/')[1].split('/')[0], title: v.title, type: 'Drive' })),
-            ...ytSnap.docs.map(d => ({ id: d.id, title: d.data().title, type: 'YouTube' }))
-        ];
-        renderKader(); renderYT(ytSnap); renderGames(gSnap); renderTrainings(trSnap); renderSessions(); renderSessionSelector();
-        loadStatusData('sessions');
+        players = pSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.id.localeCompare(b.id));
+        admins = new Set(aSnap.docs.map(d => d.id));
+        media = m;
+        sessions = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        games = gSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        trainings = tSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        renderKpis(); renderSessions(); renderPicker(); renderClips(); renderRecordings('games'); renderRecordings('trainings'); renderKader();
+        loadStatus(statusMode);
     }
 
+    function renderKpis() {
+        const clips = media.filter(x => x.type !== 'tactic').length;
+        const withPin = players.filter(p => p.pin).length;
+        const k = (label, val) => `<div class="card kpi"><small>${label}</small><strong>${val}</strong></div>`;
+        $('kpis').innerHTML = k('Spieler im Kader', players.length) + k('Aktiv (PIN gesetzt)', `${withPin}<span class="faint" style="font-size:15px"> / ${players.length}</span>`) + k('Sessions', sessions.length) + k('Clips', clips) + k('Spiele / Trainings', `${games.length} / ${trainings.length}`);
+    }
+
+    /* ---------------------------------------------------------- Status */
+    async function loadStatus(mode) {
+        statusMode = mode;
+        document.querySelectorAll('#status-modes button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+        $('status-list').innerHTML = F.loading();
+        const viewCol = { sessions: 'progress', clips: 'video_views', games: 'game_views', trainings: 'training_views' }[mode];
+        const vSnap = await db.collection(viewCol).get();
+        const views = {}; vSnap.forEach(d => views[d.id] = d.data());
+
+        const items = mode === 'sessions' ? sessions
+            : mode === 'clips' ? media.filter(x => x.type !== 'tactic')
+            : mode === 'games' ? games : trainings;
+        if (!items.length) { $('status-list').innerHTML = F.empty('Keine Einträge', '', 'eye'); return; }
+
+        $('status-list').innerHTML = items.map(item => {
+            const target = mode === 'sessions' ? (item.videoIds || []).length : 1;
+            const seen = [], open = [];
+            players.forEach(p => {
+                const v = views[p.id] && views[p.id][item.id];
+                const done = mode === 'sessions' ? (v || 0) >= target && target > 0 : (v === true || v === 1);
+                const chip = `<span class="chip"><span class="mono">#${p.id}</span>${F.esc(p.name)}</span>`;
+                (done ? seen : open).push(chip);
+            });
+            const pct = players.length ? Math.round(seen.length / players.length * 100) : 0;
+            return `<div class="status-row">
+                <div class="status-head" onclick="this.parentElement.classList.toggle('open')">
+                    <span class="title">${F.esc(item.title)}</span>
+                    <div class="progress"><span style="width:${pct}%"></span></div>
+                    <span class="ratio">${seen.length}/${players.length}</span>
+                    ${I('chevronDown', 'icon-sm chev')}
+                </div>
+                <div class="status-body">
+                    <div><h5 style="color:var(--success)">${I('check', 'icon-sm')} Gesehen (${seen.length})</h5><div class="chips">${seen.join('') || '<span class="faint" style="font-size:13px">Noch niemand</span>'}</div></div>
+                    <div><h5 style="color:#ff5a63">${I('clock', 'icon-sm')} Offen (${open.length})</h5><div class="chips">${open.join('') || '<span class="faint" style="font-size:13px">Alle erledigt</span>'}</div></div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    /* -------------------------------------------------------- Sessions */
+    function renderSessions() {
+        $('session-table').innerHTML = sessions.length ? sessions.map(s => `<tr>
+            <td><strong>${F.esc(s.title)}</strong>${s.description ? `<div class="faint" style="font-size:12px">${F.esc(s.description).slice(0, 90)}</div>` : ''}</td>
+            <td>${(s.videoIds || []).length}</td>
+            <td class="muted">${F.fmtDate(s.createdAt)}</td>
+            <td class="actions">
+                <a class="btn btn-ghost btn-sm" href="session_view.html?id=${s.id}">${I('eye', 'icon-sm')} Ansehen</a>
+                <button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('sessions','${s.id}')">${I('trash', 'icon-sm')}</button>
+            </td></tr>`).join('') : `<tr><td colspan="4" class="muted">Noch keine Sessions.</td></tr>`;
+    }
+
+    function renderPicker() {
+        const q = $('s-search').value.toLowerCase();
+        $('s-picker').innerHTML = media.filter(v => !q || (v.title || '').toLowerCase().includes(q)).map(v => {
+            const pos = selected.indexOf(v.id);
+            return `<label class="pick"><input type="checkbox" ${pos > -1 ? 'checked' : ''} onchange="toggleSelect('${v.id}')">
+                <span class="badge">${SOURCE[v.type]}</span><span>${F.esc(v.title)}</span>${pos > -1 ? `<span class="order">${pos + 1}</span>` : ''}</label>`;
+        }).join('') || '<p class="faint" style="padding:10px; font-size:13px">Keine Treffer.</p>';
+        $('s-count').textContent = selected.length ? `· ${selected.length} ausgewählt` : '';
+    }
+    function toggleSelect(id) { const i = selected.indexOf(id); i > -1 ? selected.splice(i, 1) : selected.push(id); renderPicker(); }
+
+    async function saveSession() {
+        const title = $('s-title').value.trim();
+        if (!title) return F.toast('Bitte einen Titel eingeben', 'error');
+        if (!selected.length) return F.toast('Bitte mindestens einen Inhalt auswählen', 'error');
+        await db.collection('sessions').add({ title, description: $('s-desc').value.trim(), videoIds: selected, createdAt: new Date() });
+        $('s-title').value = $('s-desc').value = ''; selected = [];
+        F.toast('Session erstellt'); loadAll();
+    }
+
+    /* ----------------------------------------------------------- Clips */
+    function renderClips() {
+        const clips = media.filter(x => x.type !== 'tactic');
+        $('clip-table').innerHTML = clips.length ? clips.map(v => `<tr>
+            <td><strong>${F.esc(v.title)}</strong></td>
+            <td><span class="badge ${v.type === 'youtube' ? 'badge-brand' : 'badge-info'}">${SOURCE[v.type]}</span></td>
+            <td class="muted">${F.esc(v.category || '–')}</td>
+            <td><select class="select" onchange="setPosition('${v.id}', '${v.type}', this.value)">
+                ${['Alle', ...F.CFG.positions].map(p => `<option ${p === v.position ? 'selected' : ''}>${p}</option>`).join('')}
+            </select></td>
+            <td class="actions">${v.type === 'youtube'
+                ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('youtube_clips','${v.id}')">${I('trash', 'icon-sm')}</button>`
+                : `<span class="faint" style="font-size:12px" title="Drive-Clips im Google-Drive-Ordner löschen">im Drive</span>`}</td>
+        </tr>`).join('') : `<tr><td colspan="5" class="muted">Noch keine Clips.</td></tr>`;
+    }
+
+    async function addClip() {
+        const title = $('yt-title').value.trim(), { id, start } = F.parseYouTube($('yt-url').value);
+        if (!title) return F.toast('Bitte einen Titel eingeben', 'error');
+        if (!id) return F.toast('Ungültiger YouTube-Link', 'error');
+        await db.collection('youtube_clips').add({ title, ytId: id, startTime: start, category: $('yt-cat').value, position: $('yt-pos').value, createdAt: new Date() });
+        $('yt-title').value = $('yt-url').value = '';
+        F.toast('Clip hinzugefügt'); loadAll();
+    }
+
+    async function setPosition(id, type, position) {
+        // Drive-Clips: Position in video_metadata; YouTube-Clips: direkt am Clip
+        if (type === 'youtube') await db.collection('youtube_clips').doc(id).update({ position });
+        else await db.collection('video_metadata').doc(id).set({ position }, { merge: true });
+        const v = media.find(x => x.id === id); if (v) v.position = position;
+        F.toast('Position gespeichert');
+    }
+
+    /* ------------------------------------------------ Spiele & Trainings */
+    function renderRecordings(col) {
+        const list = col === 'games' ? games : trainings, view = col === 'games' ? 'game' : 'training';
+        $(col + '-table').innerHTML = list.length ? list.map(r => `<tr>
+            <td><strong>${F.esc(r.title)}</strong></td>
+            <td class="muted">${F.fmtDate(r.date)}</td>
+            <td class="actions">
+                <a class="btn btn-ghost btn-sm" href="recording_view.html?type=${view}&id=${r.id}">${I('pen', 'icon-sm')} Bearbeiten</a>
+                <button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('${col}','${r.id}')">${I('trash', 'icon-sm')}</button>
+            </td></tr>`).join('') : `<tr><td colspan="3" class="muted">Noch keine Einträge.</td></tr>`;
+    }
+
+    async function addRecording(col) {
+        const p = col === 'games' ? 'g' : 't';
+        const title = $(p + '-title').value.trim(), date = $(p + '-date').value, { id } = F.parseYouTube($(p + '-url').value);
+        if (!title) return F.toast('Bitte einen Titel eingeben', 'error');
+        if (!id) return F.toast('Ungültiger YouTube-Link', 'error');
+        if (!date) return F.toast('Bitte ein Datum wählen', 'error');
+        await db.collection(col).add({ title, ytId: id, date, createdAt: new Date() });
+        $(p + '-title').value = $(p + '-url').value = $(p + '-date').value = '';
+        F.toast('Gespeichert'); loadAll();
+    }
+
+    /* ----------------------------------------------------------- Kader */
     function renderKader() {
-        const tbody = document.querySelector("#full-member-table tbody"); tbody.innerHTML = "";
-        let pinCount = 0;
-
-        allPlayers.sort((a,b)=>a.id-b.id).forEach(p => {
-            const hasPin = (p.pin && p.pin.length === 4);
-            if(hasPin) pinCount++;
-
-            const pinLabel = hasPin 
-                ? '<span class="pin-badge pin-set">Passwort AKTIV</span>' 
-                : '<span class="pin-badge pin-none">Kein Passwort</span>';
-
-            tbody.innerHTML += `<tr>
-                <td>#${p.id}</td>
-                <td>${p.name} ${pinLabel}</td>
-                <td style="text-align:right;">
-                    <button class="btn-action" style="background:#444; padding:5px 10px; margin-right:5px;" onclick="resetPin('${p.id}')">PIN Reset</button>
-                    <button class="btn-action" style="background:none; color:#444" onclick="deleteDoc('players','${p.id}')">🗑</button>
-                </td>
-            </tr>`;
-        });
-        document.getElementById('pin-stats').innerText = `${pinCount} von ${allPlayers.length} Spielern haben ein Passwort vergeben.`;
+        const withPin = players.filter(p => p.pin).length;
+        $('pin-stats').textContent = `${withPin} von ${players.length} Spielern haben bereits eine PIN vergeben. Login = Trikotnummer (zweistellig).`;
+        $('kader-table').innerHTML = players.map(p => {
+            const superAdmin = p.id === F.CFG.superAdminNr;
+            return `<tr>
+                <td class="mono">#${p.id}</td>
+                <td><strong>${F.esc(p.name)}</strong></td>
+                <td>${p.pin ? `<span class="badge badge-success">${I('check', 'icon-sm')} Aktiv</span>` : '<span class="badge">Keine PIN</span>'}</td>
+                <td><label class="switch" title="${superAdmin ? 'Haupt-Admin (fest eingestellt)' : 'Admin-Rechte'}"><input type="checkbox" ${superAdmin || admins.has(p.id) ? 'checked' : ''} ${superAdmin ? 'disabled' : ''} onchange="setAdmin('${p.id}', this.checked)"><span></span></label></td>
+                <td class="actions">
+                    ${p.pin ? `<button class="btn btn-ghost btn-sm" onclick="resetPin('${p.id}')">${I('key', 'icon-sm')} PIN zurücksetzen</button>` : ''}
+                    <button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('players','${p.id}')">${I('trash', 'icon-sm')}</button>
+                </td></tr>`;
+        }).join('') || `<tr><td colspan="5" class="muted">Noch keine Spieler.</td></tr>`;
     }
 
-    async function loadStatusData(mode) {
-        const container = document.getElementById('status-list-container');
-        container.innerHTML = "Lade Status...";
-        ['sessions', 'clips', 'games', 'trainings'].forEach(m => {
-            const btn = document.getElementById('mode-' + m);
-            if(btn) btn.style.background = (m === mode) ? 'var(--red)' : '#444';
-        });
-
-        let viewCol = mode === 'sessions' ? 'progress' : (mode === 'clips' ? 'video_views' : (mode === 'games' ? 'game_views' : 'training_views'));
-        const [itemsSnap, viewsSnap] = await Promise.all([
-            mode === 'clips' ? {docs: allVideos.map(v=>({id:v.id, data:()=>v}))} : db.collection(mode).get(),
-            db.collection(viewCol).get()
-        ]);
-        let vMap = {}; viewsSnap.forEach(d => vMap[d.id] = d.data());
-        container.innerHTML = "";
-        itemsSnap.docs.forEach(doc => {
-            const d = doc.data();
-            renderStatusAccordion(container, d.title, doc.id || d.id, (mode==='sessions'?d.videoIds.length:1), vMap, mode==='sessions');
-        });
+    async function addMember() {
+        let nr = $('p-nr').value.trim(); const name = $('p-name').value.trim();
+        if (!nr || !name) return F.toast('Nummer und Name angeben', 'error');
+        if (nr.length === 1) nr = '0' + nr;
+        if (players.some(p => p.id === nr) && !confirm(`#${nr} existiert bereits. Namen überschreiben?`)) return;
+        await db.collection('players').doc(nr).set({ name, nr }, { merge: true });
+        $('p-nr').value = $('p-name').value = '';
+        F.toast(`#${nr} ${name} gespeichert`); loadAll();
     }
 
-    function renderStatusAccordion(cont, title, id, target, vMap, isSess) {
-        let watched = [], open = [];
-        allPlayers.forEach(p => {
-            let val = (vMap[p.id] && vMap[p.id][id]) ? vMap[p.id][id] : 0;
-            let done = isSess ? val >= target : (val === true || val === 1);
-            const html = `<div class="player-tag">#${p.id} ${p.name} <span>${done?'✅':'❌'}</span></div>`;
-            if(done) watched.push(html); else open.push(html);
-        });
-        const div = document.createElement('div'); div.className = 'status-row';
-        div.innerHTML = `<div class="status-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display==='block'?'none':'block'"><span>${title}</span><span>${watched.length}/${allPlayers.length} ▼</span></div>
-            <div class="status-content"><p style="color:var(--green); font-size:0.7rem;">GESEHEN</p><div class="player-status-grid">${watched.join('')}</div><p style="color:var(--red); font-size:0.7rem; margin-top:15px;">OFFEN</p><div class="player-status-grid">${open.join('')}</div></div>`;
-        cont.appendChild(div);
+    async function setAdmin(nr, on) {
+        if (on) await db.collection('admins').doc(nr).set({ since: new Date() });
+        else await db.collection('admins').doc(nr).delete();
+        on ? admins.add(nr) : admins.delete(nr);
+        F.toast(on ? `#${nr} ist jetzt Admin` : `Admin-Rechte für #${nr} entfernt`);
     }
 
-    function renderYT(snap) { const tbody = document.querySelector("#yt-table tbody"); tbody.innerHTML = ""; snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td><button class="btn-action" style="background:none; color:#444" onclick="deleteDoc('youtube_clips','${d.id}')">🗑</button></td></tr>`); }
-    function renderGames(snap) { const tbody = document.querySelector("#games-table tbody"); tbody.innerHTML = ""; snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td><button class="btn-action" style="background:none; color:#444" onclick="deleteDoc('games','${d.id}')">🗑</button></td></tr>`); }
-    function renderTrainings(snap) { const tbody = document.querySelector("#trainings-table tbody"); tbody.innerHTML = ""; snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td><button class="btn-action" style="background:none; color:#444" onclick="deleteDoc('trainings','${d.id}')">🗑</button></td></tr>`); }
-    async function renderSessions() { const snap = await db.collection("sessions").orderBy("createdAt", "desc").get(); const tbody = document.querySelector("#session-table tbody"); tbody.innerHTML = ""; snap.forEach(d => tbody.innerHTML += `<tr><td>${d.data().title}</td><td><button class="btn-action" style="background:none; color:#444" onclick="deleteDoc('sessions','${d.id}')">🗑</button></td></tr>`); }
-    function renderSessionSelector() { const list = document.getElementById('s-video-list'); list.innerHTML = ""; allVideos.forEach(v => list.innerHTML += `<div><input type="checkbox" onchange="toggleSelect('${v.id}')"> [${v.type}] ${v.title}</div>`); }
-    function toggleSelect(id) { const i = selectedForSession.indexOf(id); if(i>-1) selectedForSession.splice(i,1); else selectedForSession.push(id); }
-    async function saveSession() { await db.collection("sessions").add({ title: document.getElementById('s-title').value, description: document.getElementById('s-desc').value, videoIds: selectedForSession, createdAt: new Date() }); location.reload(); }
-    async function addYT() { const u = document.getElementById('yt-url').value; const ytId = u.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1]; await db.collection("youtube_clips").add({ title: document.getElementById('yt-title').value, ytId, category: document.getElementById('yt-cat-in').value, createdAt: new Date() }); location.reload(); }
-    async function addGame() { const u = document.getElementById('g-url').value; const ytId = u.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1]; await db.collection("games").add({ title: document.getElementById('g-title').value, ytId, date: document.getElementById('g-date').value, createdAt: new Date() }); location.reload(); }
-    async function addTraining() { const u = document.getElementById('t-url').value; const ytId = u.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|live\/|shorts\/))([\w\-]{11})/)?.[1]; await db.collection("trainings").add({ title: document.getElementById('t-title').value, ytId, date: document.getElementById('t-date').value, createdAt: new Date() }); location.reload(); }
-    async function addMember() { let nr = document.getElementById('p-nr').value; if(nr.length===1) nr="0"+nr; await db.collection("players").doc(nr).set({ name: document.getElementById('p-name').value, nr }); location.reload(); }
-    async function resetPin(id) { if(confirm("Passwort zurücksetzen?")) { await db.collection("players").doc(id).update({ pin: firebase.firestore.FieldValue.delete() }); alert("Passwort gelöscht."); loadBaseData(); } }
-    async function deleteDoc(col, id) { if(confirm("Löschen?")) { await db.collection(col).doc(id).delete(); location.reload(); } }
-    
-    checkAuth();
+    async function resetPin(nr) {
+        if (!confirm(`PIN von #${nr} zurücksetzen? Der Spieler vergibt beim nächsten Login eine neue.`)) return;
+        await db.collection('players').doc(nr).update({ pin: firebase.firestore.FieldValue.delete() });
+        F.toast('PIN zurückgesetzt'); loadAll();
+    }
+
+    async function remove(col, id) { if (await F.deleteDoc(col, id)) loadAll(); }
 </script>
 </body>
 </html>

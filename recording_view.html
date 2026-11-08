@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Aufzeichnung · Falcons Analyse-Hub</title>
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/app.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/core.js"></script>
+    <style>
+        .time-row { display: flex; gap: 8px; }
+        .time-row .input { font-family: var(--mono); }
+        .admin-form { display: flex; flex-direction: column; gap: 10px; }
+        .admin-form .textarea { min-height: 64px; }
+        .admin-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-faint); }
+    </style>
+</head>
+<body>
+
+<!--
+    Eine Ansicht für Spiele UND Trainings.
+    recording_view.html?type=game&id=…      → Collections games / game_events / game_comments / game_views
+    recording_view.html?type=training&id=…  → Collections trainings / training_events / training_comments / training_views
+-->
+
+<div class="workspace">
+    <div class="workspace-main">
+        <div class="notice hidden" id="blocked"></div>
+        <div class="workspace-stage"><div id="yt-player"></div></div>
+    </div>
+
+    <aside class="workspace-side">
+        <div class="side-head">
+            <a class="crumb" id="crumb">Zurück</a>
+            <h1 id="title">Aufzeichnung</h1>
+            <p class="muted" id="date" style="font-size:13px; margin-top:2px"></p>
+            <div class="segmented full" style="margin-top:14px">
+                <button id="tab-events" onclick="setMode('events')"></button>
+                <button id="tab-feedback" onclick="setMode('feedback')"></button>
+            </div>
+        </div>
+
+        <div class="side-scroll">
+            <div id="view-events"></div>
+            <div id="view-feedback" class="hidden">
+                <div id="player-pick" class="field hidden" style="margin-bottom:12px">
+                    <label>Feedback für Spieler</label>
+                    <select id="player-select" class="select" onchange="loadFeedback()"><option value="">Spieler auswählen …</option></select>
+                </div>
+                <div class="feed" id="feedback-list"></div>
+            </div>
+        </div>
+
+        <!-- nur für Trainer/Admins -->
+        <div class="side-foot hidden" id="admin-area">
+            <div class="admin-form" id="form-events">
+                <div class="admin-label" id="lbl-events"></div>
+                <div class="time-row">
+                    <select id="ev-type" class="select" style="flex:1"></select>
+                    <input id="ev-time" class="input" placeholder="0:00:00" style="width:100px">
+                    <button class="btn btn-icon" onclick="useCurrentTime('ev-time')" title="Aktuelle Videozeit übernehmen" id="btn-now1"></button>
+                </div>
+                <textarea id="ev-desc" class="textarea" placeholder="Beschreibung …"></textarea>
+                <button class="btn btn-primary" onclick="saveEvent()" id="btn-save-event">Speichern</button>
+            </div>
+            <div class="admin-form hidden" id="form-feedback">
+                <div class="admin-label" id="lbl-feedback"></div>
+                <textarea id="fb-text" class="textarea" placeholder="Privates Feedback … Zeitstempel als 0:15:30"></textarea>
+                <div class="time-row">
+                    <button class="btn" onclick="insertCurrentTime()" id="btn-now2" style="flex:1"></button>
+                    <button class="btn btn-primary" onclick="saveFeedback()" style="flex:1" id="btn-send-fb"></button>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+    const F = Falcons, I = F.icon, $ = id => document.getElementById(id);
+    const user = F.requireUser();
+    F.mountShell('library', { bottomNav: false });
+
+    /* Konfiguration je Art der Aufzeichnung (Collection-Namen bleiben wie bisher) */
+    const KINDS = {
+        game: {
+            col: 'games', events: 'game_events', comments: 'game_comments', views: 'game_views', fk: 'gameId',
+            back: 'recordings.html?type=games', backLabel: 'Spiele', eventsLabel: 'Ereignisse', eventSingular: 'Ereignis',
+            types: {
+                goal:     { label: 'Falcons Tor', icon: 'target' },
+                conceded: { label: 'Gegentor',    icon: 'net' },
+                pp:       { label: 'Überzahl',    icon: 'zap' },
+                pk:       { label: 'Unterzahl',   icon: 'minusCircle' },
+                other:    { label: 'Sonstiges',   icon: 'flag' }
+            }
+        },
+        training: {
+            col: 'trainings', events: 'training_events', comments: 'training_comments', views: 'training_views', fk: 'trainingId',
+            back: 'recordings.html?type=trainings', backLabel: 'Trainings', eventsLabel: 'Übungen', eventSingular: 'Übung',
+            types: { drill: { label: 'Übung', icon: 'repeat' } }
+        }
+    };
+
+    const params = new URLSearchParams(location.search);
+    const kindKey = params.get('type') === 'training' ? 'training' : 'game';
+    const K = KINDS[kindKey], itemId = params.get('id');
+    let admin = false, yt = null, ytId = '', blocked = false, mode = 'events', unsubEvents = null, unsubFeedback = null;
+
+    // Statische Beschriftungen
+    $('crumb').href = K.back;
+    $('crumb').innerHTML = I('arrowLeft', 'icon-sm') + ' ' + K.backLabel;
+    $('tab-events').innerHTML = I('list', 'icon-sm') + ' ' + K.eventsLabel;
+    $('tab-feedback').innerHTML = I('message', 'icon-sm') + ' Mein Feedback';
+    $('lbl-events').innerHTML = I('plus', 'icon-sm') + ' ' + K.eventSingular + ' hinzufügen';
+    $('lbl-feedback').innerHTML = I('lock', 'icon-sm') + ' Privates Feedback senden';
+    $('btn-now1').innerHTML = I('clock', 'icon-sm');
+    $('btn-now2').innerHTML = I('clock', 'icon-sm') + ' Zeit einfügen';
+    $('btn-send-fb').innerHTML = I('send', 'icon-sm') + ' Senden';
+    $('ev-type').innerHTML = Object.entries(K.types).map(([k, t]) => `<option value="${k}">${t.label}</option>`).join('');
+    if (Object.keys(K.types).length === 1) $('ev-type').classList.add('hidden');
+    F.onTimestamp = jumpTo;
+
+    async function init() {
+        if (!itemId) return location.replace(K.back);
+        const doc = await db.collection(K.col).doc(itemId).get();
+        if (!doc.exists) { $('view-events').innerHTML = F.empty('Nicht gefunden', 'Diese Aufzeichnung existiert nicht mehr.', 'video'); return; }
+        const d = doc.data();
+        ytId = d.ytId;
+        $('title').textContent = d.title;
+        $('date').textContent = F.fmtDate(d.date);
+        document.title = `${d.title} · Falcons Analyse-Hub`;
+        F.markViewed(K.views, itemId);
+
+        admin = await F.isAdmin();
+        if (admin) {
+            $('admin-area').classList.remove('hidden');
+            $('player-pick').classList.remove('hidden');
+            $('tab-feedback').innerHTML = I('message', 'icon-sm') + ' Spieler-Feedback';
+            const pSnap = await db.collection('players').get();
+            pSnap.docs.sort((a, b) => a.id.localeCompare(b.id))
+                .forEach(p => $('player-select').insertAdjacentHTML('beforeend', `<option value="${p.id}">#${p.id} ${F.esc(p.data().name)}</option>`));
+        }
+
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+        setMode('events');
+    }
+
+    window.onYouTubeIframeAPIReady = () => {
+        if (!ytId) return;
+        yt = new YT.Player('yt-player', {
+            videoId: ytId,
+            playerVars: { autoplay: 0, rel: 0, enablejsapi: 1, origin: location.origin },
+            events: { onError: e => {
+                if (e.data == 101 || e.data == 150) {
+                    blocked = true;
+                    $('blocked').innerHTML = `${I('alert')} Dieses Video darf nicht eingebettet werden. Zeitstempel öffnen YouTube in einem neuen Tab.`;
+                    $('blocked').classList.remove('hidden');
+                }
+            } }
+        });
+    };
+
+    function jumpTo(sec) {
+        if (blocked || !yt || !yt.seekTo) return window.open(`https://www.youtube.com/watch?v=${ytId}&t=${sec}s`, '_blank');
+        yt.seekTo(sec, true); yt.playVideo();
+    }
+
+    function setMode(m) {
+        mode = m;
+        $('tab-events').classList.toggle('active', m === 'events');
+        $('tab-feedback').classList.toggle('active', m === 'feedback');
+        $('view-events').classList.toggle('hidden', m !== 'events');
+        $('view-feedback').classList.toggle('hidden', m !== 'feedback');
+        $('form-events').classList.toggle('hidden', m !== 'events');
+        $('form-feedback').classList.toggle('hidden', m !== 'feedback');
+        if (m === 'events') loadEvents(); else loadFeedback();
+    }
+
+    /* ------------------------------------------------------------- Ereignisse */
+    function loadEvents() {
+        if (unsubEvents) return; // läuft bereits (Live-Update)
+        $('view-events').innerHTML = F.loading();
+        unsubEvents = db.collection(K.events).where(K.fk, '==', itemId).onSnapshot(snap => {
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.sec - b.sec);
+            if (!docs.length) { $('view-events').innerHTML = F.empty(`Noch keine ${K.eventsLabel}`, admin ? `Füge unten das erste ${K.eventSingular} hinzu.` : 'Der Trainer hat hier noch nichts markiert.', 'list'); return; }
+            $('view-events').innerHTML = docs.map(e => {
+                const type = K.types[e.type] ? e.type : Object.keys(K.types)[0];
+                const t = K.types[type];
+                return `<div class="event ev-${type}" onclick="jumpTo(${+e.sec || 0})">
+                    <div class="event-icon">${I(t.icon, 'icon-sm')}</div>
+                    <div class="event-main">
+                        <div class="event-title">${t.label} <span class="event-time">${F.esc(e.time)}</span></div>
+                        <div class="event-desc">${F.esc(e.desc)}</div>
+                    </div>
+                    ${admin ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger del" onclick="event.stopPropagation(); F.deleteDoc('${K.events}', '${e.id}')">${I('trash', 'icon-sm')}</button>` : ''}
+                </div>`;
+            }).join('');
+        });
+    }
+
+    async function saveEvent() {
+        const time = $('ev-time').value.trim(), desc = $('ev-desc').value.trim();
+        if (!F.hasTime(time)) return F.toast('Bitte Zeit im Format 0:15:30 angeben', 'error');
+        if (!desc) return F.toast('Bitte eine Beschreibung eingeben', 'error');
+        const data = { [K.fk]: itemId, time, desc, sec: F.parseTime(time), createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+        if (kindKey === 'game') data.type = $('ev-type').value;
+        await db.collection(K.events).add(data);
+        $('ev-time').value = ''; $('ev-desc').value = '';
+        F.toast(`${K.eventSingular} gespeichert`);
+    }
+
+    /* --------------------------------------------------------------- Feedback */
+    function loadFeedback() {
+        const nr = admin ? $('player-select').value : user.nr;
+        if (unsubFeedback) { unsubFeedback(); unsubFeedback = null; }
+        if (!nr) { $('feedback-list').innerHTML = F.empty('Spieler auswählen', 'Wähle oben einen Spieler, um sein privates Feedback zu sehen oder zu schreiben.', 'user'); return; }
+        $('feedback-list').innerHTML = F.loading();
+        unsubFeedback = db.collection(K.comments).where(K.fk, '==', itemId).where('targetNr', '==', nr).onSnapshot(snap => {
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => F.parseTime(a.text) - F.parseTime(b.text));
+            $('feedback-list').innerHTML = docs.length ? docs.map(c => `
+                <div class="comment">
+                    <div class="comment-head">
+                        <strong>${F.esc(c.author || 'Trainer')}</strong><span>· privat</span>
+                        <span class="spacer"></span>
+                        ${admin ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger del" onclick="F.deleteDoc('${K.comments}', '${c.id}')">${I('trash', 'icon-sm')}</button>` : ''}
+                    </div>
+                    <div class="comment-text">${F.formatText(c.text)}</div>
+                </div>`).join('')
+                : F.empty('Kein Feedback', admin ? 'Für diesen Spieler gibt es noch kein Feedback.' : 'Für dich gibt es zu dieser Aufzeichnung noch kein persönliches Feedback.', 'message');
+        });
+    }
+
+    async function saveFeedback() {
+        const nr = $('player-select').value, text = $('fb-text').value.trim();
+        if (!nr) return F.toast('Bitte zuerst einen Spieler auswählen', 'error');
+        if (!text) return F.toast('Bitte Feedback eingeben', 'error');
+        await db.collection(K.comments).add({ [K.fk]: itemId, targetNr: nr, text, author: user.name, authorNr: user.nr, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        $('fb-text').value = '';
+        F.toast('Feedback gesendet');
+    }
+
+    /* ------------------------------------------------------ Videozeit-Helfer */
+    function currentTime() {
+        const s = yt && yt.getCurrentTime ? Math.floor(yt.getCurrentTime()) : 0;
+        return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    }
+    function useCurrentTime(id) { $(id).value = currentTime(); }
+    function insertCurrentTime() {
+        const ta = $('fb-text'), t = currentTime() + ' ';
+        const p = ta.selectionStart ?? ta.value.length;
+        ta.value = ta.value.slice(0, p) + t + ta.value.slice(p);
+        ta.focus(); ta.selectionStart = ta.selectionEnd = p + t.length;
+    }
+
+    init();
+</script>
+</body>
+</html>
