@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>Taktikboard · Falcons Analyse-Hub</title>
-    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="assets/img/favicon.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/app.css">
@@ -84,7 +84,8 @@
         <div class="trash" id="trash"></div>
         <div class="save-box">
             <input id="t-name" class="input" placeholder="Titel, z. B. Breakout links">
-            <button class="btn btn-primary" onclick="saveTactic()" id="btn-save"></button>
+            <button class="btn btn-primary hidden" onclick="updateTactic()" id="btn-update"></button>
+            <button class="btn" onclick="saveTactic()" id="btn-save"></button>
         </div>
     </aside>
 </div>
@@ -101,7 +102,8 @@
     rink.insertAdjacentHTML('afterbegin', Rink.markup());
     $('tool-move').innerHTML = I('move'); $('tool-draw').innerHTML = I('pen'); $('tool-undo').innerHTML = I('undo'); $('tool-clear').innerHTML = I('trash');
     trash.innerHTML = I('trash', 'icon-sm') + ' Hierher ziehen zum Entfernen';
-    $('btn-save').innerHTML = I('save', 'icon-sm') + ' Als neues Board speichern';
+    $('btn-save').innerHTML = I('plus', 'icon-sm') + ' Als neues Board speichern';
+    $('btn-update').innerHTML = I('save', 'icon-sm') + ' Änderungen speichern';
 
     function fit() { scale = Rink.fit($('stage'), rink); }
     window.addEventListener('resize', fit);
@@ -193,17 +195,31 @@
     function clearBoard() {
         if (!confirm('Board leeren?')) return;
         saveState(); ctx.clearRect(0, 0, Rink.W, Rink.H); $('pieces').innerHTML = '';
-        activeId = null; renderActive();
+        activeId = null; $('t-name').value = ''; renderActive();
     }
 
     /* ------------------------------------------------------ Speichern/Laden */
-    async function saveTactic() {
+    function boardData() {
         const title = $('t-name').value.trim();
-        if (!title) return F.toast('Bitte einen Titel eingeben', 'error');
+        if (!title) { F.toast('Bitte einen Titel eingeben', 'error'); return null; }
         const players = [...$('pieces').children].map(p => ({ type: p.dataset.type, x: p.style.left, y: p.style.top }));
-        const ref = await db.collection('tactics').add({ title, players, drawing: canvas.toDataURL(), createdAt: new Date() });
-        $('t-name').value = ''; activeId = ref.id;
-        F.toast('Board gespeichert');
+        return { title, players, drawing: canvas.toDataURL() };
+    }
+
+    async function saveTactic() {
+        const data = boardData(); if (!data) return;
+        const ref = await db.collection('tactics').add({ ...data, createdAt: new Date() });
+        activeId = ref.id;
+        F.toast('Neues Board gespeichert');
+        loadList();
+    }
+
+    /** Überschreibt das aktuell geladene Board (gleiche ID → bleibt in Sessions verknüpft) */
+    async function updateTactic() {
+        if (!activeId) return saveTactic();
+        const data = boardData(); if (!data) return;
+        await db.collection('tactics').doc(activeId).update({ ...data, updatedAt: new Date() });
+        F.toast('Board aktualisiert');
         loadList();
     }
 
@@ -216,16 +232,25 @@
             </div>`).join('') : '<p class="faint" style="font-size:13px">Noch keine Boards gespeichert.</p>';
         renderActive();
     }
-    function renderActive() { document.querySelectorAll('#saved-list .list-item').forEach(el => el.classList.toggle('active', el.dataset.id === activeId)); }
+    function renderActive() {
+        document.querySelectorAll('#saved-list .list-item').forEach(el => el.classList.toggle('active', el.dataset.id === activeId));
+        $('btn-update').classList.toggle('hidden', !activeId);
+        $('btn-save').classList.toggle('btn-primary', !activeId);
+    }
 
     async function loadTactic(id) {
         const doc = await db.collection('tactics').doc(id).get();
         const d = doc.data();
         Rink.render(rink, canvas, d);
+        $('t-name').value = d.title || '';
         history = []; activeId = id; renderActive();
         setMode(mode);
     }
-    async function deleteTactic(id) { if (await F.deleteDoc('tactics', id, 'Board löschen?')) loadList(); }
+    async function deleteTactic(id) {
+        if (!(await F.deleteDoc('tactics', id, 'Board löschen?'))) return;
+        if (id === activeId) { activeId = null; $('t-name').value = ''; }
+        loadList();
+    }
 
     loadList();
 </script>

@@ -121,7 +121,7 @@ const Falcons = (() => {
         header.className = 'app-header';
         header.innerHTML = `
             <a href="index.html" class="brand">
-                <div class="brand-mark">FF</div>
+                <img class="brand-logo" src="assets/img/logo.png" alt="Frankfurt Falcons">
                 <div class="brand-text"><strong>Falcons</strong><span>Analyse-Hub</span></div>
             </a>
             <nav class="main-nav">${links('nav-link')}</nav>

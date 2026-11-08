@@ -444,3 +444,4 @@ img { max-width: 100%; display: block; }
 .piece-opponent { background: #2b3542; color: #fff; }
 .piece-ball { width: 18px; height: 18px; background: #ff9f1a; z-index: 1; }
 .swatch { outline: 1px solid var(--border-strong); outline-offset: 1px; }
+.brand-logo { width: 42px; height: 42px; object-fit: contain; flex-shrink: 0; }

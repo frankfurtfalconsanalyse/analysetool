@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard · Falcons Analyse-Hub</title>
-    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="assets/img/favicon.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/app.css">
@@ -21,7 +21,7 @@
                 var(--bg);
         }
         .login-card { width: 100%; max-width: 380px; padding: 36px 32px 28px; text-align: center; }
-        .login-card .brand-mark { width: 56px; height: 56px; font-size: 22px; border-radius: 14px; margin: 0 auto 18px; }
+        .login-logo { width: 112px; height: 112px; object-fit: contain; margin: -8px auto 10px; filter: drop-shadow(0 8px 24px rgba(227,6,19,.25)); }
         .login-card h1 { font-family: var(--font-display); font-size: 22px; font-weight: 800; letter-spacing: .3px; }
         .login-card .sub { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
         .login-step { display: none; margin-top: 28px; }
@@ -78,7 +78,7 @@
 <!-- ============================ LOGIN ============================ -->
 <div id="login" class="login-screen hidden">
     <div class="card login-card">
-        <div class="brand-mark">FF</div>
+        <img class="login-logo" src="assets/img/logo.png" alt="Frankfurt Falcons">
         <h1>FALCONS ANALYSE-HUB</h1>
         <p class="sub">Frankfurt Falcons · Floorball</p>
 
