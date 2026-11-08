@@ -24,12 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108c">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108d">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108c"></script>
-    <script src="assets/js/core.js?v=20261108c"></script>
+    <script src="assets/js/config.js?v=20261108d"></script>
+    <script src="assets/js/core.js?v=20261108d"></script>
+    <script src="assets/js/player.js?v=20261108d"></script>
     <style>
         #draw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; touch-action: none; }
         #draw-canvas.active { pointer-events: auto; cursor: crosshair; }
@@ -43,8 +44,7 @@
 
 <div class="workspace">
     <div class="workspace-main">
-        <div class="workspace-stage">
-            <iframe id="frame" allow="autoplay; fullscreen" allowfullscreen></iframe>
+        <div class="workspace-stage" id="stage">
             <canvas id="draw-canvas"></canvas>
             <div class="drawing-hint hidden" id="draw-hint">Zeichenmodus aktiv – Video-Steuerung wieder mit „Fertig"</div>
         </div>
@@ -101,7 +101,9 @@
             : null);
         if (!clip) { $('comments').innerHTML = F.empty('Clip nicht gefunden', '', 'video'); return; }
 
-        $('frame').src = clip.embedUrl;
+        await mediaView.show(clip);
+        mediaView.overlay.appendChild($('draw-canvas'));   // Zeichenfläche liegt über dem Video, nicht über der Steuerleiste
+        mediaView.overlay.appendChild($('draw-hint'));
         $('title').textContent = clip.title;
         document.title = `${clip.title} · Falcons Analyse-Hub`;
         $('badges').innerHTML = [clip.category, clip.position !== 'Alle' && clip.position, clip.type === 'youtube' ? 'YouTube' : 'Drive']
@@ -129,9 +131,9 @@
     }
     function deleteComment(id) { F.deleteDoc('comments', id, 'Kommentar löschen?'); }
 
+    const mediaView = new FalconsPlayer.Media($('stage'));
     function jumpTo(sec) {
-        if (clip && clip.type === 'youtube') $('frame').src = `https://www.youtube.com/embed/${clip.ytId}?start=${sec}&autoplay=1&rel=0`;
-        else F.toast('Springen ist nur bei YouTube-Clips möglich', 'error');
+        if (!mediaView.seek(sec)) F.toast('Springen ist nur bei YouTube-Clips möglich', 'error');
     }
 
     /* ------------------------------------------------------------ Zeichnen */

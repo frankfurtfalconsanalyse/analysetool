@@ -24,13 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108c">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108d">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108c"></script>
-    <script src="assets/js/core.js?v=20261108c"></script>
-    <script src="assets/js/tactic-board.js?v=20261108c"></script>
+    <script src="assets/js/config.js?v=20261108d"></script>
+    <script src="assets/js/core.js?v=20261108d"></script>
+    <script src="assets/js/player.js?v=20261108d"></script>
+    <script src="assets/js/tactic-board.js?v=20261108d"></script>
     <style>
         .tactic-stage { position: absolute; inset: 0; padding: 12px 12px 64px; background: radial-gradient(ellipse at center, #1a1d22, #0e0f12); }
         .tactic-controls { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 12px; background: rgba(19,21,25,.92); border: 1px solid var(--border); max-width: calc(100% - 24px); }
@@ -48,7 +49,6 @@
 <div class="workspace">
     <div class="workspace-main">
         <div class="workspace-stage">
-            <iframe id="player" allow="autoplay; fullscreen" allowfullscreen></iframe>
             <div id="tactic-stage" class="tactic-stage hidden">
                 <div id="tactic-host" style="width:100%; height:100%"></div>
                 <div class="tactic-note hidden" id="tactic-note"></div>
@@ -56,9 +56,9 @@
             </div>
         </div>
         <div class="stage-bar">
-            <button class="btn btn-sm" id="btn-prev" onclick="go(-1)"></button>
+            <button class="btn btn-sm" id="btn-prev" onclick="go(-1)" title="Vorheriger Clip (P)"></button>
             <div class="counter" id="counter">–</div>
-            <button class="btn btn-sm btn-primary" id="btn-next" onclick="go(1)"></button>
+            <button class="btn btn-sm btn-primary" id="btn-next" onclick="go(1)" title="Nächster Clip (N)"></button>
         </div>
     </div>
 
@@ -121,10 +121,9 @@
         idx = i;
         const m = clips[i];
         const tactic = m.type === 'tactic';
-        $('player').classList.toggle('hidden', tactic);
         $('tactic-stage').classList.toggle('hidden', !tactic);
-        if (tactic) { $('player').src = ''; tacticView.load(m.tacticData); }
-        else { tacticView.stop(); $('player').src = m.embedUrl; }
+        if (tactic) { mediaView.hide(); tacticView.load(m.tacticData); }
+        else { tacticView.stop(); mediaView.show(m); }
 
         $('counter').textContent = `Clip ${i + 1} von ${clips.length}`;
         $('btn-prev').disabled = i === 0;
@@ -167,9 +166,7 @@
     }
 
     function jumpTo(sec) {
-        const m = clips[idx];
-        if (m.type === 'youtube') $('player').src = `https://www.youtube.com/embed/${m.ytId}?start=${sec}&autoplay=1&rel=0`;
-        else F.toast('Springen ist nur bei YouTube-Clips möglich', 'error');
+        if (!mediaView.seek(sec)) F.toast('Springen ist nur bei YouTube-Clips möglich', 'error');
     }
 
     async function sendComment() {
@@ -182,6 +179,7 @@
     function deleteComment(id) { F.deleteDoc('comments', id, 'Kommentar löschen?'); }
 
     /* Taktik-Board (nur ansehen, mit Phasen + Abspielen) */
+    const mediaView = new FalconsPlayer.Media(document.querySelector('.workspace-stage'));
     let tacticView = null;
     tacticView = new TacticBoard.Board($('tactic-host'), { editable: false, onChange: syncTactic });
     function syncTactic() {
@@ -194,10 +192,11 @@
         $('tactic-controls').innerHTML = tacticView.board.phases.map((_, i) => `<button class="phase-chip ${i === tacticView.phase ? 'active' : ''}" onclick="tacticView.setPhase(${i})">${i + 1}</button>`).join('')
             + `<button class="btn btn-sm btn-primary" onclick="tacticView.playing ? tacticView.stop() : tacticView.play(); syncTactic()">${tacticView.playing ? I('pause', 'icon-sm') + ' Stopp' : I('play', 'icon-sm') + ' Abspielen'}</button>`;
     }
+    // N = nächster Clip, P = vorheriger Clip (Pfeiltasten steuern den Video-Player)
     document.addEventListener('keydown', e => {
-        if (e.target.matches('textarea, input')) return;
-        if (e.key === 'ArrowRight') go(1);
-        if (e.key === 'ArrowLeft') go(-1);
+        if (e.target.matches('textarea, input') || e.metaKey || e.ctrlKey) return;
+        if (e.key.toLowerCase() === 'n') go(1);
+        if (e.key.toLowerCase() === 'p') go(-1);
     });
 
     F.ready.then(init);

@@ -440,3 +440,24 @@ img { max-width: 100%; display: block; }
 .dropdown-sep { height: 1px; background: var(--border); margin: 6px 0; }
 .dropdown-item.current { color: var(--text); }
 .dropdown-item.current .icon { color: var(--brand); }
+
+/* Video-Player (assets/js/player.js) ------------------------------------------ */
+.fp { position: absolute; inset: 0; display: flex; flex-direction: column; background: #000; }
+.fp-stage { position: relative; flex: 1; min-height: 0; }
+.fp-video, .fp-video > div, .fp-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.fp-bar { display: flex; align-items: center; gap: 4px; padding: 6px 10px; background: var(--surface); border-top: 1px solid var(--border); overflow-x: auto; flex-shrink: 0; }
+.fp-btn { height: 32px; min-width: 32px; padding: 0 8px; border-radius: 7px; border: 1px solid transparent; background: none; color: var(--text-muted); font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; }
+.fp-btn:hover { background: var(--surface-2); color: var(--text); }
+.fp-btn.on { background: var(--info-soft); color: var(--info); }
+.fp-play { background: var(--brand); color: #fff; }
+.fp-play:hover { background: var(--brand-hover); color: #fff; }
+.fp-time { font-family: var(--mono); font-size: 12.5px; color: var(--text-muted); padding: 0 8px; white-space: nowrap; flex-shrink: 0; }
+.fp-sep { width: 1px; height: 20px; background: var(--border-strong); margin: 0 4px; flex-shrink: 0; }
+.fp-rates { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--surface-2); flex-shrink: 0; }
+.fp-rate { height: 28px; min-width: 34px; border: 0; border-radius: 6px; background: none; color: var(--text-muted); font-size: 12px; font-weight: 700; cursor: pointer; }
+.fp-rate.active { background: var(--surface-3); color: var(--text); }
+.fp-loop { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 12px; color: var(--info); white-space: nowrap; padding: 0 4px; flex-shrink: 0; }
+.fp-help { margin-left: auto; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border-strong); color: var(--text-faint); font-size: 12px; font-weight: 700; display: grid; place-items: center; cursor: help; flex-shrink: 0; }
+@media (max-width: 960px) { .workspace-stage:has(.fp) { aspect-ratio: auto; height: calc(56.25vw + 46px); } }
+.fp-frame { position: absolute; inset: 0; background: #000; } .fp-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.fp-btn:focus-visible, .fp-rate:focus-visible { outline: 2px solid var(--info); outline-offset: 1px; } .fp-btn:focus:not(:focus-visible), .fp-rate:focus:not(:focus-visible) { outline: none; }

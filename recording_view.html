@@ -24,12 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108c">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108d">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108c"></script>
-    <script src="assets/js/core.js?v=20261108c"></script>
+    <script src="assets/js/config.js?v=20261108d"></script>
+    <script src="assets/js/core.js?v=20261108d"></script>
+    <script src="assets/js/player.js?v=20261108d"></script>
     <style>
         .time-row { display: flex; gap: 8px; }
         .time-row .input { font-family: var(--mono); }
@@ -49,7 +50,7 @@
 <div class="workspace">
     <div class="workspace-main">
         <div class="notice hidden" id="blocked"></div>
-        <div class="workspace-stage"><div id="yt-player"></div></div>
+        <div class="workspace-stage" id="stage"></div>
     </div>
 
     <aside class="workspace-side">
@@ -163,30 +164,20 @@
                 .forEach(p => $('player-select').insertAdjacentHTML('beforeend', `<option value="${p.id}">#${p.id} ${F.esc(p.data().name)}</option>`));
         }
 
-        const tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
+        yt = new FalconsPlayer($('stage'), { onError: code => {
+            if (code == 101 || code == 150) {
+                blocked = true;
+                $('blocked').innerHTML = `${I('alert')} Dieses Video darf nicht eingebettet werden. Zeitstempel öffnen YouTube in einem neuen Tab.`;
+                $('blocked').classList.remove('hidden');
+            }
+        } });
+        if (ytId) yt.load(ytId, { autoplay: false });
         setMode('events');
     }
 
-    window.onYouTubeIframeAPIReady = () => {
-        if (!ytId) return;
-        yt = new YT.Player('yt-player', {
-            videoId: ytId,
-            playerVars: { autoplay: 0, rel: 0, enablejsapi: 1, origin: location.origin },
-            events: { onError: e => {
-                if (e.data == 101 || e.data == 150) {
-                    blocked = true;
-                    $('blocked').innerHTML = `${I('alert')} Dieses Video darf nicht eingebettet werden. Zeitstempel öffnen YouTube in einem neuen Tab.`;
-                    $('blocked').classList.remove('hidden');
-                }
-            } }
-        });
-    };
-
     function jumpTo(sec) {
-        if (blocked || !yt || !yt.seekTo) return window.open(`https://www.youtube.com/watch?v=${ytId}&t=${sec}s`, '_blank');
-        yt.seekTo(sec, true); yt.playVideo();
+        if (blocked || !yt || !yt.ready) return window.open(`https://www.youtube.com/watch?v=${ytId}&t=${sec}s`, '_blank');
+        yt.seek(sec);
     }
 
     function setMode(m) {
@@ -265,7 +256,7 @@
 
     /* ------------------------------------------------------ Videozeit-Helfer */
     function currentTime() {
-        const s = yt && yt.getCurrentTime ? Math.floor(yt.getCurrentTime()) : 0;
+        const s = yt ? Math.floor(yt.time()) : 0;
         return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
     }
     function useCurrentTime(id) { $(id).value = currentTime(); }

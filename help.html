@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108c">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108d">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108c"></script>
-    <script src="assets/js/core.js?v=20261108c"></script>
+    <script src="assets/js/config.js?v=20261108d"></script>
+    <script src="assets/js/core.js?v=20261108d"></script>
     <style>
         .help h2 { font-size: 18px; display: flex; align-items: center; gap: 10px; }
         .help h3 { font-size: 15px; margin: 22px 0 6px; }
@@ -70,7 +70,18 @@
         <p>Oben siehst du die <b>neueste Session</b>, darunter alle Clips, in denen du <b>markiert</b> wurdest, alle Sessions mit deinem Fortschritt und die <b>Clip-Bibliothek</b> nach Spielsituation und Position.</p>
 
         <h3>Sessions</h3>
-        <p>Eine Session ist eine vom Trainer zusammengestellte Playlist aus Clips und Taktik-Boards. Mit <b>Weiter</b> / <b>Zurück</b> (oder den Pfeiltasten <kbd>←</kbd> <kbd>→</kbd>) gehst du sie durch. Dein Fortschritt wird gespeichert – beim nächsten Öffnen geht es dort weiter.</p>
+        <p>Eine Session ist eine vom Trainer zusammengestellte Playlist aus Clips und Taktik-Boards. Mit <b>Weiter</b> / <b>Zurück</b> (oder den Tasten <kbd>N</kbd> / <kbd>P</kbd>) gehst du sie durch. Dein Fortschritt wird gespeichert – beim nächsten Öffnen geht es dort weiter.</p>
+
+        <h3>Video-Player</h3>
+        <p>Unter jedem YouTube-Video gibt es eine Steuerleiste für die Analyse:</p>
+        <ul>
+            <li><b>Zeitlupe:</b> ¼×, ½×, 1×, 2× (Tasten <kbd>1</kbd>–<kbd>4</kbd>).</li>
+            <li><b>Bild für Bild:</b> die Pfeile ‹ › neben ±5s (Tasten <kbd>,</kbd> und <kbd>.</kbd>) – das Video hält dabei an.</li>
+            <li><b>Springen:</b> −5s / +5s (<kbd>←</kbd> <kbd>→</kbd>, mit <kbd>Shift</kbd> 1 Sekunde).</li>
+            <li><b>Szene in Schleife:</b> <b>A</b> am Anfang der Szene drücken, <b>B</b> am Ende – die Szene läuft dann in Dauerschleife, z. B. in Zeitlupe. <kbd>X</kbd> beendet die Schleife.</li>
+            <li><kbd>Leertaste</kbd> = Abspielen / Pause.</li>
+        </ul>
+        <p class="faint" style="font-size:13px">Bei Google-Drive-Clips stehen diese Funktionen nicht zur Verfügung (Drive erlaubt keine Steuerung von außen).</p>
 
         <h3>Kommentare, @Markierungen & Zeitstempel</h3>
         <ul>

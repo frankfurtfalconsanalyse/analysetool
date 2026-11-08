@@ -24,13 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108c">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108d">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108c"></script>
-    <script src="assets/js/core.js?v=20261108c"></script>
-    <script src="assets/js/migrate.js?v=20261108c"></script>
+    <script src="assets/js/config.js?v=20261108d"></script>
+    <script src="assets/js/core.js?v=20261108d"></script>
+    <script src="assets/js/player.js?v=20261108d"></script>
+    <script src="assets/js/migrate.js?v=20261108d"></script>
     <style>
         /* ---------- Login ---------- */
         .login-screen {
@@ -223,7 +224,7 @@
             </div>
         </div>
         <div class="clip-layout">
-            <div class="clip-video"><iframe id="clip-frame" allow="autoplay; fullscreen" allowfullscreen></iframe></div>
+            <div class="clip-video" id="clip-stage"></div>
             <div class="clip-side">
                 <div class="side-scroll"><div class="feed" id="clip-comments"></div></div>
                 <div class="composer">
@@ -237,7 +238,7 @@
 
 <script>
     const F = Falcons, I = F.icon;
-    let user = null, admin = false, media = [], players = {}, currentClip = null, unsubComments = null, loginCandidate = null;
+    let mediaView = null, user = null, admin = false, media = [], players = {}, currentClip = null, unsubComments = null, loginCandidate = null;
 
     /* ------------------------------------------------------------------ LOGIN */
     const $ = id => document.getElementById(id);
@@ -458,7 +459,8 @@
     function openClip(id) {
         currentClip = media.find(x => x.id === id);
         if (!currentClip) return;
-        $('clip-frame').src = currentClip.embedUrl;
+        if (!mediaView) mediaView = new FalconsPlayer.Media($('clip-stage'));
+        mediaView.show(currentClip);
         $('clip-title').textContent = currentClip.title;
         $('clip-meta').textContent = [currentClip.category, currentClip.position !== 'Alle' && currentClip.position].filter(Boolean).join(' · ');
         $('clip-analyse').href = `analyze.html?id=${encodeURIComponent(id)}&type=${currentClip.type}`;
@@ -477,7 +479,7 @@
     }
 
     function closeClip() {
-        $('clip-modal').classList.remove('open'); $('clip-frame').src = '';
+        $('clip-modal').classList.remove('open'); if (mediaView) mediaView.hide();
         document.body.style.overflow = '';
         if (unsubComments) { unsubComments(); unsubComments = null; }
         loadMentions();
@@ -485,9 +487,7 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('clip-modal').classList.contains('open')) closeClip(); });
 
     function jumpTo(sec) {
-        if (currentClip && currentClip.type === 'youtube')
-            $('clip-frame').src = `https://www.youtube.com/embed/${currentClip.ytId}?start=${sec}&autoplay=1&rel=0`;
-        else F.toast('Springen ist nur bei YouTube-Clips möglich', 'error');
+        if (!mediaView || !mediaView.seek(sec)) F.toast('Springen ist nur bei YouTube-Clips möglich', 'error');
     }
 
     async function sendClipComment() {

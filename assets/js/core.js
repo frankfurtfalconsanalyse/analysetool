@@ -426,8 +426,9 @@ const Falcons = (() => {
             return {
                 id: d.id, type: 'youtube', title: c.title, category: c.category, shared, ownerTeam: c.ownerTeam,
                 position: c.position || meta[d.id] || 'Alle',
-                ytId: c.ytId, startTime: start,
-                embedUrl: `https://www.youtube.com/embed/${c.ytId}?start=${start}&autoplay=1&rel=0`,
+                ytId: c.ytId, startTime: start, endTime: parseInt(c.endTime) || null,
+                players: c.players || [], source: c.source || null, opponentId: c.opponentId || null, createdAt: c.createdAt || null,
+                embedUrl: `https://www.youtube.com/embed/${c.ytId}?start=${start}${c.endTime ? '&end=' + parseInt(c.endTime) : ''}&autoplay=1&rel=0`,
                 thumb: ytThumb(c.ytId)
             };
         }) : [];
