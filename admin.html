@@ -66,7 +66,7 @@
 <main class="page hidden" id="app">
     <div class="page-head">
         <div>
-            <div class="eyebrow">Trainer-Bereich</div>
+            <div class="eyebrow" id="team-eyebrow">Coach-Bereich</div>
             <h1>Verwaltung</h1>
             <p>Inhalte pflegen, Kader verwalten und sehen, wer was angeschaut hat.</p>
         </div>
@@ -129,6 +129,7 @@
                     <div class="field"><label>YouTube-Link</label><input id="yt-url" class="input" placeholder="https://youtu.be/…"></div>
                     <div class="field"><label>Spielsituation</label><select id="yt-cat" class="select"></select></div>
                     <div class="field"><label>Position</label><select id="yt-pos" class="select"></select></div>
+                    <div class="field"><label>Sichtbar für</label><select id="yt-share" class="select"><option value="team">Nur dieses Team</option><option value="club">Alle Teams</option></select></div>
                     <button class="btn btn-primary" onclick="addClip()">Hinzufügen</button>
                 </div>
             </div>
@@ -174,7 +175,7 @@
                 <button class="btn btn-primary" onclick="addMember()">Speichern</button>
             </div></div>
         </div>
-        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Nr.</th><th>Name</th><th>PIN</th><th>Trainer/Admin</th><th></th></tr></thead><tbody id="kader-table"></tbody></table></div></div>
+        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Nr.</th><th>Name</th><th>Login</th><th>Rolle</th><th class="club-only hidden">Vereins-Admin</th><th></th></tr></thead><tbody id="kader-table"></tbody></table></div></div>
     </section>
 </main>
 
@@ -183,7 +184,7 @@
     const user = F.requireUser();
     F.mountShell('admin');
 
-    let players = [], admins = new Set(), media = [], sessions = [], games = [], trainings = [], selected = [], statusMode = 'sessions';
+    let players = [], ctx = null, media = [], sessions = [], games = [], trainings = [], selected = [], statusMode = 'sessions';
     const SOURCE = { drive: 'Drive', youtube: 'YouTube', tactic: 'Taktik' };
 
     /* ------------------------------------------------------------ Start */
@@ -208,14 +209,15 @@
 
     async function loadAll() {
         $('status-list').innerHTML = F.loading();
-        await F.migrateTactics();
         const [pSnap, aSnap, m, sSnap, gSnap, tSnap] = await Promise.all([
-            db.collection('players').get(), db.collection('admins').get(), F.loadMedia({ tactics: true }),
-            db.collection('sessions').orderBy('createdAt', 'desc').get(),
-            db.collection('games').orderBy('date', 'desc').get(), db.collection('trainings').orderBy('date', 'desc').get()
+            F.T('players').get(), F.ready, F.loadMedia({ tactics: true }),
+            F.T('sessions').orderBy('createdAt', 'desc').get(),
+            F.T('games').orderBy('date', 'desc').get(), F.T('trainings').orderBy('date', 'desc').get()
         ]);
         players = pSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.id.localeCompare(b.id));
-        admins = new Set(aSnap.docs.map(d => d.id));
+        ctx = aSnap;
+        $('team-eyebrow').textContent = `Coach-Bereich · ${F.teamName(ctx.team)}`;
+        document.querySelectorAll('.club-only').forEach(el => el.classList.toggle('hidden', !ctx.clubAdmin));
         media = m;
         sessions = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         games = gSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -238,7 +240,7 @@
         document.querySelectorAll('#status-modes button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
         $('status-list').innerHTML = F.loading();
         const viewCol = { sessions: 'progress', clips: 'video_views', games: 'game_views', trainings: 'training_views' }[mode];
-        const vSnap = await db.collection(viewCol).get();
+        const vSnap = await F.T(viewCol).get();
         const views = {}; vSnap.forEach(d => views[d.id] = d.data());
 
         const items = mode === 'sessions' ? sessions
@@ -298,7 +300,7 @@
         const title = $('s-title').value.trim();
         if (!title) return F.toast('Bitte einen Titel eingeben', 'error');
         if (!selected.length) return F.toast('Bitte mindestens einen Inhalt auswählen', 'error');
-        await db.collection('sessions').add({ title, description: $('s-desc').value.trim(), videoIds: selected, createdAt: new Date() });
+        await F.T('sessions').add({ title, description: $('s-desc').value.trim(), videoIds: selected, createdAt: new Date() });
         $('s-title').value = $('s-desc').value = ''; selected = [];
         F.toast('Session erstellt'); loadAll();
     }
@@ -307,31 +309,38 @@
     function renderClips() {
         const clips = media.filter(x => x.type !== 'tactic');
         $('clip-table').innerHTML = clips.length ? clips.map(v => `<tr>
-            <td><strong>${F.esc(v.title)}</strong></td>
+            <td><strong>${F.esc(v.title)}</strong>${v.shared ? ` <span class="badge badge-violet">Alle Teams${v.ownerTeam && v.ownerTeam !== ctx.team ? ' · von ' + F.esc(F.teamName(v.ownerTeam)) : ''}</span>` : ''}</td>
             <td><span class="badge ${v.type === 'youtube' ? 'badge-brand' : 'badge-info'}">${SOURCE[v.type]}</span></td>
             <td class="muted">${F.esc(v.category || '–')}</td>
-            <td><select class="select" onchange="setPosition('${v.id}', '${v.type}', this.value)">
+            <td><select class="select" ${canEditClip(v) ? '' : 'disabled'} onchange="setPosition('${v.id}', '${v.type}', this.value)">
                 ${['Alle', ...F.CFG.positions].map(p => `<option ${p === v.position ? 'selected' : ''}>${p}</option>`).join('')}
             </select></td>
             <td class="actions">${v.type === 'youtube'
-                ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('youtube_clips','${v.id}')">${I('trash', 'icon-sm')}</button>`
+                ? (canEditClip(v) ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('${v.shared ? 'club_clips' : 'youtube_clips'}','${v.id}')">${I('trash', 'icon-sm')}</button>` : '')
                 : `<span class="faint" style="font-size:12px" title="Drive-Clips im Google-Drive-Ordner löschen">im Drive</span>`}</td>
         </tr>`).join('') : `<tr><td colspan="5" class="muted">Noch keine Clips.</td></tr>`;
     }
+
+    // Für alle Teams freigegebene Clips darf nur das Team bearbeiten, das sie freigegeben hat
+    const canEditClip = v => !v.shared || v.ownerTeam === ctx.team;
 
     async function addClip() {
         const title = $('yt-title').value.trim(), { id, start } = F.parseYouTube($('yt-url').value);
         if (!title) return F.toast('Bitte einen Titel eingeben', 'error');
         if (!id) return F.toast('Ungültiger YouTube-Link', 'error');
-        await db.collection('youtube_clips').add({ title, ytId: id, startTime: start, category: $('yt-cat').value, position: $('yt-pos').value, createdAt: new Date() });
+        const shared = $('yt-share').value === 'club';
+        const data = { title, ytId: id, startTime: start, category: $('yt-cat').value, position: $('yt-pos').value, createdAt: new Date() };
+        if (shared) data.ownerTeam = ctx.team;
+        await F.T(shared ? 'club_clips' : 'youtube_clips').add(data);
         $('yt-title').value = $('yt-url').value = '';
         F.toast('Clip hinzugefügt'); loadAll();
     }
 
     async function setPosition(id, type, position) {
         // Drive-Clips: Position in video_metadata; YouTube-Clips: direkt am Clip
-        if (type === 'youtube') await db.collection('youtube_clips').doc(id).update({ position });
-        else await db.collection('video_metadata').doc(id).set({ position }, { merge: true });
+        const v0 = media.find(x => x.id === id);
+        if (type === 'youtube') await F.T(v0 && v0.shared ? 'club_clips' : 'youtube_clips').doc(id).update({ position });
+        else await F.T('video_metadata').doc(id).set({ position }, { merge: true });
         const v = media.find(x => x.id === id); if (v) v.position = position;
         F.toast('Position gespeichert');
     }
@@ -354,7 +363,7 @@
         if (!title) return F.toast('Bitte einen Titel eingeben', 'error');
         if (!id) return F.toast('Ungültiger YouTube-Link', 'error');
         if (!date) return F.toast('Bitte ein Datum wählen', 'error');
-        await db.collection(col).add({ title, ytId: id, date, createdAt: new Date() });
+        await F.T(col).add({ title, ytId: id, date, createdAt: new Date() });
         $(p + '-title').value = $(p + '-url').value = $(p + '-date').value = '';
         F.toast('Gespeichert'); loadAll();
     }
@@ -362,20 +371,22 @@
     /* ----------------------------------------------------------- Kader */
     function renderKader() {
         const withPin = players.filter(p => p.uid).length, legacy = players.filter(p => p.pin).length;
-        $('pin-stats').innerHTML = `${withPin} von ${players.length} Spielern haben sich schon mit eigener PIN angemeldet. Login = Trikotnummer (zweistellig).`
+        $('pin-stats').innerHTML = `${withPin} von ${players.length} Spielern haben sich schon angemeldet. Login = Team + Trikotnummer (zweistellig) + PIN. Nummern gelten nur innerhalb dieses Teams.`
             + (legacy ? ` <button class="btn btn-sm" style="margin-left:8px" onclick="purgeLegacyPins()">${I('lock', 'icon-sm')} ${legacy} alte PINs aus der Datenbank löschen</button>` : '');
         $('kader-table').innerHTML = players.map(p => {
-            const superAdmin = p.id === F.CFG.superAdminNr;
+            const self = p.uid && p.uid === ctx.uid;
             return `<tr>
                 <td class="mono">#${p.id}</td>
                 <td><strong>${F.esc(p.name)}</strong></td>
                 <td>${p.uid ? `<span class="badge badge-success">${I('check', 'icon-sm')} Aktiv</span>` : '<span class="badge" title="Legt beim nächsten Login eine PIN fest">Noch nicht angemeldet</span>'}</td>
-                <td><label class="switch" title="${superAdmin ? 'Haupt-Admin (fest eingestellt)' : 'Admin-Rechte'}"><input type="checkbox" ${superAdmin || admins.has(p.id) ? 'checked' : ''} ${superAdmin ? 'disabled' : ''} onchange="setAdmin('${p.id}', this.checked)"><span></span></label></td>
+                <td><select class="select" ${self && !ctx.clubAdmin ? 'disabled title="Eigene Rolle kann nur ein Vereins-Admin ändern"' : ''} onchange="setRole('${p.id}', this.value)">
+                    <option value="player" ${p.role !== 'coach' ? 'selected' : ''}>Spieler</option><option value="coach" ${p.role === 'coach' ? 'selected' : ''}>Coach</option></select></td>
+                <td class="club-only ${ctx.clubAdmin ? '' : 'hidden'}"><label class="switch" title="Vereins-Admin: sieht und verwaltet alle Teams"><input type="checkbox" ${p.clubAdmin ? 'checked' : ''} ${self || !p.uid ? 'disabled' : ''} onchange="setClubAdmin('${p.id}', this.checked)"><span></span></label></td>
                 <td class="actions">
-                    ${p.uid ? `<button class="btn btn-ghost btn-sm" onclick="resetPin('${p.id}')">${I('key', 'icon-sm')} PIN zurücksetzen</button>` : ''}
+                    ${p.uid && (!p.clubAdmin || ctx.clubAdmin) ? `<button class="btn btn-ghost btn-sm" onclick="resetPin('${p.id}')">${I('key', 'icon-sm')} PIN zurücksetzen</button>` : ''}
                     <button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('players','${p.id}')">${I('trash', 'icon-sm')}</button>
                 </td></tr>`;
-        }).join('') || `<tr><td colspan="5" class="muted">Noch keine Spieler.</td></tr>`;
+        }).join('') || `<tr><td colspan="6" class="muted">Noch keine Spieler.</td></tr>`;
     }
 
     async function addMember() {
@@ -383,23 +394,32 @@
         if (!nr || !name) return F.toast('Nummer und Name angeben', 'error');
         if (nr.length === 1) nr = '0' + nr;
         if (players.some(p => p.id === nr) && !confirm(`#${nr} existiert bereits. Namen überschreiben?`)) return;
-        await db.collection('players').doc(nr).set({ name, nr }, { merge: true });
+        const existing = players.find(p => p.id === nr);
+        await F.T('players').doc(nr).set(existing ? { name } : { name, nr, role: 'player' }, { merge: true });
         $('p-nr').value = $('p-name').value = '';
         F.toast(`#${nr} ${name} gespeichert`); loadAll();
     }
 
-    async function setAdmin(nr, on) {
-        if (on) await db.collection('admins').doc(nr).set({ since: new Date() });
-        else await db.collection('admins').doc(nr).delete();
-        on ? admins.add(nr) : admins.delete(nr);
-        F.toast(on ? `#${nr} ist jetzt Admin` : `Admin-Rechte für #${nr} entfernt`);
+    async function setRole(nr, role) {
+        await F.T('players').doc(nr).update({ role });
+        const p = players.find(x => x.id === nr); if (p) p.role = role;
+        F.toast(role === 'coach' ? `#${nr} ist jetzt Coach` : `#${nr} ist jetzt Spieler`);
+    }
+
+    async function setClubAdmin(nr, on) {
+        if (on && !confirm(`#${nr} zum Vereins-Admin machen? Vereins-Admins sehen und verwalten ALLE Teams.`)) return renderKader();
+        await F.T('players').doc(nr).update({ clubAdmin: on ? true : firebase.firestore.FieldValue.delete() });
+        const p = players.find(x => x.id === nr); if (p) p.clubAdmin = on;
+        F.toast(on ? `#${nr} ist jetzt Vereins-Admin` : `Vereins-Admin-Recht für #${nr} entfernt`);
     }
 
     async function resetPin(nr) {
-        if (!confirm(`PIN von #${nr} zurücksetzen? Der Spieler vergibt beim nächsten Login eine neue.`)) return;
+        if (!confirm(`PIN von #${nr} zurücksetzen? Der Spieler vergibt beim nächsten Login in diesem Team eine neue PIN (seine anderen Teams bleiben unverändert).`)) return;
         // Konto-Verknüpfung lösen + Version erhöhen → beim nächsten Login wird ein neues Konto angelegt
         const p = players.find(x => x.id === nr), FV = firebase.firestore.FieldValue;
-        await db.collection('players').doc(nr).update({ uid: FV.delete(), pin: FV.delete(), authVersion: (p.authVersion || 0) + 1 });
+        const upd = { uid: FV.delete(), login: FV.delete(), pin: FV.delete(), authVersion: (p.authVersion || 0) + 1 };
+        if (p.clubAdmin) upd.clubAdmin = FV.delete(); // sonst würde der nächste Login das Recht erben
+        await F.T('players').doc(nr).update(upd);
         F.toast('PIN zurückgesetzt'); loadAll();
     }
 
@@ -407,7 +427,7 @@
     async function purgeLegacyPins() {
         const list = players.filter(p => p.pin);
         if (!confirm(`${list.length} alte PINs löschen? Diese Spieler wählen beim nächsten Login eine neue PIN.`)) return;
-        await Promise.all(list.map(p => db.collection('players').doc(p.id).update({ pin: firebase.firestore.FieldValue.delete() })));
+        await Promise.all(list.map(p => F.T('players').doc(p.id).update({ pin: firebase.firestore.FieldValue.delete() })));
         F.toast('Alte PINs gelöscht'); loadAll();
     }
 

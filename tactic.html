@@ -154,7 +154,7 @@
             <div class="field"><label>Titel</label><input id="b-title" class="input" placeholder="z. B. Breakout über links"></div>
             <div class="field"><label>Kategorie</label><select id="b-cat" class="select"></select></div>
             <div class="field admin-only hidden"><label>Sichtbar für</label>
-                <select id="b-vis" class="select"><option value="team">Ganzes Team</option><option value="private">Nur mich</option></select>
+                <select id="b-vis" class="select"><option value="team">Ganzes Team</option><option value="club">Alle Teams</option><option value="private">Nur mich</option></select>
             </div>
             <p class="hint" id="b-owner" style="margin:0"></p>
             <button class="btn btn-primary" id="btn-update" onclick="saveBoard(false)"></button>
@@ -225,15 +225,14 @@
         admin = await F.isAdmin();
         // Spieler dürfen nur Team-Boards und eigene Boards lesen → zwei Abfragen
         const queries = admin
-            ? [db.collection('tactics').get()]
-            : [db.collection('tactics').where('visibility', '==', 'team').get(), db.collection('tactics').where('ownerNr', '==', user.nr).get()];
-        const snaps = await Promise.all(queries);
+            ? [F.T('tactics').get()]
+            : [F.T('tactics').where('visibility', '==', 'team').get(), F.T('tactics').where('ownerNr', '==', user.nr).get()];
+        const [snaps, club] = await Promise.all([Promise.all(queries), F.T('club_tactics').get().catch(() => null)]);
         const map = new Map();
         snaps.forEach(s => s.docs.forEach(d => map.set(d.id, { id: d.id, ...d.data() })));
+        // für alle Teams freigegebene Boards (eigene Collection)
+        if (club) club.docs.forEach(d => map.set(d.id, { id: d.id, ...d.data(), visibility: 'club' }));
         boards = [...map.values()];
-
-        // Einmalige Umstellung alter Boards (ohne Sichtbarkeit) → Team-Boards
-        if (admin) boards.filter(b => !b.visibility).forEach(b => { b.visibility = 'team'; F.migrateTactic(b.id); });
 
         const time = b => { const t = b.updatedAt || b.createdAt; return t ? (t.toDate ? t.toDate() : new Date(t)).getTime() : 0; };
         boards.sort((a, b) => time(b) - time(a));
@@ -264,7 +263,7 @@
                 const n = (b.phases || []).length || 1;
                 return `<div class="lib-item ${active && active.id === b.id ? 'active' : ''}" onclick="openBoard('${b.id}')">
                     ${I(b.field === 'half' ? 'field' : 'clipboard', 'icon-sm')}
-                    <div class="t"><strong>${F.esc(b.title)}</strong><small>${n} ${n === 1 ? 'Phase' : 'Phasen'}${b.ownerName && libTab === 'team' ? ' · ' + F.esc(b.ownerName) : ''}</small></div>
+                    <div class="t"><strong>${F.esc(b.title)}</strong><small>${n} ${n === 1 ? 'Phase' : 'Phasen'}${b.visibility === 'club' ? ' · Alle Teams' + (b.ownerTeam && b.ownerTeam !== F.currentTeam() ? ' (' + F.esc(F.teamName(b.ownerTeam)) + ')' : '') : ''}${b.ownerName && libTab === 'team' ? ' · ' + F.esc(b.ownerName) : ''}</small></div>
                 </div>`;
             }).join('')}`).join('');
     }
@@ -274,8 +273,9 @@
     /* --------------------------------------------------- Board öffnen */
     function canEdit(b = active) {
         if (!b) return true;                       // neues, ungespeichertes Board
+        if (b.visibility === 'club') return admin && b.ownerTeam === F.currentTeam(); // Vereins-Boards: Coaches des freigebenden Teams
         if (b.ownerNr === user.nr) return true;    // eigenes Board
-        return admin && b.visibility !== 'private'; // Trainer bearbeiten Team-Boards
+        return admin && b.visibility !== 'private'; // Coaches bearbeiten Team-Boards
     }
     const dirty = () => JSON.stringify(board.data()) !== savedJson;
     const confirmLeave = () => !dirty() || board.isEmpty() || confirm('Ungespeicherte Änderungen verwerfen?');
@@ -315,7 +315,7 @@
         $('btn-save-new').classList.toggle('btn-primary', !active || !edit);
         $('btn-delete').classList.toggle('hidden', !active || !edit);
         $('b-owner').textContent = active
-            ? `${active.visibility === 'private' ? 'Privat – nur du siehst es' : 'Team-Board – alle sehen es'}${active.ownerName ? ' · von ' + active.ownerName : ''}`
+            ? `${active.visibility === 'private' ? 'Privat – nur du siehst es' : active.visibility === 'club' ? 'Für alle Teams freigegeben' : 'Team-Board – das ganze Team sieht es'}${active.ownerName ? ' · von ' + active.ownerName : ''}`
             : 'Neues Board – noch nicht gespeichert.';
     }
 
@@ -326,17 +326,25 @@
         const visibility = admin ? $('b-vis').value : 'private';
         const data = board.data();
         const payload = { ...data, title, category: $('b-cat').value, visibility, updatedAt: new Date() };
+        // „Alle Teams" liegt in einer eigenen Collection (club_tactics), sonst im Team (tactics)
+        const colFor = v => v === 'club' ? 'club_tactics' : 'tactics';
+        const target = colFor(visibility);
+        if (visibility === 'club') payload.ownerTeam = (active && active.visibility === 'club' && active.ownerTeam) || F.currentTeam();
         try {
-            if (asNew || !active) {
-                const doc = { ...payload, ownerNr: user.nr, ownerName: user.name, createdAt: new Date() };
-                const ref = await db.collection('tactics').add(doc);
+            // Wechsel zwischen Team und „Alle Teams“ = Board umziehen (neu anlegen + altes löschen)
+            const moving = active && !asNew && colFor(active.visibility) !== target;
+            if (asNew || !active || moving) {
+                const doc = { ...payload, ownerNr: moving ? (active.ownerNr || user.nr) : user.nr, ownerName: moving ? (active.ownerName || user.name) : user.name, createdAt: new Date() };
+                if (!doc.legacyImage) delete doc.legacyImage;
+                const ref = await F.T(target).add(doc);
+                if (moving) { await F.T(colFor(active.visibility)).doc(active.id).delete(); boards = boards.filter(b => b.id !== active.id); }
                 boards.unshift({ id: ref.id, ...doc });
-                libTab = visibility === 'team' ? 'team' : 'mine';
-                F.toast(visibility === 'team' ? 'Board für das Team gespeichert' : 'In „Meine Boards" gespeichert');
+                libTab = visibility === 'private' ? 'mine' : 'team';
+                F.toast(visibility === 'club' ? 'Board für alle Teams freigegeben' : visibility === 'team' ? 'Board für das Team gespeichert' : 'In „Meine Boards" gespeichert');
                 openBoard(ref.id, true);
             } else {
                 if (!data.legacyImage) payload.legacyImage = firebase.firestore.FieldValue.delete();
-                await db.collection('tactics').doc(active.id).update(payload);
+                await F.T(target).doc(active.id).update(payload);
                 Object.assign(active, data, { title, category: payload.category, visibility });
                 if (!data.legacyImage) delete active.legacyImage;
                 savedJson = JSON.stringify(board.data());
@@ -347,7 +355,7 @@
     }
 
     async function deleteBoard() {
-        if (!active || !(await F.deleteDoc('tactics', active.id, `Board „${active.title}" löschen?`))) return;
+        if (!active || !(await F.deleteDoc(active.visibility === 'club' ? 'club_tactics' : 'tactics', active.id, `Board „${active.title}" löschen?`))) return;
         boards = boards.filter(b => b.id !== active.id);
         active = null; board.reset(); savedJson = JSON.stringify(board.data());
         newBoard();

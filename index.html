@@ -13,6 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="assets/js/config.js"></script>
     <script src="assets/js/core.js"></script>
+    <script src="assets/js/migrate.js"></script>
     <style>
         /* ---------- Login ---------- */
         .login-screen {
@@ -37,6 +38,15 @@
         .login-error { min-height: 20px; margin-top: 12px; font-size: 13px; color: #ff5a63; }
         .login-link { background: none; border: 0; color: var(--text-muted); font-size: 13px; cursor: pointer; margin-top: 8px; }
         .login-link:hover { color: var(--text); }
+        .team-pick { display: grid; gap: 8px; }
+        .team-pick button { height: 54px; border-radius: var(--radius); border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+        .team-pick button:hover { border-color: var(--brand); background: var(--brand-soft); }
+        .team-pick button.last { border-color: rgba(227,6,19,.5); }
+        .team-pick small { font-size: 11px; font-weight: 600; color: var(--text-faint); }
+        .team-current { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 14px; }
+        .team-current span { font-size: 12.5px; font-weight: 700; color: #ff6b73; background: var(--brand-soft); border: 1px solid rgba(227,6,19,.45); padding: 3px 12px; border-radius: 999px; }
+        .team-current .login-link { margin: 0; }
+        .login-hint { font-size: 12px; color: var(--text-faint); margin-top: 12px; line-height: 1.5; }
         .login-foot { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-faint); }
 
         /* ---------- Dashboard ---------- */
@@ -83,7 +93,13 @@
         <h1>FALCONS ANALYSE-HUB</h1>
         <p class="sub">Frankfurt Falcons · Floorball</p>
 
-        <div id="step-nr" class="login-step active">
+        <div id="step-team" class="login-step active">
+            <label>Dein Team</label>
+            <div class="team-pick" id="team-pick"></div>
+        </div>
+
+        <div id="step-nr" class="login-step">
+            <div class="team-current"><span id="team-current"></span><button class="login-link" onclick="showStep('step-team')">Team ändern</button></div>
             <label for="login-nr">Deine Trikotnummer</label>
             <input id="login-nr" class="code-input" inputmode="numeric" autocomplete="off" maxlength="2" placeholder="00">
             <button class="btn btn-primary btn-lg btn-block" style="margin-top:14px" onclick="checkNr(true)">Weiter</button>
@@ -94,6 +110,7 @@
             <input id="setup-pin" class="code-input" type="password" inputmode="numeric" maxlength="4" placeholder="••••">
             <input id="setup-pin2" class="code-input" type="password" inputmode="numeric" maxlength="4" placeholder="wiederholen">
             <button class="btn btn-primary btn-lg btn-block" style="margin-top:14px" onclick="savePin()">PIN speichern & starten</button>
+            <p class="login-hint">Du spielst schon in einem anderen Team und hast dort eine PIN? Melde dich dort an und verknüpfe dieses Team über dein Menü → <b>Weiteres Team verknüpfen</b>.</p>
             <button class="login-link" onclick="resetLogin()">Andere Nummer</button>
         </div>
 
@@ -104,7 +121,24 @@
         </div>
 
         <div class="login-error" id="login-error"></div>
-        <div class="login-foot">PIN vergessen? Ein Trainer kann sie im Admin-Bereich zurücksetzen.</div>
+        <div class="login-foot">PIN vergessen? Ein Coach kann sie in der Verwaltung zurücksetzen.</div>
+    </div>
+</div>
+
+<!-- ============================ UMSTELLUNG AUF TEAMS ============================ -->
+<div id="migration" class="login-screen hidden">
+    <div class="card login-card" style="max-width:460px">
+        <img class="login-logo" src="assets/img/logo.png" alt="Frankfurt Falcons">
+        <h1>Umstellung auf Teams</h1>
+        <div id="mig-admin" class="hidden">
+            <p class="sub" style="margin-top:12px; line-height:1.6">Der Hub unterstützt jetzt mehrere Teams (Herren, Damen, Herren Regio). Alle bisherigen Daten werden einmalig dem Team <b>Herren</b> zugeordnet. Alle Spieler behalten ihre PIN, bisherige Admins werden Vereins-Admins.</p>
+            <button class="btn btn-primary btn-lg btn-block" style="margin-top:20px" id="mig-btn" onclick="runMigration()">Umstellung starten</button>
+            <p class="login-hint" id="mig-status"></p>
+        </div>
+        <div id="mig-wait" class="hidden">
+            <p class="sub" style="margin-top:12px; line-height:1.6">Der Hub wird gerade auf Teams umgestellt. Ein Admin muss sich einmal anmelden und die Umstellung starten. Bitte versuche es später erneut.</p>
+            <button class="btn btn-block" style="margin-top:20px" onclick="Falcons.logout()">Abmelden</button>
+        </div>
     </div>
 </div>
 
@@ -204,16 +238,32 @@
     function loginError(msg) { $('login-error').textContent = msg; }
     function resetLogin() { loginCandidate = null; $('login-nr').value = ''; $('login-pin').value = ''; loginError(''); showStep('step-nr'); }
 
+    /* Team wählen (das zuletzt genutzte ist markiert) */
+    let loginTeam = null, legacyMode = false;
+    function renderTeamPick() {
+        const last = F.currentTeam();
+        $('team-pick').innerHTML = F.TEAMS.map(t => `<button class="${t.id === last ? 'last' : ''}" onclick="pickTeam('${t.id}')">${F.esc(t.name)}${t.id === last ? '<small>zuletzt</small>' : I('chevronRight', 'icon-sm')}</button>`).join('');
+    }
+    function pickTeam(id) {
+        loginTeam = id; F.setTeam(id);
+        $('team-current').textContent = F.teamName(id);
+        loginError(''); showStep('step-nr');
+    }
+
     async function checkNr(force) {
         let nr = $('login-nr').value;
         if (force && nr.length === 1) nr = '0' + nr;
         if (nr.length !== 2) return force && loginError('Bitte Trikotnummer eingeben.');
         try {
-            const doc = await db.collection('players').doc(nr).get();
-            if (!doc.exists) return loginError(`Nummer #${nr} ist nicht im Kader.`);
+            // Während der Umstellung gilt noch der alte Kader (ohne Teams) – nur Admins können sich anmelden
+            const doc = legacyMode ? await db.collection('players').doc(nr).get() : await F.T('players', loginTeam).doc(nr).get();
+            if (!doc.exists) return loginError(`Nummer #${nr} ist im Team ${F.teamName(loginTeam)} nicht im Kader.`);
             const d = doc.data();
-            loginCandidate = { nr, name: d.name, authVersion: d.authVersion || 0 };
-            if (!d.uid) showStep('step-setup');   // noch kein Konto → erster Login
+            loginCandidate = { team: loginTeam, nr, name: d.name, authVersion: d.authVersion || 0, login: legacyMode ? `${nr}.${d.authVersion || 0}` : d.login };
+            if (!d.uid) {
+                if (legacyMode) return loginError('Während der Umstellung können sich nur Admins anmelden.');
+                showStep('step-setup');   // noch kein Konto → erster Login
+            }
             else { $('welcome-user').textContent = `Hallo ${loginCandidate.name} – deine PIN`; showStep('step-pin'); }
         } catch (e) { loginError('Verbindung fehlgeschlagen. Bitte erneut versuchen.'); }
     }
@@ -239,10 +289,37 @@
         $('login-error').innerHTML = on ? '<div class="spinner" style="margin:0 auto; width:18px; height:18px"></div>' : $('login-error').innerHTML;
     }
 
+    /* ---------------------------------------------------------- UMSTELLUNG */
+    async function showMigration() {
+        $('migration').classList.remove('hidden');
+        const admin = await FalconsMigration.isLegacyAdmin(auth.currentUser);
+        $(admin ? 'mig-admin' : 'mig-wait').classList.remove('hidden');
+    }
+    async function runMigration() {
+        $('mig-btn').disabled = true;
+        try {
+            const n = await FalconsMigration.run(auth.currentUser, t => $('mig-status').textContent = t);
+            $('mig-status').textContent = `Fertig – ${n} Einträge übernommen. Wird neu geladen …`;
+            setTimeout(() => location.reload(), 1200);
+        } catch (e) {
+            console.error(e);
+            $('mig-btn').disabled = false;
+            $('mig-status').textContent = 'Fehler: ' + (e.message || e) + ' – bitte erneut versuchen.';
+        }
+    }
+
     /* -------------------------------------------------------------- DASHBOARD */
     async function boot() {
         user = await F.authState;
-        if (!user) { $('login').classList.remove('hidden'); showStep('step-nr'); return; }
+        if (user && user.migration) return showMigration();
+        if (!user) {
+            legacyMode = !(await F.migrated());
+            $('login').classList.remove('hidden');
+            renderTeamPick();
+            if (legacyMode) pickTeam(F.TEAMS[0].id);
+            else showStep('step-team');
+            return;
+        }
 
         F.mountShell('dashboard');
         $('app').classList.remove('hidden');
@@ -261,9 +338,9 @@
 
         const [m, sessSnap, progSnap, pSnap, isAdm] = await Promise.all([
             F.loadMedia(),
-            db.collection('sessions').orderBy('createdAt', 'desc').get(),
-            db.collection('progress').doc(user.nr).get(),
-            db.collection('players').get(),
+            F.T('sessions').orderBy('createdAt', 'desc').get(),
+            user.nr ? F.T('progress').doc(user.nr).get() : Promise.resolve({ exists: false, data: () => ({}) }),
+            F.T('players').get(),
             F.isAdmin()
         ]);
         media = m; players = F.playerMap(pSnap); admin = isAdm;
@@ -316,7 +393,7 @@
     }
 
     async function loadMentions() {
-        const snap = await db.collection('comments').where('mentions', 'array-contains', user.nr).get();
+        const snap = user.nr ? await F.T('comments').where('mentions', 'array-contains', user.nr).get() : { forEach() {} };
         const byClip = new Map();
         snap.forEach(doc => {
             const c = doc.data();
@@ -374,7 +451,7 @@
 
         if (unsubComments) unsubComments();
         $('clip-comments').innerHTML = F.loading();
-        unsubComments = db.collection('comments').where('videoId', '==', id).onSnapshot(snap => {
+        unsubComments = F.T('comments').where('videoId', '==', id).onSnapshot(snap => {
             const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => F.parseTime(a.text) - F.parseTime(b.text));
             $('clip-comments').innerHTML = docs.length
                 ? docs.map(c => F.commentHtml(c, { me: user.nr, admin, onRead: 'F.toggleRead', onDelete: 'deleteComment' })).join('')
@@ -400,7 +477,7 @@
         const input = $('clip-input'), raw = input.value.trim();
         if (!raw || !currentClip) return;
         const { text, mentions } = F.resolveMentions(raw, players);
-        await db.collection('comments').add({ videoId: currentClip.id, text, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await F.T('comments').add({ videoId: currentClip.id, text, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         input.value = '';
     }
     function deleteComment(id) { F.deleteDoc('comments', id, 'Kommentar löschen?'); }

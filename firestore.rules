@@ -1,115 +1,170 @@
 rules_version = '2';
 
 // ==========================================================================
-// Firestore-Sicherheitsregeln – Falcons Analyse-Hub
+// Firestore-Sicherheitsregeln – Falcons Analyse-Hub (mehrere Teams)
 //
-// Login: Jeder Spieler hat ein Firebase-Auth-Konto mit der E-Mail
-//   "<Trikotnummer>.<authVersion>@falcons-hub.app"   (z. B. 07.0@falcons-hub.app)
-// Das Konto gehört zum Spieler, wenn players/<nr>.uid == Konto-ID.
-// Setzt ein Trainer die PIN zurück, wird uid gelöscht und authVersion erhöht
-// → der Spieler legt beim nächsten Login ein neues Konto an.
+// Aufbau der Datenbank:
+//   teams/{team}                         Team-Infos (herren, damen, regio)
+//   teams/{team}/players/{nr}            Kader: name, uid (Login-Konto), login, role ('player'|'coach'), clubAdmin
+//   teams/{team}/<inhalte>/{id}          Sessions, Clips, Spiele, Kommentare … – pro Team getrennt
+//   users/{uid}                          { teams: { herren: '22', regio: '07' } } – welche Nummer in welchem Team
+//   club_clips/{id}, club_tactics/{id}   Inhalte, die für ALLE Teams freigegeben sind
+//
+// Ein Login-Konto kann in mehreren Teams Mitglied sein (je Team eine eigene Nummer).
+// Mitglied ist, wessen Konto-ID im Kader-Eintrag steht (players/{nr}.uid).
 //
 // Einspielen: Firebase-Konsole → Firestore → Regeln → Inhalt ersetzen → Veröffentlichen
+// Neues Team? → in TEAMS unten (isClubAdmin / isAnyMember) und in assets/js/config.js ergänzen.
 // ==========================================================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // ---------------------------------------------------------------- Helfer
-    function signedIn() { return request.auth != null && request.auth.token.email != null; }
-    function localPart() { return request.auth.token.email.split('@')[0]; }
-    function myNr() { return localPart().split('[.]')[0]; }
-    function myVersion() { return localPart().split('[.]').size() > 1 ? localPart().split('[.]')[1] : ''; }
-    function playerDoc(nr) { return get(/databases/$(database)/documents/players/$(nr)); }
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function hasUserDoc() { return exists(/databases/$(database)/documents/users/$(uid())); }
+    // Nummer des angemeldeten Kontos in einem Team ('' = kein Mitglied)
+    function nrIn(team) {
+      return hasUserDoc()
+        ? get(/databases/$(database)/documents/users/$(uid())).data.get('teams', {}).get(team, '')
+        : '';
+    }
+    function memberPath(team) { return /databases/$(database)/documents/teams/$(team)/players/$(nrIn(team)); }
 
-    // angemeldet UND das Konto ist dem Spieler zugeordnet
-    function isMember() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/players/$(myNr()))
-        && playerDoc(myNr()).data.get('uid', '') == request.auth.uid;
+    function isMember(team) {
+      return signedIn() && nrIn(team) != '' && exists(memberPath(team))
+        && get(memberPath(team)).data.get('uid', '') == uid();
     }
-    // Haupt-Admin (Nr. 22) oder Eintrag in "admins"
-    function isAdmin() {
-      return isMember()
-        && (myNr() == '22' || exists(/databases/$(database)/documents/admins/$(myNr())));
+    function hasFlag(team, field, value) { return isMember(team) && get(memberPath(team)).data.get(field, null) == value; }
+
+    // Vereins-Admins: dürfen alle Teams sehen und verwalten
+    function isClubAdmin() {
+      return signedIn() && (hasFlag('herren', 'clubAdmin', true) || hasFlag('damen', 'clubAdmin', true) || hasFlag('regio', 'clubAdmin', true));
     }
+    function isCoach(team) { return isClubAdmin() || hasFlag(team, 'role', 'coach'); }
+    function canRead(team) { return isMember(team) || isClubAdmin(); }
+    function isAnyMember() { return isMember('herren') || isMember('damen') || isMember('regio'); }
+    function isAnyCoach() { return isCoach('herren') || isCoach('damen') || isCoach('regio'); }
+
     function onlyChanges(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+    function changes(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasAny(keys); }
 
-    // --------------------------------------------------------------- Kader
-    match /players/{nr} {
-      // Einzelabruf ist offen, damit die Login-Seite Name/Status zur Nummer zeigen kann
+    // ------------------------------------------------- Übergang (Umstellung)
+    // Alte Struktur (vor den Teams): players/{nr}, Login-E-Mail "<nr>.<version>@…".
+    // Ein bisheriger Admin darf EINMALIG die alten Daten nach teams/herren kopieren –
+    // nur solange teams/herren noch nicht existiert (wird als letzter Schritt angelegt).
+    function legacyNr() { return request.auth.token.email.split('@')[0].split('[.]')[0]; }
+    function legacyAdmin() {
+      return signedIn() && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/players/$(legacyNr()))
+        && get(/databases/$(database)/documents/players/$(legacyNr())).data.get('uid', '') == uid()
+        && (legacyNr() == '22' || exists(/databases/$(database)/documents/admins/$(legacyNr())));
+    }
+    function migrating() { return !exists(/databases/$(database)/documents/teams/herren) && legacyAdmin(); }
+
+    // Login-Seite während der Umstellung: alter Kader-Eintrag zur Nummer
+    match /players/{nr} { allow get: if !exists(/databases/$(database)/documents/teams/herren); }
+    // alte Collections: nur noch für die Umstellung lesbar
+    match /{legacy}/{id} {
+      allow read: if legacy in ['players', 'admins', 'youtube_clips', 'video_metadata', 'sessions', 'games', 'trainings',
+                                'game_events', 'training_events', 'comments', 'game_comments', 'training_comments',
+                                'progress', 'video_views', 'game_views', 'training_views', 'tactics']
+                  && legacyAdmin();
+    }
+
+    // ------------------------------------------------------------- Konten
+    match /users/{userId} {
+      allow read, write: if signedIn() && userId == uid();
+    }
+
+    // -------------------------------------------------------------- Teams
+    match /teams/{team} {
       allow get: if true;
-      allow list: if isMember();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (
-        // Erster Login: Spieler verknüpft sein neues Konto mit seiner Nummer
-        signedIn()
-        && myNr() == nr
-        && resource.data.get('uid', null) == null
-        && request.resource.data.get('uid', '') == request.auth.uid
-        && myVersion() == string(resource.data.get('authVersion', 0))
-        && onlyChanges(['uid', 'pin'])
-      );
+      allow list: if signedIn();
+      allow write: if isClubAdmin() || migrating();
+
+      // ---------------------------------------------------------- Kader
+      match /players/{nr} {
+        allow get: if true;   // Login-Seite: Name + „schon angemeldet?" zur Nummer
+        allow list: if canRead(team);
+        allow create, delete: if isCoach(team) || migrating();
+        allow update: if migrating()
+          // Coaches pflegen ihr Team – Vereins-Admin-Recht vergeben nur Vereins-Admins
+          || (isCoach(team) && (!changes(['clubAdmin']) || isClubAdmin()))
+          // Erster Login / Team hinzufügen: freie Nummer mit dem eigenen Konto verknüpfen
+          || (signedIn()
+              && resource.data.get('uid', null) == null
+              && request.resource.data.get('uid', '') == uid()
+              && onlyChanges(['uid', 'login', 'pin']));
+      }
+
+      // ------------------------------------- Inhalte (nur Coaches pflegen)
+      match /youtube_clips/{id}   { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
+      match /video_metadata/{id}  { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
+      match /sessions/{id}        { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
+      match /games/{id}           { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
+      match /trainings/{id}       { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
+      match /game_events/{id}     { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
+      match /training_events/{id} { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
+
+      // ----------------------------------------------- Kommentare zu Clips
+      match /comments/{id} {
+        allow read: if canRead(team);
+        allow create: if migrating() || isCoach(team) || (isMember(team) && request.resource.data.authorNr == nrIn(team));
+        allow update: if migrating() || isCoach(team) || (isMember(team) && onlyChanges(['readBy']));
+        allow delete: if isCoach(team) || (isMember(team) && resource.data.get('authorNr', '') == nrIn(team));
+      }
+
+      // -------------------- Privates Feedback (nur Coaches + betroffener Spieler)
+      match /game_comments/{id} {
+        allow read: if isCoach(team) || (isMember(team) && resource.data.targetNr == nrIn(team));
+        allow write: if isCoach(team) || migrating();
+      }
+      match /training_comments/{id} {
+        allow read: if isCoach(team) || (isMember(team) && resource.data.targetNr == nrIn(team));
+        allow write: if isCoach(team) || migrating();
+      }
+
+      // ------------------ Fortschritt / Gesehen (Dokument-ID = eigene Nummer)
+      match /progress/{nr}       { allow read: if isCoach(team) || (isMember(team) && nr == nrIn(team)); allow write: if migrating() || (isMember(team) && nr == nrIn(team)); }
+      match /video_views/{nr}    { allow read: if isCoach(team) || (isMember(team) && nr == nrIn(team)); allow write: if migrating() || (isMember(team) && nr == nrIn(team)); }
+      match /game_views/{nr}     { allow read: if isCoach(team) || (isMember(team) && nr == nrIn(team)); allow write: if migrating() || (isMember(team) && nr == nrIn(team)); }
+      match /training_views/{nr} { allow read: if isCoach(team) || (isMember(team) && nr == nrIn(team)); allow write: if migrating() || (isMember(team) && nr == nrIn(team)); }
+
+      // --------------------------------------------------------- Taktik-Boards
+      // visibility: 'team' (ganzes Team sieht es, Coaches bearbeiten) oder 'private' (nur Ersteller)
+      match /tactics/{id} {
+        function vis() { return resource.data.get('visibility', 'team'); }
+        function owner() { return resource.data.get('ownerNr', ''); }
+        function mine() { return isMember(team) && owner() == nrIn(team); }
+
+        allow get: if canRead(team) && (vis() != 'private' || mine());
+        // Listen ohne Standardwerte prüfen (sonst gelten fehlende Felder als erlaubt)
+        allow list: if isCoach(team) || (isMember(team) && (resource.data.visibility == 'team' || resource.data.ownerNr == nrIn(team)));
+        allow create: if migrating() || (canRead(team)
+          && request.resource.data.ownerNr == nrIn(team)
+          && (request.resource.data.visibility == 'private' || isCoach(team)));
+        allow update: if migrating() || (
+          request.resource.data.get('ownerNr', '') == owner()
+          && ((mine() && (request.resource.data.get('visibility', 'private') == 'private' || isCoach(team)))
+              || (isCoach(team) && vis() != 'private')));
+        allow delete: if mine() || (isCoach(team) && vis() != 'private');
+      }
     }
 
-    match /admins/{nr} {
-      allow read: if isMember();
-      allow write: if isAdmin();
+    // --------------------------------------- Für alle Teams freigegebene Inhalte
+    match /club_clips/{id} {
+      allow read: if isAnyMember() || isClubAdmin();
+      allow create: if isCoach(request.resource.data.ownerTeam);
+      allow update: if isCoach(resource.data.ownerTeam) && request.resource.data.ownerTeam == resource.data.ownerTeam;
+      allow delete: if isCoach(resource.data.ownerTeam);
     }
-
-    // ------------------------------------------- Inhalte (nur Trainer pflegen)
-    match /youtube_clips/{id}   { allow read: if isMember(); allow write: if isAdmin(); }
-    match /video_metadata/{id}  { allow read: if isMember(); allow write: if isAdmin(); }
-    match /sessions/{id}        { allow read: if isMember(); allow write: if isAdmin(); }
-    match /games/{id}           { allow read: if isMember(); allow write: if isAdmin(); }
-    match /trainings/{id}       { allow read: if isMember(); allow write: if isAdmin(); }
-    match /game_events/{id}     { allow read: if isMember(); allow write: if isAdmin(); }
-    match /training_events/{id} { allow read: if isMember(); allow write: if isAdmin(); }
-
-    // ------------------------------------------------ Kommentare zu Clips
-    match /comments/{id} {
-      allow read: if isMember();
-      allow create: if isMember() && request.resource.data.authorNr == myNr();
-      // Spieler dürfen nur "gelesen/abgehakt" ändern
-      allow update: if isAdmin() || (isMember() && onlyChanges(['readBy']));
-      allow delete: if isAdmin() || (isMember() && resource.data.get('authorNr', '') == myNr());
-    }
-
-    // ------------------------- Privates Feedback (nur Trainer + betroffener Spieler)
-    match /game_comments/{id} {
-      allow read: if isAdmin() || (isMember() && resource.data.targetNr == myNr());
-      allow write: if isAdmin();
-    }
-    match /training_comments/{id} {
-      allow read: if isAdmin() || (isMember() && resource.data.targetNr == myNr());
-      allow write: if isAdmin();
-    }
-
-    // ---------------------- Fortschritt / Gesehen (eigenes Dokument = Trikotnummer)
-    match /progress/{nr}       { allow read: if isAdmin() || (isMember() && nr == myNr()); allow write: if isMember() && nr == myNr(); }
-    match /video_views/{nr}    { allow read: if isAdmin() || (isMember() && nr == myNr()); allow write: if isMember() && nr == myNr(); }
-    match /game_views/{nr}     { allow read: if isAdmin() || (isMember() && nr == myNr()); allow write: if isMember() && nr == myNr(); }
-    match /training_views/{nr} { allow read: if isAdmin() || (isMember() && nr == myNr()); allow write: if isMember() && nr == myNr(); }
-
-    // ------------------------------------------------------------ Taktik-Boards
-    // visibility: 'team' (alle sehen es, nur Trainer bearbeiten) oder 'private' (nur Ersteller)
-    match /tactics/{id} {
-      function vis() { return resource.data.get('visibility', 'team'); }
-      function owner() { return resource.data.get('ownerNr', ''); }
-
-      allow get: if isMember() && (vis() != 'private' || owner() == myNr() || isAdmin());
-      // Listen-Abfragen ohne Standardwerte prüfen (sonst gelten fehlende Felder als erlaubt)
-      allow list: if isMember() && (resource.data.visibility == 'team' || resource.data.ownerNr == myNr() || isAdmin());
-      allow create: if isMember()
-        && request.resource.data.ownerNr == myNr()
-        && (request.resource.data.visibility == 'private' || isAdmin());
-      allow update: if isMember()
-        && request.resource.data.get('ownerNr', '') == owner()
-        && (
-          (owner() == myNr() && (request.resource.data.get('visibility', 'private') == 'private' || isAdmin()))
-          || (isAdmin() && vis() != 'private')
-        );
-      allow delete: if isMember() && (owner() == myNr() || (isAdmin() && vis() != 'private'));
+    match /club_tactics/{id} {
+      allow read: if isAnyMember() || isClubAdmin();
+      allow create: if isCoach(request.resource.data.ownerTeam);
+      allow update: if isCoach(resource.data.ownerTeam) && request.resource.data.ownerTeam == resource.data.ownerTeam;
+      allow delete: if isCoach(resource.data.ownerTeam);
     }
   }
 }

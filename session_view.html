@@ -79,10 +79,10 @@
     async function init() {
         if (!sessionId) return location.replace('index.html');
         const [sDoc, pSnap, media, progDoc, isAdm] = await Promise.all([
-            db.collection('sessions').doc(sessionId).get(),
-            db.collection('players').get(),
+            F.T('sessions').doc(sessionId).get(),
+            F.T('players').get(),
             F.loadMedia({ tactics: true }),
-            db.collection('progress').doc(user.nr).get(),
+            user.nr ? F.T('progress').doc(user.nr).get() : Promise.resolve({ exists: false, data: () => ({}) }),
             F.isAdmin()
         ]);
         if (!sDoc.exists) { document.querySelector('.workspace').innerHTML = `<div class="page">${F.empty('Session nicht gefunden', 'Sie wurde evtl. gelöscht.', 'layers')}</div>`; return; }
@@ -135,13 +135,13 @@
         if (n <= maxSeen) return;
         maxSeen = n;
         renderToc();
-        db.collection('progress').doc(user.nr).set({ [sessionId]: n }, { merge: true });
+        if (user.nr) F.T('progress').doc(user.nr).set({ [sessionId]: n }, { merge: true });
     }
 
     function listen(videoId) {
         if (unsub) unsub();
         $('comments').innerHTML = F.loading();
-        unsub = db.collection('comments').where('videoId', '==', videoId).onSnapshot(snap => {
+        unsub = F.T('comments').where('videoId', '==', videoId).onSnapshot(snap => {
             const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => F.parseTime(a.text) - F.parseTime(b.text));
             $('comments').innerHTML = docs.length
                 ? docs.map(c => F.commentHtml(c, { me: user.nr, admin, onRead: 'F.toggleRead', onDelete: 'deleteComment' })).join('')
@@ -159,7 +159,7 @@
         const input = $('com-input'), raw = input.value.trim();
         if (!raw || !clips[idx]) return;
         const { text, mentions } = F.resolveMentions(raw, players);
-        await db.collection('comments').add({ videoId: clips[idx].id, text, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await F.T('comments').add({ videoId: clips[idx].id, text, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         input.value = '';
     }
     function deleteComment(id) { F.deleteDoc('comments', id, 'Kommentar löschen?'); }

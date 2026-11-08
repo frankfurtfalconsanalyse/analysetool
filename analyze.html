@@ -76,7 +76,7 @@
 
     async function init() {
         if (!videoId) return location.replace('index.html');
-        const [pSnap, isAdm, media] = await Promise.all([db.collection('players').get(), F.isAdmin(), F.loadMedia()]);
+        const [pSnap, isAdm, media] = await Promise.all([F.T('players').get(), F.isAdmin(), F.loadMedia()]);
         players = F.playerMap(pSnap); admin = isAdm;
 
         clip = media.find(m => m.id === videoId) || (type === 'drive'
@@ -95,7 +95,7 @@
 
     function listen() {
         $('comments').innerHTML = F.loading();
-        db.collection('comments').where('videoId', '==', videoId).onSnapshot(snap => {
+        F.T('comments').where('videoId', '==', videoId).onSnapshot(snap => {
             const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => F.parseTime(a.text) - F.parseTime(b.text));
             $('comments').innerHTML = docs.length
                 ? docs.map(c => F.commentHtml(c, { me: user.nr, admin, onRead: 'F.toggleRead', onDelete: 'deleteComment' })).join('')
@@ -107,7 +107,7 @@
         const input = $('com-input'), raw = input.value.trim();
         if (!raw) return;
         const { text, mentions } = F.resolveMentions(raw, players);
-        await db.collection('comments').add({ videoId, text, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await F.T('comments').add({ videoId, text, author: user.name, authorNr: user.nr, mentions, readBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         input.value = '';
     }
     function deleteComment(id) { F.deleteDoc('comments', id, 'Kommentar löschen?'); }

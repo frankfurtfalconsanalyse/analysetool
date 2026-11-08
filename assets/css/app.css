@@ -432,3 +432,11 @@ img { max-width: 100%; display: block; }
 .tboard:not([data-tool="move"]):not([data-tool="eraser"]) .tb-pieces { pointer-events: none; }
 .tboard .tb-ghosts { pointer-events: none; }
 .tboard[data-tool="eraser"] .tb-pad { pointer-events: none; }
+
+/* Team-Auswahl ---------------------------------------------------------------- */
+.team-chip { flex-shrink: 0; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(227,6,19,.45); background: var(--brand-soft); color: #ff6b73; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.team-chip:hover { background: rgba(227,6,19,.2); }
+.dropdown-label { padding: 8px 12px 4px; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-faint); }
+.dropdown-sep { height: 1px; background: var(--border); margin: 6px 0; }
+.dropdown-item.current { color: var(--text); }
+.dropdown-item.current .icon { color: var(--brand); }

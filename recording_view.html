@@ -127,7 +127,7 @@
 
     async function init() {
         if (!itemId) return location.replace(K.back);
-        const doc = await db.collection(K.col).doc(itemId).get();
+        const doc = await F.T(K.col).doc(itemId).get();
         if (!doc.exists) { $('view-events').innerHTML = F.empty('Nicht gefunden', 'Diese Aufzeichnung existiert nicht mehr.', 'video'); return; }
         const d = doc.data();
         ytId = d.ytId;
@@ -141,7 +141,7 @@
             $('admin-area').classList.remove('hidden');
             $('player-pick').classList.remove('hidden');
             $('tab-feedback').innerHTML = I('message', 'icon-sm') + ' Spieler-Feedback';
-            const pSnap = await db.collection('players').get();
+            const pSnap = await F.T('players').get();
             pSnap.docs.sort((a, b) => a.id.localeCompare(b.id))
                 .forEach(p => $('player-select').insertAdjacentHTML('beforeend', `<option value="${p.id}">#${p.id} ${F.esc(p.data().name)}</option>`));
         }
@@ -187,7 +187,7 @@
     function loadEvents() {
         if (unsubEvents) return; // läuft bereits (Live-Update)
         $('view-events').innerHTML = F.loading();
-        unsubEvents = db.collection(K.events).where(K.fk, '==', itemId).onSnapshot(snap => {
+        unsubEvents = F.T(K.events).where(K.fk, '==', itemId).onSnapshot(snap => {
             const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.sec - b.sec);
             if (!docs.length) { $('view-events').innerHTML = F.empty(`Noch keine ${K.eventsLabel}`, admin ? `Füge unten das erste ${K.eventSingular} hinzu.` : 'Der Trainer hat hier noch nichts markiert.', 'list'); return; }
             $('view-events').innerHTML = docs.map(e => {
@@ -211,7 +211,7 @@
         if (!desc) return F.toast('Bitte eine Beschreibung eingeben', 'error');
         const data = { [K.fk]: itemId, time, desc, sec: F.parseTime(time), createdAt: firebase.firestore.FieldValue.serverTimestamp() };
         if (kindKey === 'game') data.type = $('ev-type').value;
-        await db.collection(K.events).add(data);
+        await F.T(K.events).add(data);
         $('ev-time').value = ''; $('ev-desc').value = '';
         F.toast(`${K.eventSingular} gespeichert`);
     }
@@ -222,7 +222,7 @@
         if (unsubFeedback) { unsubFeedback(); unsubFeedback = null; }
         if (!nr) { $('feedback-list').innerHTML = F.empty('Spieler auswählen', 'Wähle oben einen Spieler, um sein privates Feedback zu sehen oder zu schreiben.', 'user'); return; }
         $('feedback-list').innerHTML = F.loading();
-        unsubFeedback = db.collection(K.comments).where(K.fk, '==', itemId).where('targetNr', '==', nr).onSnapshot(snap => {
+        unsubFeedback = F.T(K.comments).where(K.fk, '==', itemId).where('targetNr', '==', nr).onSnapshot(snap => {
             const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => F.parseTime(a.text) - F.parseTime(b.text));
             $('feedback-list').innerHTML = docs.length ? docs.map(c => `
                 <div class="comment">
@@ -241,7 +241,7 @@
         const nr = $('player-select').value, text = $('fb-text').value.trim();
         if (!nr) return F.toast('Bitte zuerst einen Spieler auswählen', 'error');
         if (!text) return F.toast('Bitte Feedback eingeben', 'error');
-        await db.collection(K.comments).add({ [K.fk]: itemId, targetNr: nr, text, author: user.name, authorNr: user.nr, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await F.T(K.comments).add({ [K.fk]: itemId, targetNr: nr, text, author: user.name, authorNr: user.nr, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         $('fb-text').value = '';
         F.toast('Feedback gesendet');
     }

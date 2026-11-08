@@ -51,8 +51,8 @@
         $('grid').innerHTML = F.loading();
 
         const [snap, viewDoc] = await Promise.all([
-            db.collection(kind).orderBy('date', 'desc').get(),
-            db.collection(k.views).doc(user.nr).get()
+            F.T(kind).orderBy('date', 'desc').get(),
+            user.nr ? F.T(k.views).doc(user.nr).get() : Promise.resolve({ exists: false, data: () => ({}) })
         ]);
         const seen = viewDoc.exists ? viewDoc.data() : {};
 

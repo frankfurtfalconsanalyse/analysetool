@@ -13,16 +13,17 @@ const FALCONS_CONFIG = {
         appId: "1:306689889088:web:ad525fecd0682069c6e0a5"
     },
 
-    // Google-Apps-Script, das die Clips aus dem Google-Drive-Ordner als JSON liefert
-    // Antwort-Format: [{ title, link, category }, …]
-    driveScriptUrl: "https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec",
+    // Teams. Die erste ID ist das Haupt-Team (bisherige Daten). IDs nie ändern – sie stehen in der Datenbank
+    // und in firestore.rules. driveScriptUrl = Google-Apps-Script, das die Drive-Clips des Teams liefert
+    // (Antwort-Format: [{ title, link, category }, …]); ohne URL hat das Team nur YouTube-Clips.
+    teams: [
+        { id: "herren", name: "Herren", driveScriptUrl: "https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec" },
+        { id: "damen", name: "Damen" },
+        { id: "regio", name: "Herren Regio" }
+    ],
 
-    // Login: technische E-Mail je Spieler für Firebase Auth ("07.0@falcons-hub.app").
-    // Muss zur Domain in firestore.rules passen – nicht ändern, sonst können sich alle neu anmelden.
+    // Login: technische E-Mail-Domain für Firebase Auth – nicht ändern, sonst kann sich niemand mehr anmelden.
     authDomain: "falcons-hub.app",
-
-    // Trikotnummer mit festen Admin-Rechten (auch in firestore.rules eingetragen!) (weitere Admins über Collection "admins")
-    superAdminNr: "22",
 
     // Auswahllisten für Clips
     categories: ["Offense", "Defense", "Powerplay", "Penalty Kill", "Setplays"],

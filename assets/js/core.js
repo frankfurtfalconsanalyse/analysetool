@@ -74,35 +74,89 @@ const Falcons = (() => {
         return `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true"${filled ? ' style="fill:currentColor;stroke:none"' : ''}>${ICONS[name] || ''}</svg>`;
     }
 
+    /* ---------------------------------------------------------- Teams */
+    // Jedes Team hat seinen eigenen Bereich: teams/{team}/players, …/sessions, …
+    // T('sessions') liefert die Collection des aktuell gewählten Teams.
+    const TEAM_KEY = 'falcons_team';
+    const TEAMS = CFG.teams;
+    const teamName = id => (TEAMS.find(t => t.id === id) || { name: id }).name;
+    function currentTeam() {
+        const u = getUser();
+        if (u && u.team) return u.team;
+        try { return localStorage.getItem(TEAM_KEY) || TEAMS[0].id; } catch (e) { return TEAMS[0].id; }
+    }
+    function setTeam(id) { try { localStorage.setItem(TEAM_KEY, id); } catch (e) {} }
+    const teamDoc = (team = currentTeam()) => db.collection('teams').doc(team);
+    // Collections mit 'club_' gelten für alle Teams (für alle freigegebene Clips/Boards)
+    const T = (name, team) => name.startsWith('club_') ? db.collection(name) : teamDoc(team).collection(name);
+    const teamConfig = (team = currentTeam()) => TEAMS.find(t => t.id === team) || {};
+
     /* ---------------------------------------------------------- Login/User */
-    // Angemeldet wird über Firebase Auth. Jeder Spieler hat ein Konto mit der
-    // technischen E-Mail "<nr>.<authVersion>@falcons-hub.app" und der PIN als Passwort.
-    // Name + Nummer liegen zusätzlich im localStorage, damit die Seite sofort rendern kann.
+    // Login über Firebase Auth: Ein Konto (E-Mail "<login>@falcons-hub.app", PIN als Passwort)
+    // kann in mehreren Teams Mitglied sein – je Team mit eigener Trikotnummer.
+    // users/{uid}.teams = { herren: '22', regio: '07' } ordnet die Nummern zu.
+    // Im localStorage liegt nur { uid, team, nr, name } für die sofortige Anzeige.
     function getUser() {
         try {
             const u = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
-            return u && u.nr ? { nr: String(u.nr), name: u.name || '' } : null;
+            return u && (u.nr || u.team) ? { uid: u.uid || '', team: u.team || '', nr: String(u.nr || ''), name: u.name || '' } : null;
         } catch (e) { return null; }
     }
-    function setUser(u) { localStorage.setItem(USER_KEY, JSON.stringify({ nr: u.nr, name: u.name })); }
+    function setUser(u) {
+        localStorage.setItem(USER_KEY, JSON.stringify({ uid: u.uid || '', team: u.team, nr: u.nr || '', name: u.name || '' }));
+        if (u.team) setTeam(u.team);
+    }
 
-    const nrFromEmail = email => (String(email || '').split('@')[0] || '').split('.')[0];
+    let ctx = null; // { uid, team, nr, name, teams, members, coach, clubAdmin, migration }
 
-    /** Löst mit dem angemeldeten Spieler auf – oder mit null, wenn niemand (gültig) angemeldet ist. */
+    /** Ist die Umstellung auf Teams schon erfolgt? (teams/herren existiert) */
+    const migrated = () => teamDoc(TEAMS[0].id).get().then(d => d.exists).catch(() => true);
+
+    async function loadContext(fbUser) {
+        const local = getUser() || {};
+        if (!(await migrated())) return { uid: fbUser.uid, migration: true, email: fbUser.email, nr: local.nr || '', name: local.name || '' };
+
+        const userRef = db.collection('users').doc(fbUser.uid);
+        let teams = ((await userRef.get()).data() || {}).teams || {};
+        // Sitzung aus der Zeit vor den Teams → Herren-Mitgliedschaft übernehmen
+        if (!Object.keys(teams).length && local.nr && !local.team) {
+            teams = { [TEAMS[0].id]: local.nr };
+            await userRef.set({ teams }, { merge: true });
+        }
+        // Mitgliedschaften prüfen (Konto muss im Kader-Eintrag stehen)
+        const members = {};
+        await Promise.all(Object.entries(teams).map(async ([team, nr]) => {
+            const d = await T('players', team).doc(nr).get().catch(() => null);
+            if (d && d.exists && d.data().uid === fbUser.uid) members[team] = { nr, ...d.data() };
+        }));
+        const clubAdmin = Object.values(members).some(m => m.clubAdmin === true);
+        if (!Object.keys(members).length && !clubAdmin) return null;
+
+        let team = local.team || localStorage.getItem(TEAM_KEY);
+        if (!members[team] && !(clubAdmin && TEAMS.some(t => t.id === team))) team = Object.keys(members)[0];
+        const m = members[team] || null;
+        const any = m || Object.values(members)[0];
+        const c = {
+            uid: fbUser.uid, team, teamName: teamName(team), nr: m ? m.nr : '', name: any.name,
+            teams: members, clubAdmin, coach: clubAdmin || (m && m.role === 'coach'), login: any.login || ''
+        };
+        setUser(c);
+        return c;
+    }
+
+    /** Löst mit dem Kontext des angemeldeten Spielers auf – oder mit null, wenn niemand angemeldet ist. */
     const authState = new Promise(resolve => {
-        const stop = auth.onAuthStateChanged(fbUser => {
+        const stop = auth.onAuthStateChanged(async fbUser => {
             stop();
-            const local = getUser();
-            if (fbUser && local && nrFromEmail(fbUser.email) === local.nr) return resolve(local);
-            // alter Login (vor Firebase Auth) oder inkonsistenter Zustand → neu anmelden
-            localStorage.removeItem(USER_KEY);
-            if (fbUser) auth.signOut();
-            resolve(null);
+            if (!fbUser) { localStorage.removeItem(USER_KEY); return resolve(null); }
+            try { ctx = await loadContext(fbUser); } catch (e) { console.error(e); ctx = null; }
+            if (!ctx) { localStorage.removeItem(USER_KEY); await auth.signOut(); }
+            resolve(ctx);
         });
     });
-    /** Wie authState, leitet aber zur Login-Seite um, falls niemand angemeldet ist. Seiten starten mit F.ready.then(init). */
+    /** Wie authState, leitet aber zur Login-Seite um, falls niemand (bzw. während der Umstellung) angemeldet ist. */
     let readyPromise = null;
-    const ready = () => readyPromise || (readyPromise = authState.then(u => u || new Promise(() => location.replace('index.html'))));
+    const ready = () => readyPromise || (readyPromise = authState.then(c => (c && !c.migration) ? c : new Promise(() => location.replace('index.html'))));
 
     function logout() {
         localStorage.removeItem(USER_KEY);
@@ -114,48 +168,65 @@ const Falcons = (() => {
         if (!u) { location.replace('index.html'); throw new Error('not logged in'); }
         return u;
     }
-
-    const emailFor = (nr, version = 0) => `${nr}.${version}@${CFG.authDomain}`;
-    const passwordFor = pin => `falcons-${pin}`;
-
-    /** Login mit bestehender PIN */
-    async function signIn(player, pin) {
-        await auth.signInWithEmailAndPassword(emailFor(player.nr, player.authVersion || 0), passwordFor(pin));
-        setUser(player);
+    function switchTeam(team) {
+        const u = getUser() || {};
+        const m = ctx && ctx.teams[team];
+        setUser({ ...u, team, nr: m ? m.nr : '' });
+        location.href = 'index.html';
     }
 
-    /** Erster Login: Konto anlegen und mit der Trikotnummer verknüpfen */
+    const email = local => `${local}@${CFG.authDomain}`;
+    const passwordFor = pin => `falcons-${pin}`;
+    const FV = () => firebase.firestore.FieldValue;
+
+    /** Login mit bestehender PIN. player = { team, nr, name, login } */
+    async function signIn(player, pin) {
+        const cred = await auth.signInWithEmailAndPassword(email(player.login), passwordFor(pin));
+        await db.collection('users').doc(cred.user.uid).set({ teams: { [player.team]: player.nr } }, { merge: true });
+        setUser({ uid: cred.user.uid, team: player.team, nr: player.nr, name: player.name });
+    }
+
+    /** Erster Login: neues Konto anlegen und mit der Nummer im Team verknüpfen */
     async function register(player, pin) {
-        const email = emailFor(player.nr, player.authVersion || 0), pw = passwordFor(pin);
+        const login = `${player.team}.${player.nr}.${player.authVersion || 0}`, pw = passwordFor(pin);
         let cred;
-        try { cred = await auth.createUserWithEmailAndPassword(email, pw); }
+        try { cred = await auth.createUserWithEmailAndPassword(email(login), pw); }
         catch (e) {
             // Konto existiert schon (z. B. Abbruch beim letzten Mal) → mit derselben PIN anmelden
             if (e.code !== 'auth/email-already-in-use') throw e;
-            cred = await auth.signInWithEmailAndPassword(email, pw);
+            cred = await auth.signInWithEmailAndPassword(email(login), pw);
         }
-        await db.collection('players').doc(player.nr).update({ uid: cred.user.uid, pin: firebase.firestore.FieldValue.delete() });
-        setUser(player);
+        await T('players', player.team).doc(player.nr).update({ uid: cred.user.uid, login, pin: FV().delete() });
+        await db.collection('users').doc(cred.user.uid).set({ teams: { [player.team]: player.nr } }, { merge: true });
+        setUser({ uid: cred.user.uid, team: player.team, nr: player.nr, name: player.name });
     }
 
-    /** Verständliche Fehlermeldung für Firebase-Auth-Fehler */
+    /** Angemeldeter Spieler verknüpft eine freie Nummer in einem weiteren Team mit seinem Konto */
+    async function linkTeam(team, nr) {
+        const c = await ready();
+        const ref = T('players', team).doc(nr), d = await ref.get();
+        if (!d.exists) throw Object.assign(new Error(), { code: 'not-found' });
+        if (d.data().uid) throw Object.assign(new Error(), { code: 'taken' });
+        await ref.update({ uid: c.uid, login: c.login, pin: FV().delete() });
+        await db.collection('users').doc(c.uid).set({ teams: { [team]: nr } }, { merge: true });
+        setUser({ uid: c.uid, team, nr, name: c.name });
+    }
+
+    /** Verständliche Fehlermeldung für Firebase-Fehler */
     function authError(e) {
         const c = (e && e.code) || '';
         if (['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/user-not-found'].includes(c)) return 'Falsche PIN.';
         if (c === 'auth/too-many-requests') return 'Zu viele Versuche. Bitte in ein paar Minuten erneut probieren.';
         if (c === 'auth/network-request-failed') return 'Keine Verbindung. Bitte Internet prüfen.';
         if (c === 'auth/operation-not-allowed') return 'Login ist noch nicht eingerichtet (Firebase: E-Mail/Passwort aktivieren).';
-        if (c === 'permission-denied') return 'Für diese Nummer ist bereits eine PIN vergeben. Bitte einen Trainer, sie zurückzusetzen.';
-        return 'Login fehlgeschlagen. Bitte erneut versuchen.';
+        if (c === 'permission-denied' || c === 'taken') return 'Für diese Nummer ist bereits eine PIN vergeben. Bitte einen Coach, sie zurückzusetzen.';
+        if (c === 'not-found') return 'Diese Nummer ist in dem Team nicht im Kader.';
+        return 'Fehlgeschlagen. Bitte erneut versuchen.';
     }
 
-    let adminPromise = null;
-    /** true, wenn der angemeldete Spieler Trainer/Admin ist (Ergebnis wird gecacht). */
-    function isAdmin() {
-        if (!adminPromise) adminPromise = ready().then(u => u.nr === CFG.superAdminNr
-            || db.collection('admins').doc(u.nr).get().then(d => d.exists).catch(() => false));
-        return adminPromise;
-    }
+    /** true, wenn der angemeldete Spieler im aktuellen Team Coach ist (oder Vereins-Admin) */
+    const isAdmin = () => ready().then(c => !!c.coach);
+    const isClubAdmin = () => ready().then(c => !!c.clubAdmin);
 
     /* ------------------------------------------------------------- Shell */
     const NAV = [
@@ -184,16 +255,19 @@ const Falcons = (() => {
                 <img class="brand-logo" src="assets/img/logo.png" alt="Frankfurt Falcons">
                 <div class="brand-text"><strong>Falcons</strong><span>Analyse-Hub</span></div>
             </a>
+            ${u ? `<button class="team-chip" type="button" onclick="document.getElementById('user-menu').classList.add('open')" title="Team wechseln">${esc(teamName(u.team))}</button>` : ''}
             <nav class="main-nav">${links('nav-link')}</nav>
             ${u ? `
             <div class="user-menu" id="user-menu">
                 <button class="user-chip" type="button" onclick="this.parentElement.classList.toggle('open')">
-                    <span class="avatar">${esc(u.nr)}</span>
+                    <span class="avatar">${esc(u.nr || '–')}</span>
                     <span class="name">${esc(u.name)}</span>
                     ${icon('chevronDown', 'icon-sm')}
                 </button>
                 <div class="user-dropdown">
-                    <div class="meta"><strong>${esc(u.name)}</strong><small>Trikot #${esc(u.nr)} · <span id="role-label">Spieler</span></small></div>
+                    <div class="meta"><strong>${esc(u.name)}</strong><small>${esc(teamName(u.team))}${u.nr ? ' · #' + esc(u.nr) : ''} · <span id="role-label">Spieler</span></small></div>
+                    <div id="team-list"></div>
+                    <button class="dropdown-item" type="button" onclick="Falcons.openLinkTeam()">${icon('plus')} Weiteres Team verknüpfen</button>
                     <a class="dropdown-item" href="help.html">${icon('help')} Hilfe & Anleitung</a>
                     <button class="dropdown-item" type="button" onclick="Falcons.logout()">${icon('logout')} Abmelden</button>
                 </div>
@@ -213,11 +287,46 @@ const Falcons = (() => {
             if (m && !m.contains(e.target)) m.classList.remove('open');
         });
 
-        isAdmin().then(admin => {
-            if (!admin) return;
+        ready().then(c => {
+            // Team-Umschalter: eigene Teams; Vereins-Admins sehen alle Teams
+            const ids = c.clubAdmin ? TEAMS.map(t => t.id) : Object.keys(c.teams);
+            const list = document.getElementById('team-list');
+            if (list && ids.length > 1) list.innerHTML = `<div class="dropdown-label">Team wechseln</div>` + ids.map(id =>
+                `<button class="dropdown-item ${id === c.team ? 'current' : ''}" type="button" onclick="Falcons.switchTeam('${id}')">${icon(id === c.team ? 'check' : 'users')} ${esc(teamName(id))}${c.teams[id] ? ` <span class="faint">#${esc(c.teams[id].nr)}</span>` : ''}</button>`).join('')
+                + '<div class="dropdown-sep"></div>';
+            const r = document.getElementById('role-label');
+            if (r) r.textContent = c.clubAdmin ? 'Vereins-Admin' : c.coach ? 'Coach' : 'Spieler';
+            if (!c.coach) return;
             document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-            const r = document.getElementById('role-label'); if (r) r.textContent = 'Trainer / Admin';
         });
+    }
+
+    /** Dialog: weiteres Team mit dem eigenen Login verknüpfen */
+    function openLinkTeam() {
+        const c = ctx; if (!c) return;
+        const free = TEAMS.filter(t => !c.teams[t.id]);
+        if (!free.length) return toast('Du bist schon in allen Teams', 'error');
+        let m = document.getElementById('link-team-modal');
+        if (!m) { m = document.createElement('div'); m.id = 'link-team-modal'; m.className = 'modal'; document.body.appendChild(m); }
+        m.innerHTML = `<div class="modal-panel" style="max-width:420px">
+            <div class="modal-head"><h3>Weiteres Team verknüpfen</h3><button class="btn btn-ghost btn-icon btn-sm" onclick="this.closest('.modal').classList.remove('open')">${icon('x')}</button></div>
+            <div class="card-body" style="display:flex; flex-direction:column; gap:14px">
+                <p class="muted" style="font-size:14px">Du spielst auch in einem anderen Team? Wähle das Team und deine Nummer dort. Danach meldest du dich überall mit deiner jetzigen PIN an.</p>
+                <div class="field"><label>Team</label><select class="select" id="lt-team">${free.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select></div>
+                <div class="field"><label>Deine Nummer in diesem Team</label><input class="input" id="lt-nr" inputmode="numeric" maxlength="2" placeholder="00"></div>
+                <p id="lt-err" style="color:#ff5a63; font-size:13px; min-height:18px"></p>
+                <button class="btn btn-primary" id="lt-go">Verknüpfen</button>
+            </div></div>`;
+        m.classList.add('open');
+        m.onclick = e => { if (e.target === m) m.classList.remove('open'); };
+        const nrIn = m.querySelector('#lt-nr');
+        nrIn.oninput = () => nrIn.value = nrIn.value.replace(/\D/g, '');
+        m.querySelector('#lt-go').onclick = async () => {
+            let nr = nrIn.value; if (nr.length === 1) nr = '0' + nr;
+            if (nr.length !== 2) return m.querySelector('#lt-err').textContent = 'Bitte Nummer eingeben.';
+            try { await linkTeam(m.querySelector('#lt-team').value, nr); location.href = 'index.html'; }
+            catch (e) { console.error(e); m.querySelector('#lt-err').textContent = authError(e); }
+        };
     }
 
     /* ---------------------------------------------------------- Helfer */
@@ -289,11 +398,14 @@ const Falcons = (() => {
      * Fällt das Drive-Skript aus, werden trotzdem die YouTube-Clips geliefert.
      */
     async function loadMedia({ tactics = false } = {}) {
-        const [driveRes, ytSnap, metaSnap, tacSnap] = await Promise.all([
-            fetch(CFG.driveScriptUrl).then(r => r.json()).catch(err => { console.warn('Drive-Clips nicht ladbar', err); return []; }),
-            db.collection('youtube_clips').get(),
-            db.collection('video_metadata').get().catch(() => null),
-            tactics ? db.collection('tactics').where('visibility', '==', 'team').get() : null
+        const cfg = teamConfig();
+        const [driveRes, ytSnap, clubSnap, metaSnap, tacSnap, clubTacSnap] = await Promise.all([
+            cfg.driveScriptUrl ? fetch(cfg.driveScriptUrl).then(r => r.json()).catch(err => { console.warn('Drive-Clips nicht ladbar', err); return []; }) : [],
+            T('youtube_clips').get(),
+            T('club_clips').get().catch(() => null),
+            T('video_metadata').get().catch(() => null),
+            tactics ? T('tactics').where('visibility', '==', 'team').get().catch(() => null) : null,
+            tactics ? T('club_tactics').get().catch(() => null) : null
         ]);
         const meta = {};
         if (metaSnap) metaSnap.forEach(d => meta[d.id] = d.data().position);
@@ -308,27 +420,20 @@ const Falcons = (() => {
             };
         }).filter(Boolean);
 
-        const yt = ytSnap.docs.map(d => {
+        const ytFrom = (snap, shared) => snap ? snap.docs.map(d => {
             const c = d.data();
             const start = parseInt(c.startTime) || 0;
             return {
-                id: d.id, type: 'youtube', title: c.title, category: c.category,
+                id: d.id, type: 'youtube', title: c.title, category: c.category, shared, ownerTeam: c.ownerTeam,
                 position: c.position || meta[d.id] || 'Alle',
                 ytId: c.ytId, startTime: start,
                 embedUrl: `https://www.youtube.com/embed/${c.ytId}?start=${start}&autoplay=1&rel=0`,
                 thumb: ytThumb(c.ytId)
             };
-        });
+        }) : [];
 
-        const tac = tacSnap ? tacSnap.docs.map(d => ({ id: d.id, type: 'tactic', title: d.data().title, tacticData: d.data(), thumb: null })) : [];
-        return [...drive, ...yt, ...tac];
-    }
-
-    /** Alte Taktik-Boards ohne Sichtbarkeit → Team-Board (einmalig, nur Admins) */
-    function migrateTactic(id) { return db.collection('tactics').doc(id).update({ visibility: 'team' }).catch(() => {}); }
-    async function migrateTactics() {
-        const snap = await db.collection('tactics').get();
-        snap.docs.filter(d => !d.data().visibility).forEach(d => migrateTactic(d.id));
+        const tacFrom = (snap, shared) => snap ? snap.docs.map(d => ({ id: d.id, type: 'tactic', title: d.data().title, tacticData: d.data(), shared, thumb: null })) : [];
+        return [...drive, ...ytFrom(ytSnap, false), ...ytFrom(clubSnap, true), ...tacFrom(tacSnap, false), ...tacFrom(clubTacSnap, true)];
     }
 
     const SOURCE_LABEL = { drive: 'Drive', youtube: 'YouTube', tactic: 'Taktik' };
@@ -351,7 +456,8 @@ const Falcons = (() => {
     function markViewed(collection, itemId, value = true) {
         const u = getUser();
         if (!u || !itemId) return Promise.resolve();
-        return db.collection(collection).doc(u.nr).set({ [itemId]: value }, { merge: true }).catch(() => {});
+        if (!u.nr) return Promise.resolve(); // z. B. Vereins-Admin in fremdem Team
+        return T(collection).doc(u.nr).set({ [itemId]: value }, { merge: true }).catch(() => {});
     }
 
     /* -------------------------------------------------------------- UI */
@@ -367,7 +473,7 @@ const Falcons = (() => {
 
     async function deleteDoc(col, id, question = 'Wirklich löschen?') {
         if (!confirm(question)) return false;
-        await db.collection(col).doc(id).delete();
+        await T(col).doc(id).delete();
         toast('Gelöscht');
         return true;
     }
@@ -397,7 +503,7 @@ const Falcons = (() => {
     async function toggleRead(commentId, isRead) {
         const u = getUser();
         const FV = firebase.firestore.FieldValue;
-        await db.collection('comments').doc(commentId).update({ readBy: isRead ? FV.arrayRemove(u.nr) : FV.arrayUnion(u.nr) });
+        await T('comments').doc(commentId).update({ readBy: isRead ? FV.arrayRemove(u.nr) : FV.arrayUnion(u.nr) });
     }
 
     /** Enter = senden, Shift+Enter = neue Zeile */
@@ -407,9 +513,11 @@ const Falcons = (() => {
 
     const api = {
         get ready() { return ready(); },
-        CFG, icon, getUser, setUser, logout, requireUser, isAdmin, mountShell, authState, signIn, register, authError,
+        get ctx() { return ctx; }, openLinkTeam,
+        CFG, TEAMS, T, teamName, currentTeam, setTeam, switchTeam, linkTeam, migrated, isClubAdmin,
+        icon, getUser, setUser, logout, requireUser, isAdmin, mountShell, authState, signIn, register, authError,
         esc, parseTime, hasTime, formatText, resolveMentions, parseYouTube, ytThumb, fmtDate, playerMap,
-        loadMedia, migrateTactic, migrateTactics, mediaCard, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
+        loadMedia, mediaCard, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
         onTimestamp: null, openClip: null
     };
     return api;
