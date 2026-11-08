@@ -57,7 +57,17 @@ const Falcons = (() => {
         message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
         lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
         activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
-        circle: '<circle cx="12" cy="12" r="9"/>'
+        circle: '<circle cx="12" cy="12" r="9"/>',
+        run: '<path d="M4 19c3-9 8-13 15-13"/><path d="m15 3 4 3-3 4"/>',
+        pass: '<path d="M5 19l2-2M10 14l2-2M15 9l3-3"/><path d="M12 5h7v7"/>',
+        dribble: '<path d="M3 16c1.5-2.5 3 2.5 4.5 0s3-2.5 4.5 0 3 2.5 4.5 0"/><path d="m17 10 4 5-5 2"/>',
+        line: '<path d="M5 19 19 5"/>',
+        eraser: '<path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l10-10a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L13 19"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',
+        redo: '<path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/>',
+        pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+        copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+        book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+        field: '<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M12 5v14"/>'
     };
     function icon(name, cls = '') {
         const filled = name === 'play';
@@ -101,7 +111,7 @@ const Falcons = (() => {
     const NAV = [
         { id: 'dashboard', href: 'index.html', label: 'Dashboard', icon: 'home' },
         { id: 'library', href: 'recordings.html', label: 'Spiele & Trainings', short: 'Videos', icon: 'video' },
-        { id: 'tactic', href: 'tactic.html', label: 'Taktikboard', short: 'Taktik', icon: 'clipboard', admin: true },
+        { id: 'tactic', href: 'tactic.html', label: 'Taktikboard', short: 'Taktik', icon: 'clipboard' },
         { id: 'admin', href: 'admin.html', label: 'Verwaltung', short: 'Admin', icon: 'sliders', admin: true },
         { id: 'help', href: 'help.html', label: 'Hilfe', icon: 'help' }
     ];
@@ -233,7 +243,7 @@ const Falcons = (() => {
             fetch(CFG.driveScriptUrl).then(r => r.json()).catch(err => { console.warn('Drive-Clips nicht ladbar', err); return []; }),
             db.collection('youtube_clips').get(),
             db.collection('video_metadata').get().catch(() => null),
-            tactics ? db.collection('tactics').get() : null
+            tactics ? db.collection('tactics').where('visibility', '==', 'team').get() : null
         ]);
         const meta = {};
         if (metaSnap) metaSnap.forEach(d => meta[d.id] = d.data().position);
@@ -262,6 +272,13 @@ const Falcons = (() => {
 
         const tac = tacSnap ? tacSnap.docs.map(d => ({ id: d.id, type: 'tactic', title: d.data().title, tacticData: d.data(), thumb: null })) : [];
         return [...drive, ...yt, ...tac];
+    }
+
+    /** Alte Taktik-Boards ohne Sichtbarkeit → Team-Board (einmalig, nur Admins) */
+    function migrateTactic(id) { return db.collection('tactics').doc(id).update({ visibility: 'team' }).catch(() => {}); }
+    async function migrateTactics() {
+        const snap = await db.collection('tactics').get();
+        snap.docs.filter(d => !d.data().visibility).forEach(d => migrateTactic(d.id));
     }
 
     const SOURCE_LABEL = { drive: 'Drive', youtube: 'YouTube', tactic: 'Taktik' };
@@ -341,7 +358,7 @@ const Falcons = (() => {
     const api = {
         CFG, icon, getUser, setUser, logout, requireUser, isAdmin, mountShell,
         esc, parseTime, hasTime, formatText, resolveMentions, parseYouTube, ytThumb, fmtDate, playerMap,
-        loadMedia, mediaCard, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
+        loadMedia, migrateTactic, migrateTactics, mediaCard, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
         onTimestamp: null, openClip: null
     };
     return api;

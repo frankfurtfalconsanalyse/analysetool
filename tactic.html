@@ -6,253 +6,368 @@
     <title>Taktikboard · Falcons Analyse-Hub</title>
     <link rel="icon" href="assets/img/favicon.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/app.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="assets/js/config.js"></script>
     <script src="assets/js/core.js"></script>
-    <script src="assets/js/rink.js"></script>
+    <script src="assets/js/tactic-board.js"></script>
     <style>
         body { overflow: hidden; }
-        .board { display: flex; height: calc(100vh - var(--header-h)); height: calc(100dvh - var(--header-h)); }
-        .tools { width: 64px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 0; background: var(--surface); border-right: 1px solid var(--border); }
-        .tool { width: 42px; height: 42px; border-radius: var(--radius); display: grid; place-items: center; cursor: pointer; color: var(--text-muted); border: 1px solid transparent; background: none; }
-        .tool:hover { background: var(--surface-2); color: var(--text); }
-        .tool.active { background: var(--brand-soft); color: #ff5a63; border-color: rgba(227,6,19,.4); }
-        .tools .sep { width: 28px; height: 1px; background: var(--border); margin: 4px 0; }
-        .swatch { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; box-shadow: inset 0 0 0 2px rgba(0,0,0,.3); }
+        .tac { display: flex; height: calc(100vh - var(--header-h)); height: calc(100dvh - var(--header-h)); }
+
+        /* Bibliothek (links) */
+        .tac-lib { width: 270px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--border); min-height: 0; }
+        .lib-head { padding: 14px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+        .lib-list { flex: 1; overflow-y: auto; padding: 8px 10px 14px; }
+        .lib-group { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-faint); margin: 14px 4px 6px; }
+        .lib-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; color: var(--text-muted); }
+        .lib-item:hover { background: var(--surface-2); color: var(--text); }
+        .lib-item.active { background: var(--surface-3); border-color: var(--border-strong); color: var(--text); }
+        .lib-item .t { flex: 1; min-width: 0; }
+        .lib-item .t strong { display: block; font-size: 13.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lib-item .t small { font-size: 11.5px; color: var(--text-muted); }
+
+        /* Arbeitsfläche (Mitte) */
+        .tac-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .tac-toolbar { display: flex; align-items: center; gap: 4px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; flex-shrink: 0; }
+        .tbtn { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 10px; border-radius: var(--radius-sm); border: 1px solid transparent; background: none; color: var(--text-muted); cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+        .tbtn:hover { background: var(--surface-2); color: var(--text); }
+        .tbtn.active { background: var(--brand-soft); border-color: rgba(227,6,19,.45); color: #ff6b73; }
+        .tbtn:disabled { opacity: .35; cursor: default; background: none; }
+        .tsep { width: 1px; height: 24px; background: var(--border-strong); margin: 0 6px; flex-shrink: 0; }
+        .swatch { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; flex-shrink: 0; margin: 0 2px; }
         .swatch.active { border-color: #fff; }
-        .rink-stage { flex: 1; min-width: 0; }
-        .rink { touch-action: none; }
-        .rink.mode-move .piece { cursor: grab; }
+        .tac-stage { flex: 1; min-height: 0; padding: 14px; background: radial-gradient(ellipse at center, #1a1d22, #0e0f12); position: relative; }
+        .readonly-flag { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); z-index: 2; }
 
-        .panel { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--surface); border-left: 1px solid var(--border); }
-        .panel-section { padding: 16px; border-bottom: 1px solid var(--border); }
-        .panel-title { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-faint); margin-bottom: 12px; }
-        .bench { display: flex; gap: 10px; }
-        .bench-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); cursor: grab; font-size: 11px; color: var(--text-muted); touch-action: none; user-select: none; -webkit-user-select: none; }
-        .bench-item:hover { border-color: var(--border-strong); }
-        .bench-item .piece { position: static; pointer-events: none; width: 30px; height: 30px; font-size: 12px; }
-        .bench-item .piece-ball { width: 16px; height: 16px; margin: 7px 0; }
-        .saved { flex: 1; overflow-y: auto; padding: 16px; }
-        .trash { margin: 0 16px 12px; height: 48px; border: 1.5px dashed var(--border-strong); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text-faint); font-size: 12px; transition: .15s; }
+        .tac-phases { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
+        .phase-label { font-size: 12px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: .8px; }
+        .phase-chips { display: flex; gap: 6px; align-items: center; overflow-x: auto; }
+        .phase-chip { min-width: 36px; height: 36px; padding: 0 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-muted); font-weight: 700; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+        .phase-chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+        .phase-note { flex: 1; min-width: 200px; }
+
+        /* Seitenleiste (rechts) */
+        .tac-side { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--surface); border-left: 1px solid var(--border); min-height: 0; overflow-y: auto; }
+        .side-sec { padding: 14px; border-bottom: 1px solid var(--border); }
+        .side-title { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-faint); margin-bottom: 10px; }
+        .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .pal { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 9px 2px 7px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); cursor: grab; font-size: 10.5px; color: var(--text-muted); text-align: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+        .pal:hover { border-color: var(--border-strong); color: var(--text); }
+        .pal svg { width: 30px; height: 30px; pointer-events: none; }
+        .hint { font-size: 11.5px; color: var(--text-faint); margin-top: 10px; line-height: 1.45; }
+        .trash { margin-top: 12px; height: 46px; border: 1.5px dashed var(--border-strong); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text-faint); font-size: 12px; transition: .15s; }
         .trash.hover { border-color: var(--brand); color: #ff5a63; background: var(--brand-soft); }
-        .save-box { padding: 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+        .form-col { display: flex; flex-direction: column; gap: 10px; }
 
+        /* Responsiv: Bibliothek als Schublade, Seitenleiste nach unten */
+        .lib-toggle { display: none; }
+        .lib-backdrop { display: none; }
+        @media (max-width: 1400px) { .tbtn .lbl { display: none; } .lib-toggle .lbl { display: inline; } }
+        @media (max-width: 1280px) {
+            .lib-toggle { display: inline-flex; }
+            .tac-lib { position: fixed; top: var(--header-h); bottom: 0; left: 0; z-index: 300; transform: translateX(-100%); transition: transform .2s; box-shadow: var(--shadow-lg); }
+            .tac.lib-open .tac-lib { transform: none; }
+            .tac.lib-open .lib-backdrop { display: block; position: fixed; inset: var(--header-h) 0 0 0; background: rgba(0,0,0,.5); z-index: 299; }
+        }
         @media (max-width: 860px) {
             body { overflow: auto; }
-            .board { flex-direction: column; height: auto; }
-            .tools { width: 100%; flex-direction: row; justify-content: center; padding: 8px; border-right: 0; border-bottom: 1px solid var(--border); overflow-x: auto; }
-            .tools .sep { width: 1px; height: 28px; margin: 0 4px; }
-            .rink-stage { height: 56vw; min-height: 220px; flex: none; }
-            .panel { width: 100%; border-left: 0; border-top: 1px solid var(--border); }
+            .tac { flex-direction: column; height: auto; }
+            .tac-stage { height: 62vw; min-height: 240px; flex: none; padding: 8px; }
+            .tac-side { width: 100%; border-left: 0; border-top: 1px solid var(--border); overflow: visible; }
+            .palette { grid-template-columns: repeat(6, 1fr); }
+            .tbtn .lbl { display: none; }
         }
     </style>
 </head>
 <body>
 
-<div class="board" id="board">
-    <div class="tools" id="tools">
-        <button class="tool active" id="tool-move" title="Figuren bewegen" onclick="setMode('move')"></button>
-        <button class="tool" id="tool-draw" title="Zeichnen" onclick="setMode('draw')"></button>
-        <button class="tool" id="tool-undo" title="Rückgängig" onclick="undo()"></button>
-        <button class="tool" id="tool-clear" title="Board leeren" onclick="clearBoard()"></button>
-        <div class="sep"></div>
-        <div class="swatch active" style="background:#e30613" data-color="#e30613"></div>
-        <div class="swatch" style="background:#1d6fe0" data-color="#1d6fe0"></div>
-        <div class="swatch" style="background:#111111" data-color="#111111"></div>
-    </div>
+<div class="tac" id="tac">
+    <div class="lib-backdrop" onclick="toggleLib(false)"></div>
 
-    <div class="rink-stage" id="stage">
-        <div class="rink mode-move" id="rink"><canvas id="canvas" width="960" height="560"></canvas><div class="pieces" id="pieces"></div></div>
-    </div>
-
-    <aside class="panel">
-        <div class="panel-section">
-            <div class="panel-title">Figur aufs Feld ziehen</div>
-            <div class="bench">
-                <div class="bench-item" data-type="falcons"><div class="piece piece-falcons">F</div>Falcons</div>
-                <div class="bench-item" data-type="opponent"><div class="piece piece-opponent">G</div>Gegner</div>
-                <div class="bench-item" data-type="ball"><div class="piece piece-ball"></div>Ball</div>
+    <!-- ===================== BIBLIOTHEK ===================== -->
+    <aside class="tac-lib">
+        <div class="lib-head">
+            <button class="btn btn-primary btn-block" onclick="newBoard()" id="btn-new"></button>
+            <div class="segmented full">
+                <button id="tab-team" onclick="setLibTab('team')">Team</button>
+                <button id="tab-mine" onclick="setLibTab('mine')">Meine Boards</button>
+            </div>
+            <div style="display:flex; gap:6px">
+                <input id="lib-search" class="input" placeholder="Suchen …" oninput="renderLib()" style="height:36px">
+                <select id="lib-cat" class="select" onchange="renderLib()" style="height:36px; width:auto; max-width:120px"></select>
             </div>
         </div>
-        <div class="saved">
-            <div class="panel-title">Gespeicherte Boards</div>
-            <div id="saved-list"></div>
+        <div class="lib-list" id="lib-list"></div>
+    </aside>
+
+    <!-- ===================== ARBEITSFLÄCHE ===================== -->
+    <section class="tac-main">
+        <div class="tac-toolbar" id="toolbar">
+            <button class="tbtn lib-toggle" onclick="toggleLib()" id="btn-lib"></button>
+            <span class="tsep lib-toggle"></span>
+            <div id="tools" style="display:contents"></div>
+            <span class="tsep"></span>
+            <div id="colors" style="display:contents"></div>
+            <span class="tsep"></span>
+            <button class="tbtn" id="btn-undo" title="Rückgängig (Strg+Z)" onclick="board.undo()"></button>
+            <button class="tbtn" id="btn-redo" title="Wiederholen (Strg+Shift+Z)" onclick="board.redo()"></button>
+            <button class="tbtn" id="btn-clear" title="Phase leeren" onclick="clearMenu()"></button>
+            <span class="tsep"></span>
+            <select class="select" id="field-select" style="height:36px; width:auto" onchange="board.setField(this.value)">
+                <option value="full">Ganzes Feld</option>
+                <option value="half">Halbes Feld</option>
+            </select>
         </div>
-        <div class="trash" id="trash"></div>
-        <div class="save-box">
-            <input id="t-name" class="input" placeholder="Titel, z. B. Breakout links">
-            <button class="btn btn-primary hidden" onclick="updateTactic()" id="btn-update"></button>
-            <button class="btn" onclick="saveTactic()" id="btn-save"></button>
+
+        <div class="tac-stage" id="stage">
+            <span class="badge badge-info readonly-flag hidden" id="ro-flag">Nur ansehen – „Als Kopie speichern" für eigene Änderungen</span>
+        </div>
+
+        <div class="tac-phases">
+            <span class="phase-label">Phasen</span>
+            <div class="phase-chips" id="phase-chips"></div>
+            <button class="btn btn-sm" onclick="board.addPhase()" id="btn-add-phase" title="Neue Phase: Figuren werden übernommen und können neu positioniert werden"></button>
+            <button class="btn btn-sm btn-ghost btn-icon" onclick="removePhase()" id="btn-del-phase" title="Diese Phase löschen"></button>
+            <span class="tsep"></span>
+            <button class="btn btn-sm btn-primary" id="btn-play" onclick="togglePlay()"></button>
+            <select class="select" id="speed" style="height:32px; width:auto; font-size:13px">
+                <option value="0.6">Langsam</option><option value="1" selected>Normal</option><option value="1.6">Schnell</option>
+            </select>
+            <input class="input phase-note" id="phase-note" placeholder="Notiz zu dieser Phase, z. B. C holt den Ball tief ab" style="height:32px" oninput="board.setNote(this.value)">
+        </div>
+    </section>
+
+    <!-- ===================== SEITENLEISTE ===================== -->
+    <aside class="tac-side">
+        <div class="side-sec">
+            <div class="side-title">Figuren aufs Feld ziehen</div>
+            <div class="palette" id="palette"></div>
+            <div class="trash" id="trash"></div>
+            <p class="hint">Antippen = Figur in die Mitte setzen. Doppelklick / Doppeltipp auf eine Figur = Nummer oder Position eintragen.</p>
+        </div>
+        <div class="side-sec form-col">
+            <div class="side-title" style="margin:0">Board</div>
+            <div class="field"><label>Titel</label><input id="b-title" class="input" placeholder="z. B. Breakout über links"></div>
+            <div class="field"><label>Kategorie</label><select id="b-cat" class="select"></select></div>
+            <div class="field admin-only hidden"><label>Sichtbar für</label>
+                <select id="b-vis" class="select"><option value="team">Ganzes Team</option><option value="private">Nur mich</option></select>
+            </div>
+            <p class="hint" id="b-owner" style="margin:0"></p>
+            <button class="btn btn-primary" id="btn-update" onclick="saveBoard(false)"></button>
+            <button class="btn" id="btn-save-new" onclick="saveBoard(true)"></button>
+            <button class="btn btn-ghost btn-danger hidden" id="btn-delete" onclick="deleteBoard()"></button>
         </div>
     </aside>
 </div>
 
 <script>
     const F = Falcons, I = F.icon, $ = id => document.getElementById(id);
-    F.requireUser();
+    const user = F.requireUser();
     F.mountShell('tactic', { bottomNav: false });
-    F.isAdmin().then(a => { if (!a) { document.getElementById('board').innerHTML = `<div class="page">${F.empty('Kein Zugriff', 'Das Taktikboard ist nur für Trainer verfügbar.', 'lock')}</div>`; } });
 
-    const rink = $('rink'), canvas = $('canvas'), ctx = canvas.getContext('2d'), trash = $('trash');
-    let scale = 1, mode = 'move', pen = '#e30613', history = [], drag = null, drawing = false, activeId = null;
+    const TB = TacticBoard;
+    let board = null, admin = false, boards = [], active = null, libTab = 'team', savedJson = '';
 
-    rink.insertAdjacentHTML('afterbegin', Rink.markup());
-    $('tool-move').innerHTML = I('move'); $('tool-draw').innerHTML = I('pen'); $('tool-undo').innerHTML = I('undo'); $('tool-clear').innerHTML = I('trash');
-    trash.innerHTML = I('trash', 'icon-sm') + ' Hierher ziehen zum Entfernen';
-    $('btn-save').innerHTML = I('plus', 'icon-sm') + ' Als neues Board speichern';
-    $('btn-update').innerHTML = I('save', 'icon-sm') + ' Änderungen speichern';
+    /* ------------------------------------------------- Oberfläche aufbauen */
+    $('tools').innerHTML = Object.entries(TB.TOOLS).map(([k, t]) => `<button class="tbtn" data-tool="${k}" title="${t.name}" onclick="board.setTool('${k}')">${I(k)}<span class="lbl">${t.name}</span></button>`).join('');
+    const COLORS = ['#1b1e24', '#e30613', '#1d6fe0', '#14a05a'];
+    $('colors').innerHTML = COLORS.map(c => `<span class="swatch" data-color="${c}" style="background:${c}" onclick="board.setColor('${c}')"></span>`).join('');
+    $('btn-lib').innerHTML = I('book') + '<span class="lbl">Bibliothek</span>';
+    $('btn-undo').innerHTML = I('undo'); $('btn-redo').innerHTML = I('redo'); $('btn-clear').innerHTML = I('trash');
+    $('btn-add-phase').innerHTML = I('plus', 'icon-sm') + ' Phase';
+    $('btn-del-phase').innerHTML = I('minusCircle', 'icon-sm');
+    $('btn-new').innerHTML = I('plus', 'icon-sm') + ' Neues Board';
+    $('trash').innerHTML = I('trash', 'icon-sm') + ' Hierher ziehen = entfernen';
+    $('btn-update').innerHTML = I('save', 'icon-sm') + ' Speichern';
+    $('btn-delete').innerHTML = I('trash', 'icon-sm') + ' Board löschen';
+    const cats = F.CFG.tacticCategories;
+    $('b-cat').innerHTML = cats.map(c => `<option>${c}</option>`).join('');
+    $('lib-cat').innerHTML = `<option value="">Alle</option>` + cats.map(c => `<option>${c}</option>`).join('');
 
-    function fit() { scale = Rink.fit($('stage'), rink); }
-    window.addEventListener('resize', fit);
-    fit();
-
-    /** Bildschirm-Koordinaten → Feld-Koordinaten (berücksichtigt Skalierung) */
-    function toRink(e) {
-        const r = rink.getBoundingClientRect();
-        return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
-    }
-    const overTrash = e => { const t = trash.getBoundingClientRect(); return e.clientX > t.left && e.clientX < t.right && e.clientY > t.top && e.clientY < t.bottom; };
-
-    /* -------------------------------------------------------- Modus & Farbe */
-    function setMode(m) {
-        mode = m;
-        $('tool-move').classList.toggle('active', m === 'move');
-        $('tool-draw').classList.toggle('active', m === 'draw');
-        canvas.classList.toggle('active', m === 'draw');
-        rink.classList.toggle('mode-move', m === 'move');
-        $('pieces').style.pointerEvents = 'none';
-        document.querySelectorAll('#pieces .piece').forEach(p => p.style.pointerEvents = m === 'move' ? 'auto' : 'none');
-    }
-    document.querySelectorAll('.swatch').forEach(s => s.addEventListener('click', () => {
-        document.querySelectorAll('.swatch').forEach(x => x.classList.remove('active'));
-        s.classList.add('active'); pen = s.dataset.color; setMode('draw');
-    }));
-
-    /* ------------------------------------------------------ Figuren ziehen */
-    function startDrag(el, e, offset) {
-        drag = { el, offset };
-        el.style.pointerEvents = 'none';
-        e.preventDefault();
-    }
-    $('pieces').addEventListener('pointerdown', e => {
-        const el = e.target.closest('.piece');
-        if (!el || mode !== 'move') return;
-        const p = toRink(e);
-        startDrag(el, e, { x: p.x - el.offsetLeft, y: p.y - el.offsetTop });
+    // Palette: kleine Vorschau jeder Figur
+    Object.entries(TB.PIECES).forEach(([type, def]) => {
+        const item = document.createElement('div');
+        item.className = 'pal';
+        const preview = new TB.Board(document.createElement('div'), { editable: false });
+        const g = preview.pieceEl({ id: 'x', type, label: def.label || (type === 'falcons' || type === 'opponent' ? '7' : ''), x: 0, y: 0 });
+        item.innerHTML = `<svg viewBox="-1.2 -1.2 2.4 2.4"></svg>${def.name}`;
+        item.querySelector('svg').appendChild(g);
+        item.addEventListener('pointerdown', e => { if (canEdit()) board.beginExternalDrag(type, e); });
+        $('palette').appendChild(item);
     });
-    document.querySelectorAll('.bench-item').forEach(b => b.addEventListener('pointerdown', e => {
-        setMode('move');
-        const el = Rink.createPiece(b.dataset.type, '0px', '0px');
-        $('pieces').appendChild(el);
-        const half = b.dataset.type === 'ball' ? 9 : 18;
-        startDrag(el, e, { x: half, y: half });
-        moveDrag(e);
-    }));
-    function moveDrag(e) {
-        if (!drag) return;
-        const p = toRink(e);
-        drag.el.style.left = Math.round(p.x - drag.offset.x) + 'px';
-        drag.el.style.top = Math.round(p.y - drag.offset.y) + 'px';
-        trash.classList.toggle('hover', overTrash(e));
+
+    board = new TB.Board($('stage'), { trash: $('trash'), onChange: syncUi });
+    syncUi();
+
+    /* ------------------------------------------------------ UI-Abgleich */
+    function syncUi() {
+        if (!board) return;
+        document.querySelectorAll('#tools .tbtn').forEach(b => b.classList.toggle('active', b.dataset.tool === board.tool));
+        document.querySelectorAll('#colors .swatch').forEach(s => s.classList.toggle('active', s.dataset.color === board.color && !['move', 'eraser'].includes(board.tool)));
+        $('btn-undo').disabled = !board.undoStack.length;
+        $('btn-redo').disabled = !board.redoStack.length;
+        $('field-select').value = board.board.field;
+        const n = board.board.phases.length;
+        $('phase-chips').innerHTML = board.board.phases.map((p, i) => `<button class="phase-chip ${i === board.phase ? 'active' : ''}" onclick="board.setPhase(${i})" title="Phase ${i + 1}">${i + 1}</button>`).join('');
+        $('btn-del-phase').disabled = n < 2;
+        $('btn-play').innerHTML = board.playing ? I('pause', 'icon-sm') + ' Stopp' : I('play', 'icon-sm') + ' Abspielen';
+        $('btn-play').disabled = n < 2 && !board.playing;
+        const note = $('phase-note');
+        if (document.activeElement !== note) note.value = board.current.note || '';
     }
-    function endDrag(e) {
-        if (!drag) return;
-        const el = drag.el;
-        if (overTrash(e)) el.remove();
-        else {
-            // im Feld halten
-            el.style.left = Math.max(0, Math.min(Rink.W - el.offsetWidth, el.offsetLeft)) + 'px';
-            el.style.top = Math.max(0, Math.min(Rink.H - el.offsetHeight, el.offsetTop)) + 'px';
-            el.style.pointerEvents = 'auto';
+
+    /* ------------------------------------------------------- Bibliothek */
+    async function loadBoards() {
+        admin = await F.isAdmin();
+        // Spieler dürfen nur Team-Boards und eigene Boards lesen → zwei Abfragen
+        const queries = admin
+            ? [db.collection('tactics').get()]
+            : [db.collection('tactics').where('visibility', '==', 'team').get(), db.collection('tactics').where('ownerNr', '==', user.nr).get()];
+        const snaps = await Promise.all(queries);
+        const map = new Map();
+        snaps.forEach(s => s.docs.forEach(d => map.set(d.id, { id: d.id, ...d.data() })));
+        boards = [...map.values()];
+
+        // Einmalige Umstellung alter Boards (ohne Sichtbarkeit) → Team-Boards
+        if (admin) boards.filter(b => !b.visibility).forEach(b => { b.visibility = 'team'; F.migrateTactic(b.id); });
+
+        const time = b => { const t = b.updatedAt || b.createdAt; return t ? (t.toDate ? t.toDate() : new Date(t)).getTime() : 0; };
+        boards.sort((a, b) => time(b) - time(a));
+        renderLib();
+    }
+
+    function setLibTab(t) { libTab = t; renderLib(); }
+
+    function renderLib() {
+        $('tab-team').classList.toggle('active', libTab === 'team');
+        $('tab-mine').classList.toggle('active', libTab === 'mine');
+        const q = $('lib-search').value.toLowerCase(), cat = $('lib-cat').value;
+        const list = boards
+            .filter(b => libTab === 'team' ? b.visibility !== 'private' : (b.ownerNr === user.nr && b.visibility === 'private'))
+            .filter(b => (!cat || (b.category || 'Sonstiges') === cat) && (!q || (b.title || '').toLowerCase().includes(q)));
+        if (!list.length) {
+            $('lib-list').innerHTML = `<div style="padding:16px 4px">${libTab === 'team'
+                ? F.empty('Keine Team-Boards', 'Hier erscheinen die Taktiken der Trainer.', 'clipboard')
+                : F.empty('Noch keine eigenen Boards', 'Erstelle ein Board und speichere es – nur du siehst es.', 'clipboard')}</div>`;
+            return;
         }
-        drag = null; trash.classList.remove('hover');
+        const groups = {};
+        list.forEach(b => { const c = b.category || 'Sonstiges'; (groups[c] = groups[c] || []).push(b); });
+        const order = cats.filter(c => groups[c]).concat(Object.keys(groups).filter(c => !cats.includes(c)));
+        $('lib-list').innerHTML = order.map(c => `
+            <div class="lib-group">${F.esc(c)} · ${groups[c].length}</div>
+            ${groups[c].map(b => {
+                const n = (b.phases || []).length || 1;
+                return `<div class="lib-item ${active && active.id === b.id ? 'active' : ''}" onclick="openBoard('${b.id}')">
+                    ${I(b.field === 'half' ? 'field' : 'clipboard', 'icon-sm')}
+                    <div class="t"><strong>${F.esc(b.title)}</strong><small>${n} ${n === 1 ? 'Phase' : 'Phasen'}${b.ownerName && libTab === 'team' ? ' · ' + F.esc(b.ownerName) : ''}</small></div>
+                </div>`;
+            }).join('')}`).join('');
     }
-    document.addEventListener('pointermove', moveDrag);
-    document.addEventListener('pointerup', endDrag);
-    document.addEventListener('pointercancel', endDrag);
 
-    /* ------------------------------------------------------------ Zeichnen */
-    function saveState() { history.push(canvas.toDataURL()); if (history.length > 30) history.shift(); }
-    canvas.addEventListener('pointerdown', e => {
-        if (mode !== 'draw') return;
-        e.preventDefault(); saveState(); drawing = true;
-        canvas.setPointerCapture(e.pointerId);
-        const p = toRink(e);
-        ctx.beginPath(); ctx.moveTo(p.x, p.y);
-        ctx.strokeStyle = pen; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    function toggleLib(force) { $('tac').classList.toggle('lib-open', force); }
+
+    /* --------------------------------------------------- Board öffnen */
+    function canEdit(b = active) {
+        if (!b) return true;                       // neues, ungespeichertes Board
+        if (b.ownerNr === user.nr) return true;    // eigenes Board
+        return admin && b.visibility !== 'private'; // Trainer bearbeiten Team-Boards
+    }
+    const dirty = () => JSON.stringify(board.data()) !== savedJson;
+    const confirmLeave = () => !dirty() || board.isEmpty() || confirm('Ungespeicherte Änderungen verwerfen?');
+
+    function openBoard(id, skipConfirm) {
+        const b = boards.find(x => x.id === id); if (!b) return;
+        if (!skipConfirm && !confirmLeave()) return;
+        active = b;
+        board.load(b);
+        savedJson = JSON.stringify(board.data());
+        $('b-title').value = b.title || '';
+        $('b-cat').value = cats.includes(b.category) ? b.category : 'Sonstiges';
+        $('b-vis').value = b.visibility || 'team';
+        if (b.visibility === 'private' && b.ownerNr === user.nr) libTab = 'mine';
+        history.replaceState(null, '', '?id=' + id);
+        applyPermissions(); renderLib(); toggleLib(false);
+    }
+
+    function newBoard() {
+        if (!confirmLeave()) return;
+        active = null; board.reset(); savedJson = JSON.stringify(board.data());
+        $('b-title').value = ''; $('b-cat').value = cats[0]; $('b-vis').value = admin ? 'team' : 'private';
+        history.replaceState(null, '', location.pathname);
+        applyPermissions(); renderLib(); toggleLib(false);
+    }
+
+    function applyPermissions() {
+        const edit = canEdit();
+        board.editable = edit;
+        board.svg.style.pointerEvents = edit ? '' : 'none';
+        if (!edit && board.tool !== 'move') board.setTool('move');
+        $('ro-flag').classList.toggle('hidden', edit);
+        ['toolbar', 'palette'].forEach(id => { $(id).style.opacity = edit ? '' : '.4'; $(id).style.pointerEvents = edit ? '' : 'none'; });
+        $('btn-lib').style.pointerEvents = 'auto';
+        $('btn-update').classList.toggle('hidden', !active || !edit);
+        $('btn-save-new').innerHTML = !active ? I('save', 'icon-sm') + ' Speichern' : I('copy', 'icon-sm') + (edit ? ' Als neues Board speichern' : ' Als Kopie speichern');
+        $('btn-save-new').classList.toggle('btn-primary', !active || !edit);
+        $('btn-delete').classList.toggle('hidden', !active || !edit);
+        $('b-owner').textContent = active
+            ? `${active.visibility === 'private' ? 'Privat – nur du siehst es' : 'Team-Board – alle sehen es'}${active.ownerName ? ' · von ' + active.ownerName : ''}`
+            : 'Neues Board – noch nicht gespeichert.';
+    }
+
+    /* -------------------------------------------------------- Speichern */
+    async function saveBoard(asNew) {
+        const title = $('b-title').value.trim();
+        if (!title) { $('b-title').focus(); return F.toast('Bitte einen Titel eingeben', 'error'); }
+        const visibility = admin ? $('b-vis').value : 'private';
+        const data = board.data();
+        const payload = { ...data, title, category: $('b-cat').value, visibility, updatedAt: new Date() };
+        try {
+            if (asNew || !active) {
+                const doc = { ...payload, ownerNr: user.nr, ownerName: user.name, createdAt: new Date() };
+                const ref = await db.collection('tactics').add(doc);
+                boards.unshift({ id: ref.id, ...doc });
+                libTab = visibility === 'team' ? 'team' : 'mine';
+                F.toast(visibility === 'team' ? 'Board für das Team gespeichert' : 'In „Meine Boards" gespeichert');
+                openBoard(ref.id, true);
+            } else {
+                if (!data.legacyImage) payload.legacyImage = firebase.firestore.FieldValue.delete();
+                await db.collection('tactics').doc(active.id).update(payload);
+                Object.assign(active, data, { title, category: payload.category, visibility });
+                if (!data.legacyImage) delete active.legacyImage;
+                savedJson = JSON.stringify(board.data());
+                F.toast('Änderungen gespeichert');
+                applyPermissions(); renderLib();
+            }
+        } catch (e) { console.error(e); F.toast('Speichern fehlgeschlagen', 'error'); }
+    }
+
+    async function deleteBoard() {
+        if (!active || !(await F.deleteDoc('tactics', active.id, `Board „${active.title}" löschen?`))) return;
+        boards = boards.filter(b => b.id !== active.id);
+        active = null; board.reset(); savedJson = JSON.stringify(board.data());
+        newBoard();
+    }
+
+    /* ---------------------------------------------------------- Aktionen */
+    function togglePlay() { board.playing ? board.stop() : board.play({ speed: +$('speed').value }); syncUi(); }
+    function removePhase() { if (confirm(`Phase ${board.phase + 1} löschen?`)) board.removePhase(); }
+    function clearMenu() {
+        if (!board.current.drawings.length && !board.current.pieces.length) return;
+        if (confirm(`Phase ${board.phase + 1} leeren? Figuren und Zeichnungen werden entfernt (Rückgängig ist möglich).`)) board.clearPhase();
+    }
+    window.addEventListener('beforeunload', e => { if (dirty() && !board.isEmpty()) { e.preventDefault(); e.returnValue = ''; } });
+
+    applyPermissions();
+    loadBoards().then(() => {
+        $('b-vis').value = admin ? 'team' : 'private';
+        const id = new URLSearchParams(location.search).get('id');
+        if (id && boards.some(b => b.id === id)) openBoard(id, true);
+        applyPermissions();
     });
-    canvas.addEventListener('pointermove', e => { if (!drawing) return; const p = toRink(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
-    canvas.addEventListener('pointerup', () => drawing = false);
-    canvas.addEventListener('pointercancel', () => drawing = false);
-
-    function undo() {
-        const prev = history.pop(); if (!prev) return;
-        const img = new Image(); img.onload = () => { ctx.clearRect(0, 0, Rink.W, Rink.H); ctx.drawImage(img, 0, 0); }; img.src = prev;
-    }
-    function clearBoard() {
-        if (!confirm('Board leeren?')) return;
-        saveState(); ctx.clearRect(0, 0, Rink.W, Rink.H); $('pieces').innerHTML = '';
-        activeId = null; $('t-name').value = ''; renderActive();
-    }
-
-    /* ------------------------------------------------------ Speichern/Laden */
-    function boardData() {
-        const title = $('t-name').value.trim();
-        if (!title) { F.toast('Bitte einen Titel eingeben', 'error'); return null; }
-        const players = [...$('pieces').children].map(p => ({ type: p.dataset.type, x: p.style.left, y: p.style.top }));
-        return { title, players, drawing: canvas.toDataURL() };
-    }
-
-    async function saveTactic() {
-        const data = boardData(); if (!data) return;
-        const ref = await db.collection('tactics').add({ ...data, createdAt: new Date() });
-        activeId = ref.id;
-        F.toast('Neues Board gespeichert');
-        loadList();
-    }
-
-    /** Überschreibt das aktuell geladene Board (gleiche ID → bleibt in Sessions verknüpft) */
-    async function updateTactic() {
-        if (!activeId) return saveTactic();
-        const data = boardData(); if (!data) return;
-        await db.collection('tactics').doc(activeId).update({ ...data, updatedAt: new Date() });
-        F.toast('Board aktualisiert');
-        loadList();
-    }
-
-    async function loadList() {
-        const snap = await db.collection('tactics').orderBy('createdAt', 'desc').get();
-        $('saved-list').innerHTML = snap.size ? snap.docs.map(d => `
-            <div class="list-item" data-id="${d.id}" onclick="loadTactic('${d.id}')">
-                ${I('clipboard', 'icon-sm')}<span class="title">${F.esc(d.data().title)}</span>
-                <button class="btn btn-ghost btn-icon btn-sm btn-danger del" onclick="event.stopPropagation(); deleteTactic('${d.id}')">${I('trash', 'icon-sm')}</button>
-            </div>`).join('') : '<p class="faint" style="font-size:13px">Noch keine Boards gespeichert.</p>';
-        renderActive();
-    }
-    function renderActive() {
-        document.querySelectorAll('#saved-list .list-item').forEach(el => el.classList.toggle('active', el.dataset.id === activeId));
-        $('btn-update').classList.toggle('hidden', !activeId);
-        $('btn-save').classList.toggle('btn-primary', !activeId);
-    }
-
-    async function loadTactic(id) {
-        const doc = await db.collection('tactics').doc(id).get();
-        const d = doc.data();
-        Rink.render(rink, canvas, d);
-        $('t-name').value = d.title || '';
-        history = []; activeId = id; renderActive();
-        setMode(mode);
-    }
-    async function deleteTactic(id) {
-        if (!(await F.deleteDoc('tactics', id, 'Board löschen?'))) return;
-        if (id === activeId) { activeId = null; $('t-name').value = ''; }
-        loadList();
-    }
-
-    loadList();
 </script>
 </body>
 </html>

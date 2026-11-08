@@ -207,6 +207,7 @@
 
     async function loadAll() {
         $('status-list').innerHTML = F.loading();
+        await F.migrateTactics();
         const [pSnap, aSnap, m, sSnap, gSnap, tSnap] = await Promise.all([
             db.collection('players').get(), db.collection('admins').get(), F.loadMedia({ tactics: true }),
             db.collection('sessions').orderBy('createdAt', 'desc').get(),

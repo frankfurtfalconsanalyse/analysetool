@@ -22,7 +22,10 @@ const FALCONS_CONFIG = {
 
     // Auswahllisten für Clips
     categories: ["Offense", "Defense", "Powerplay", "Penalty Kill", "Setplays"],
-    positions: ["Angriff", "Center", "Verteidigung", "Goalie"]
+    positions: ["Angriff", "Center", "Verteidigung", "Goalie"],
+
+    // Kategorien für Taktik-Boards
+    tacticCategories: ["Offense", "Defense", "Breakout", "Powerplay", "Penalty Kill", "Setplays", "Übungen", "Sonstiges"]
 };
 
 firebase.initializeApp(FALCONS_CONFIG.firebase);
