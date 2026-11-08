@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/app.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="assets/js/config.js"></script>
     <script src="assets/js/core.js"></script>
@@ -186,7 +187,7 @@
     const SOURCE = { drive: 'Drive', youtube: 'YouTube', tactic: 'Taktik' };
 
     /* ------------------------------------------------------------ Start */
-    F.isAdmin().then(ok => {
+    F.ready.then(F.isAdmin).then(ok => {
         if (!ok) { document.body.insertAdjacentHTML('beforeend', `<main class="page">${F.empty('Kein Zugriff', 'Dieser Bereich ist nur für Trainer und Admins.', 'lock')}</main>`); return; }
         $('app').classList.remove('hidden');
         $('yt-cat').innerHTML = F.CFG.categories.map(c => `<option>${c}</option>`).join('');
@@ -226,7 +227,7 @@
 
     function renderKpis() {
         const clips = media.filter(x => x.type !== 'tactic').length;
-        const withPin = players.filter(p => p.pin).length;
+        const withPin = players.filter(p => p.uid).length;
         const k = (label, val) => `<div class="card kpi"><small>${label}</small><strong>${val}</strong></div>`;
         $('kpis').innerHTML = k('Spieler im Kader', players.length) + k('Aktiv (PIN gesetzt)', `${withPin}<span class="faint" style="font-size:15px"> / ${players.length}</span>`) + k('Sessions', sessions.length) + k('Clips', clips) + k('Spiele / Trainings', `${games.length} / ${trainings.length}`);
     }
@@ -360,17 +361,18 @@
 
     /* ----------------------------------------------------------- Kader */
     function renderKader() {
-        const withPin = players.filter(p => p.pin).length;
-        $('pin-stats').textContent = `${withPin} von ${players.length} Spielern haben bereits eine PIN vergeben. Login = Trikotnummer (zweistellig).`;
+        const withPin = players.filter(p => p.uid).length, legacy = players.filter(p => p.pin).length;
+        $('pin-stats').innerHTML = `${withPin} von ${players.length} Spielern haben sich schon mit eigener PIN angemeldet. Login = Trikotnummer (zweistellig).`
+            + (legacy ? ` <button class="btn btn-sm" style="margin-left:8px" onclick="purgeLegacyPins()">${I('lock', 'icon-sm')} ${legacy} alte PINs aus der Datenbank löschen</button>` : '');
         $('kader-table').innerHTML = players.map(p => {
             const superAdmin = p.id === F.CFG.superAdminNr;
             return `<tr>
                 <td class="mono">#${p.id}</td>
                 <td><strong>${F.esc(p.name)}</strong></td>
-                <td>${p.pin ? `<span class="badge badge-success">${I('check', 'icon-sm')} Aktiv</span>` : '<span class="badge">Keine PIN</span>'}</td>
+                <td>${p.uid ? `<span class="badge badge-success">${I('check', 'icon-sm')} Aktiv</span>` : '<span class="badge" title="Legt beim nächsten Login eine PIN fest">Noch nicht angemeldet</span>'}</td>
                 <td><label class="switch" title="${superAdmin ? 'Haupt-Admin (fest eingestellt)' : 'Admin-Rechte'}"><input type="checkbox" ${superAdmin || admins.has(p.id) ? 'checked' : ''} ${superAdmin ? 'disabled' : ''} onchange="setAdmin('${p.id}', this.checked)"><span></span></label></td>
                 <td class="actions">
-                    ${p.pin ? `<button class="btn btn-ghost btn-sm" onclick="resetPin('${p.id}')">${I('key', 'icon-sm')} PIN zurücksetzen</button>` : ''}
+                    ${p.uid ? `<button class="btn btn-ghost btn-sm" onclick="resetPin('${p.id}')">${I('key', 'icon-sm')} PIN zurücksetzen</button>` : ''}
                     <button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('players','${p.id}')">${I('trash', 'icon-sm')}</button>
                 </td></tr>`;
         }).join('') || `<tr><td colspan="5" class="muted">Noch keine Spieler.</td></tr>`;
@@ -395,8 +397,18 @@
 
     async function resetPin(nr) {
         if (!confirm(`PIN von #${nr} zurücksetzen? Der Spieler vergibt beim nächsten Login eine neue.`)) return;
-        await db.collection('players').doc(nr).update({ pin: firebase.firestore.FieldValue.delete() });
+        // Konto-Verknüpfung lösen + Version erhöhen → beim nächsten Login wird ein neues Konto angelegt
+        const p = players.find(x => x.id === nr), FV = firebase.firestore.FieldValue;
+        await db.collection('players').doc(nr).update({ uid: FV.delete(), pin: FV.delete(), authVersion: (p.authVersion || 0) + 1 });
         F.toast('PIN zurückgesetzt'); loadAll();
+    }
+
+    /** Alte Klartext-PINs (vor der Umstellung auf Firebase Auth) entfernen */
+    async function purgeLegacyPins() {
+        const list = players.filter(p => p.pin);
+        if (!confirm(`${list.length} alte PINs löschen? Diese Spieler wählen beim nächsten Login eine neue PIN.`)) return;
+        await Promise.all(list.map(p => db.collection('players').doc(p.id).update({ pin: firebase.firestore.FieldValue.delete() })));
+        F.toast('Alte PINs gelöscht'); loadAll();
     }
 
     async function remove(col, id) { if (await F.deleteDoc(col, id)) loadAll(); }

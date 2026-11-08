@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/app.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="assets/js/config.js"></script>
     <script src="assets/js/core.js"></script>
@@ -38,7 +39,7 @@
         <h2>Login <span class="badge">Alle</span></h2>
         <ul>
             <li>Gib deine <b>Trikotnummer zweistellig</b> ein – die 7 ist <kbd>07</kbd>, die 22 ist <kbd>22</kbd>.</li>
-            <li>Beim <b>ersten Login</b> wählst du eine 4-stellige PIN. Danach meldest du dich immer mit Nummer + PIN an.</li>
+            <li>Beim <b>ersten Login</b> wählst du eine 4-stellige PIN. Danach meldest du dich immer mit Nummer + PIN an. Du bleibst auf dem Gerät angemeldet, bis du dich abmeldest.</li>
             <li>PIN vergessen? Ein Trainer kann sie im Kader zurücksetzen.</li>
         </ul>
     </div></div>
@@ -62,6 +63,12 @@
 
         <h3>Analyse-Modus</h3>
         <p>Über <b>Analyse-Modus</b> öffnest du einen Clip groß. Mit <b>Zeichnen</b> malst du Laufwege direkt auf das Video (Farben Rot, Gelb, Cyan, Weiß). Solange der Zeichenmodus aktiv ist, lässt sich das Video nicht bedienen – klick auf <b>Fertig</b>.</p>
+
+        <h3>Taktikboard</h3>
+        <ul>
+            <li>Unter <b>Team</b> findest du die Taktiken der Trainer, sortiert nach Kategorie (Offense, Powerplay, …). Mit <b>Abspielen</b> laufen die Spielzüge Phase für Phase ab.</li>
+            <li>Unter <b>Meine Boards</b> kannst du eigene Boards anlegen – nur du siehst sie. Ein Team-Board kannst du mit <b>Als Kopie speichern</b> übernehmen und verändern.</li>
+        </ul>
 
         <h3>Spiele & Trainings</h3>
         <p>Komplette Aufzeichnungen mit einer <b>Timeline</b> (Tore, Über-/Unterzahl bzw. Übungen) – ein Klick springt zur Szene. Unter <b>Mein Feedback</b> siehst du <b>privates Feedback</b>, das nur du und die Trainer sehen.</p>
@@ -91,10 +98,16 @@
         <p>Zeigt pro Session, Clip, Spiel und Training, welche Spieler es <b>gesehen</b> haben und wer noch <b>offen</b> ist. Eine Session zählt als gesehen, wenn alle Clips durchgeklickt wurden.</p>
 
         <h3>Kader & Admins</h3>
-        <p>Spieler anlegen, PINs zurücksetzen und per Schalter <b>Admin-Rechte</b> vergeben. Admins sehen Verwaltung und Taktikboard und können Kommentare löschen.</p>
+        <p>Spieler anlegen, PINs zurücksetzen und per Schalter <b>Admin-Rechte</b> vergeben. Nach einem PIN-Reset wählt der Spieler beim nächsten Login eine neue PIN. Admins sehen die Verwaltung, bearbeiten Team-Boards und können Kommentare löschen.</p>
 
         <h3>Taktikboard</h3>
-        <p>Figuren aus der Seitenleiste aufs Feld ziehen, mit dem Stift Laufwege zeichnen, speichern. Zum Entfernen eine Figur auf den Papierkorb ziehen. Gespeicherte Boards können in Sessions eingebaut werden.</p>
+        <ul>
+            <li><b>Figuren</b> aus der Seitenleiste aufs Feld ziehen (oder antippen = Mitte). Doppelklick/Doppeltipp auf eine Figur trägt Nummer oder Position ein (z. B. 7, C, LV). Zum Entfernen auf den Papierkorb ziehen oder den Radierer nutzen.</li>
+            <li><b>Werkzeuge:</b> Stift (frei), Laufweg (Pfeil), Dribbling (Welle), Pass (gestrichelt), Linie, Radierer. Rückgängig/Wiederholen mit den Pfeilen oder <kbd>Strg</kbd>+<kbd>Z</kbd>.</li>
+            <li><b>Phasen:</b> Mit <b>+ Phase</b> wird die aktuelle Aufstellung übernommen – Figuren dann an die neue Position ziehen (die alte Position ist blass zu sehen). <b>Abspielen</b> bewegt die Figuren entlang der gezeichneten Laufwege und Pässe.</li>
+            <li><b>Feld:</b> ganzes oder halbes Feld. <b>Kategorie</b> und <b>Sichtbar für</b> (Team oder nur ich) beim Speichern wählen. <b>Speichern</b> überschreibt das Board, <b>Als neues Board speichern</b> legt eine Kopie an.</li>
+            <li>Team-Boards können in Sessions eingebaut werden und sind dort mit Phasen abspielbar.</li>
+        </ul>
     </div></div>
 </main>
 

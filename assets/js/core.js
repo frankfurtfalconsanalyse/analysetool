@@ -75,35 +75,85 @@ const Falcons = (() => {
     }
 
     /* ---------------------------------------------------------- Login/User */
+    // Angemeldet wird über Firebase Auth. Jeder Spieler hat ein Konto mit der
+    // technischen E-Mail "<nr>.<authVersion>@falcons-hub.app" und der PIN als Passwort.
+    // Name + Nummer liegen zusätzlich im localStorage, damit die Seite sofort rendern kann.
     function getUser() {
         try {
             const u = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
             return u && u.nr ? { nr: String(u.nr), name: u.name || '' } : null;
         } catch (e) { return null; }
     }
-    function setUser(u) {
-        // PIN wird bewusst NICHT im Browser gespeichert
-        localStorage.setItem(USER_KEY, JSON.stringify({ nr: u.nr, name: u.name }));
-    }
+    function setUser(u) { localStorage.setItem(USER_KEY, JSON.stringify({ nr: u.nr, name: u.name })); }
+
+    const nrFromEmail = email => (String(email || '').split('@')[0] || '').split('.')[0];
+
+    /** Löst mit dem angemeldeten Spieler auf – oder mit null, wenn niemand (gültig) angemeldet ist. */
+    const authState = new Promise(resolve => {
+        const stop = auth.onAuthStateChanged(fbUser => {
+            stop();
+            const local = getUser();
+            if (fbUser && local && nrFromEmail(fbUser.email) === local.nr) return resolve(local);
+            // alter Login (vor Firebase Auth) oder inkonsistenter Zustand → neu anmelden
+            localStorage.removeItem(USER_KEY);
+            if (fbUser) auth.signOut();
+            resolve(null);
+        });
+    });
+    /** Wie authState, leitet aber zur Login-Seite um, falls niemand angemeldet ist. Seiten starten mit F.ready.then(init). */
+    let readyPromise = null;
+    const ready = () => readyPromise || (readyPromise = authState.then(u => u || new Promise(() => location.replace('index.html'))));
+
     function logout() {
         localStorage.removeItem(USER_KEY);
-        location.href = 'index.html';
+        auth.signOut().finally(() => location.href = 'index.html');
     }
-    /** Leitet zur Login-Seite um, wenn niemand angemeldet ist. */
+    /** Liefert sofort den gespeicherten Spieler (für die Anzeige) bzw. leitet zum Login um. */
     function requireUser() {
         const u = getUser();
         if (!u) { location.replace('index.html'); throw new Error('not logged in'); }
         return u;
     }
 
+    const emailFor = (nr, version = 0) => `${nr}.${version}@${CFG.authDomain}`;
+    const passwordFor = pin => `falcons-${pin}`;
+
+    /** Login mit bestehender PIN */
+    async function signIn(player, pin) {
+        await auth.signInWithEmailAndPassword(emailFor(player.nr, player.authVersion || 0), passwordFor(pin));
+        setUser(player);
+    }
+
+    /** Erster Login: Konto anlegen und mit der Trikotnummer verknüpfen */
+    async function register(player, pin) {
+        const email = emailFor(player.nr, player.authVersion || 0), pw = passwordFor(pin);
+        let cred;
+        try { cred = await auth.createUserWithEmailAndPassword(email, pw); }
+        catch (e) {
+            // Konto existiert schon (z. B. Abbruch beim letzten Mal) → mit derselben PIN anmelden
+            if (e.code !== 'auth/email-already-in-use') throw e;
+            cred = await auth.signInWithEmailAndPassword(email, pw);
+        }
+        await db.collection('players').doc(player.nr).update({ uid: cred.user.uid, pin: firebase.firestore.FieldValue.delete() });
+        setUser(player);
+    }
+
+    /** Verständliche Fehlermeldung für Firebase-Auth-Fehler */
+    function authError(e) {
+        const c = (e && e.code) || '';
+        if (['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/user-not-found'].includes(c)) return 'Falsche PIN.';
+        if (c === 'auth/too-many-requests') return 'Zu viele Versuche. Bitte in ein paar Minuten erneut probieren.';
+        if (c === 'auth/network-request-failed') return 'Keine Verbindung. Bitte Internet prüfen.';
+        if (c === 'auth/operation-not-allowed') return 'Login ist noch nicht eingerichtet (Firebase: E-Mail/Passwort aktivieren).';
+        if (c === 'permission-denied') return 'Für diese Nummer ist bereits eine PIN vergeben. Bitte einen Trainer, sie zurückzusetzen.';
+        return 'Login fehlgeschlagen. Bitte erneut versuchen.';
+    }
+
     let adminPromise = null;
     /** true, wenn der angemeldete Spieler Trainer/Admin ist (Ergebnis wird gecacht). */
     function isAdmin() {
-        if (adminPromise) return adminPromise;
-        const u = getUser();
-        if (!u) return Promise.resolve(false);
-        if (u.nr === CFG.superAdminNr) return (adminPromise = Promise.resolve(true));
-        adminPromise = db.collection('admins').doc(u.nr).get().then(d => d.exists).catch(() => false);
+        if (!adminPromise) adminPromise = ready().then(u => u.nr === CFG.superAdminNr
+            || db.collection('admins').doc(u.nr).get().then(d => d.exists).catch(() => false));
         return adminPromise;
     }
 
@@ -356,7 +406,8 @@ const Falcons = (() => {
     }
 
     const api = {
-        CFG, icon, getUser, setUser, logout, requireUser, isAdmin, mountShell,
+        get ready() { return ready(); },
+        CFG, icon, getUser, setUser, logout, requireUser, isAdmin, mountShell, authState, signIn, register, authError,
         esc, parseTime, hasTime, formatText, resolveMentions, parseYouTube, ytThumb, fmtDate, playerMap,
         loadMedia, migrateTactic, migrateTactics, mediaCard, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
         onTimestamp: null, openClip: null

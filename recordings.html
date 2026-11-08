@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/app.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="assets/js/config.js"></script>
     <script src="assets/js/core.js"></script>
@@ -71,7 +72,7 @@
         }).join('');
     }
 
-    show(new URLSearchParams(location.search).get('type') || 'games');
+    F.ready.then(() => show(new URLSearchParams(location.search).get('type') || 'games'));
 </script>
 </body>
 </html>

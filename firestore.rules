@@ -1,0 +1,115 @@
+rules_version = '2';
+
+// ==========================================================================
+// Firestore-Sicherheitsregeln – Falcons Analyse-Hub
+//
+// Login: Jeder Spieler hat ein Firebase-Auth-Konto mit der E-Mail
+//   "<Trikotnummer>.<authVersion>@falcons-hub.app"   (z. B. 07.0@falcons-hub.app)
+// Das Konto gehört zum Spieler, wenn players/<nr>.uid == Konto-ID.
+// Setzt ein Trainer die PIN zurück, wird uid gelöscht und authVersion erhöht
+// → der Spieler legt beim nächsten Login ein neues Konto an.
+//
+// Einspielen: Firebase-Konsole → Firestore → Regeln → Inhalt ersetzen → Veröffentlichen
+// ==========================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- Helfer
+    function signedIn() { return request.auth != null && request.auth.token.email != null; }
+    function localPart() { return request.auth.token.email.split('@')[0]; }
+    function myNr() { return localPart().split('[.]')[0]; }
+    function myVersion() { return localPart().split('[.]').size() > 1 ? localPart().split('[.]')[1] : ''; }
+    function playerDoc(nr) { return get(/databases/$(database)/documents/players/$(nr)); }
+
+    // angemeldet UND das Konto ist dem Spieler zugeordnet
+    function isMember() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/players/$(myNr()))
+        && playerDoc(myNr()).data.get('uid', '') == request.auth.uid;
+    }
+    // Haupt-Admin (Nr. 22) oder Eintrag in "admins"
+    function isAdmin() {
+      return isMember()
+        && (myNr() == '22' || exists(/databases/$(database)/documents/admins/$(myNr())));
+    }
+    function onlyChanges(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+
+    // --------------------------------------------------------------- Kader
+    match /players/{nr} {
+      // Einzelabruf ist offen, damit die Login-Seite Name/Status zur Nummer zeigen kann
+      allow get: if true;
+      allow list: if isMember();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        // Erster Login: Spieler verknüpft sein neues Konto mit seiner Nummer
+        signedIn()
+        && myNr() == nr
+        && resource.data.get('uid', null) == null
+        && request.resource.data.get('uid', '') == request.auth.uid
+        && myVersion() == string(resource.data.get('authVersion', 0))
+        && onlyChanges(['uid', 'pin'])
+      );
+    }
+
+    match /admins/{nr} {
+      allow read: if isMember();
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------- Inhalte (nur Trainer pflegen)
+    match /youtube_clips/{id}   { allow read: if isMember(); allow write: if isAdmin(); }
+    match /video_metadata/{id}  { allow read: if isMember(); allow write: if isAdmin(); }
+    match /sessions/{id}        { allow read: if isMember(); allow write: if isAdmin(); }
+    match /games/{id}           { allow read: if isMember(); allow write: if isAdmin(); }
+    match /trainings/{id}       { allow read: if isMember(); allow write: if isAdmin(); }
+    match /game_events/{id}     { allow read: if isMember(); allow write: if isAdmin(); }
+    match /training_events/{id} { allow read: if isMember(); allow write: if isAdmin(); }
+
+    // ------------------------------------------------ Kommentare zu Clips
+    match /comments/{id} {
+      allow read: if isMember();
+      allow create: if isMember() && request.resource.data.authorNr == myNr();
+      // Spieler dürfen nur "gelesen/abgehakt" ändern
+      allow update: if isAdmin() || (isMember() && onlyChanges(['readBy']));
+      allow delete: if isAdmin() || (isMember() && resource.data.get('authorNr', '') == myNr());
+    }
+
+    // ------------------------- Privates Feedback (nur Trainer + betroffener Spieler)
+    match /game_comments/{id} {
+      allow read: if isAdmin() || (isMember() && resource.data.targetNr == myNr());
+      allow write: if isAdmin();
+    }
+    match /training_comments/{id} {
+      allow read: if isAdmin() || (isMember() && resource.data.targetNr == myNr());
+      allow write: if isAdmin();
+    }
+
+    // ---------------------- Fortschritt / Gesehen (eigenes Dokument = Trikotnummer)
+    match /progress/{nr}       { allow read: if isAdmin() || (isMember() && nr == myNr()); allow write: if isMember() && nr == myNr(); }
+    match /video_views/{nr}    { allow read: if isAdmin() || (isMember() && nr == myNr()); allow write: if isMember() && nr == myNr(); }
+    match /game_views/{nr}     { allow read: if isAdmin() || (isMember() && nr == myNr()); allow write: if isMember() && nr == myNr(); }
+    match /training_views/{nr} { allow read: if isAdmin() || (isMember() && nr == myNr()); allow write: if isMember() && nr == myNr(); }
+
+    // ------------------------------------------------------------ Taktik-Boards
+    // visibility: 'team' (alle sehen es, nur Trainer bearbeiten) oder 'private' (nur Ersteller)
+    match /tactics/{id} {
+      function vis() { return resource.data.get('visibility', 'team'); }
+      function owner() { return resource.data.get('ownerNr', ''); }
+
+      allow get: if isMember() && (vis() != 'private' || owner() == myNr() || isAdmin());
+      // Listen-Abfragen ohne Standardwerte prüfen (sonst gelten fehlende Felder als erlaubt)
+      allow list: if isMember() && (resource.data.visibility == 'team' || resource.data.ownerNr == myNr() || isAdmin());
+      allow create: if isMember()
+        && request.resource.data.ownerNr == myNr()
+        && (request.resource.data.visibility == 'private' || isAdmin());
+      allow update: if isMember()
+        && request.resource.data.get('ownerNr', '') == owner()
+        && (
+          (owner() == myNr() && (request.resource.data.get('visibility', 'private') == 'private' || isAdmin()))
+          || (isAdmin() && vis() != 'private')
+        );
+      allow delete: if isMember() && (owner() == myNr() || (isAdmin() && vis() != 'private'));
+    }
+  }
+}

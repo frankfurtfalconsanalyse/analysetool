@@ -17,7 +17,11 @@ const FALCONS_CONFIG = {
     // Antwort-Format: [{ title, link, category }, …]
     driveScriptUrl: "https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec",
 
-    // Trikotnummer mit festen Admin-Rechten (weitere Admins über Collection "admins")
+    // Login: technische E-Mail je Spieler für Firebase Auth ("07.0@falcons-hub.app").
+    // Muss zur Domain in firestore.rules passen – nicht ändern, sonst können sich alle neu anmelden.
+    authDomain: "falcons-hub.app",
+
+    // Trikotnummer mit festen Admin-Rechten (auch in firestore.rules eingetragen!) (weitere Admins über Collection "admins")
     superAdminNr: "22",
 
     // Auswahllisten für Clips
@@ -30,3 +34,4 @@ const FALCONS_CONFIG = {
 
 firebase.initializeApp(FALCONS_CONFIG.firebase);
 const db = firebase.firestore();
+const auth = firebase.auth();

@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/app.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="assets/js/config.js"></script>
     <script src="assets/js/core.js"></script>
@@ -210,8 +211,9 @@
         try {
             const doc = await db.collection('players').doc(nr).get();
             if (!doc.exists) return loginError(`Nummer #${nr} ist nicht im Kader.`);
-            loginCandidate = { nr, ...doc.data() };
-            if (!loginCandidate.pin) showStep('step-setup');
+            const d = doc.data();
+            loginCandidate = { nr, name: d.name, authVersion: d.authVersion || 0 };
+            if (!d.uid) showStep('step-setup');   // noch kein Konto → erster Login
             else { $('welcome-user').textContent = `Hallo ${loginCandidate.name} – deine PIN`; showStep('step-pin'); }
         } catch (e) { loginError('Verbindung fehlgeschlagen. Bitte erneut versuchen.'); }
     }
@@ -220,23 +222,26 @@
         const p1 = $('setup-pin').value, p2 = $('setup-pin2').value;
         if (p1.length !== 4) return loginError('Die PIN muss 4 Ziffern haben.');
         if (p1 !== p2) return loginError('Die PINs stimmen nicht überein.');
-        await db.collection('players').doc(loginCandidate.nr).update({ pin: p1 });
-        finishLogin();
+        busy(true);
+        try { await F.register(loginCandidate, p1); location.reload(); }
+        catch (e) { console.error(e); auth.signOut(); busy(false); loginError(F.authError(e)); }
     }
 
-    function verifyPin() {
-        if ($('login-pin').value === String(loginCandidate.pin)) return finishLogin();
-        $('login-pin').value = ''; loginError('Falsche PIN.');
+    async function verifyPin() {
+        busy(true);
+        try { await F.signIn(loginCandidate, $('login-pin').value); location.reload(); }
+        catch (e) { busy(false); $('login-pin').value = ''; loginError(F.authError(e)); $('login-pin').focus(); }
     }
 
-    function finishLogin() {
-        F.setUser({ nr: loginCandidate.nr, name: loginCandidate.name });
-        location.reload();
+    function busy(on) {
+        document.querySelectorAll('#login input, #login button').forEach(el => el.disabled = on);
+        if (on) loginError('');
+        $('login-error').innerHTML = on ? '<div class="spinner" style="margin:0 auto; width:18px; height:18px"></div>' : $('login-error').innerHTML;
     }
 
     /* -------------------------------------------------------------- DASHBOARD */
     async function boot() {
-        user = F.getUser();
+        user = await F.authState;
         if (!user) { $('login').classList.remove('hidden'); showStep('step-nr'); return; }
 
         F.mountShell('dashboard');
