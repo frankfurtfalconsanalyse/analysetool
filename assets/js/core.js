@@ -392,6 +392,19 @@ const Falcons = (() => {
     /** Sekunden → "0:12:05" */
     function fmtTime(s) { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; }
 
+    /** Frist-Hinweis: { label, cls, overdue, days } oder null. done = schon erledigt */
+    function dueInfo(due, done) {
+        const d = toDate(due); if (!d) return null;
+        const today = new Date(); today.setHours(0, 0, 0, 0); d.setHours(0, 0, 0, 0);
+        const days = Math.round((d - today) / 86400000);
+        const date = d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+        if (done) return { label: `Erledigt · bis ${date}`, cls: 'badge-success', overdue: false, days };
+        if (days < 0) return { label: `Überfällig · ${date}`, cls: 'badge-brand', overdue: true, days };
+        if (days === 0) return { label: 'Heute fällig', cls: 'badge-warning', overdue: false, days };
+        if (days === 1) return { label: 'Morgen fällig', cls: 'badge-warning', overdue: false, days };
+        return { label: `Bis ${date}`, cls: days <= 3 ? 'badge-warning' : 'badge-info', overdue: false, days };
+    }
+
     function fmtDate(d) {
         if (!d) return '';
         const date = d.toDate ? d.toDate() : new Date(d);
@@ -528,7 +541,7 @@ const Falcons = (() => {
         get ready() { return ready(); },
         get ctx() { return ctx; }, openLinkTeam,
         CFG, TEAMS, T, teamName, currentTeam, setTeam, switchTeam, linkTeam, migrated, isClubAdmin,
-        toDate, season, fmtTime,
+        toDate, season, fmtTime, dueInfo,
         icon, getUser, setUser, logout, requireUser, isAdmin, mountShell, authState, signIn, register, authError,
         esc, parseTime, hasTime, formatText, resolveMentions, parseYouTube, ytThumb, fmtDate, playerMap,
         loadMedia, mediaCard, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,

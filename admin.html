@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108e">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108f">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108e"></script>
-    <script src="assets/js/core.js?v=20261108e"></script>
+    <script src="assets/js/config.js?v=20261108f"></script>
+    <script src="assets/js/core.js?v=20261108f"></script>
     <style>
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
@@ -123,6 +123,7 @@
             <div class="card-body" style="display:flex; flex-direction:column; gap:14px">
                 <div class="field"><label>Titel</label><input id="s-title" class="input" placeholder="z. B. Videoanalyse Spieltag 5"></div>
                 <div class="field"><label>Anweisungen für die Spieler</label><textarea id="s-desc" class="textarea" placeholder="Worauf sollen die Spieler achten?"></textarea></div>
+                <div class="field" style="max-width:260px"><label>Ansehen bis (optional)</label><input id="s-due" class="input" type="date"></div>
                 <div class="field">
                     <label>Inhalte auswählen <span id="s-count" class="faint"></span></label>
                     <div class="picker">
@@ -133,7 +134,7 @@
                 <div><button class="btn btn-primary" onclick="saveSession()" id="btn-save-session">Session speichern</button></div>
             </div>
         </div>
-        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Titel</th><th>Inhalte</th><th>Erstellt</th><th></th></tr></thead><tbody id="session-table"></tbody></table></div></div>
+        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Titel</th><th>Inhalte</th><th>Erstellt</th><th>Ansehen bis</th><th></th></tr></thead><tbody id="session-table"></tbody></table></div></div>
     </section>
 
     <!-- CLIPS -->
@@ -265,29 +266,59 @@
             : mode === 'games' ? games : trainings;
         if (!items.length) { $('status-list').innerHTML = F.empty('Keine Einträge', '', 'eye'); return; }
 
-        $('status-list').innerHTML = items.map(item => {
+        reminders = {};
+        // Sessions mit Frist zuerst (nach Datum), dann der Rest
+        const ordered = mode === 'sessions' ? [...items].sort((a, b) => (a.dueDate ? 0 : 1) - (b.dueDate ? 0 : 1) || String(a.dueDate || '').localeCompare(String(b.dueDate || ''))) : items;
+        $('status-list').innerHTML = ordered.map(item => {
             const target = mode === 'sessions' ? (item.videoIds || []).length : 1;
-            const seen = [], open = [];
+            const seen = [], open = [], openPlayers = [];
             players.forEach(p => {
                 const v = views[p.id] && views[p.id][item.id];
                 const done = mode === 'sessions' ? (v || 0) >= target && target > 0 : (v === true || v === 1);
                 const chip = `<span class="chip"><span class="mono">#${p.id}</span>${F.esc(p.name)}</span>`;
                 (done ? seen : open).push(chip);
+                if (!done) openPlayers.push(p);
             });
             const pct = players.length ? Math.round(seen.length / players.length * 100) : 0;
+            const due = F.dueInfo(item.dueDate, open.length === 0);
+            reminders[item.id] = { item, mode, openPlayers };
             return `<div class="status-row">
                 <div class="status-head" onclick="this.parentElement.classList.toggle('open')">
-                    <span class="title">${F.esc(item.title)}</span>
+                    <span class="title">${F.esc(item.title)}${due ? ` <span class="badge ${due.cls}" style="margin-left:6px">${due.label}</span>` : ''}</span>
                     <div class="progress"><span style="width:${pct}%"></span></div>
                     <span class="ratio">${seen.length}/${players.length}</span>
                     ${I('chevronDown', 'icon-sm chev')}
                 </div>
                 <div class="status-body">
                     <div><h5 style="color:var(--success)">${I('check', 'icon-sm')} Gesehen (${seen.length})</h5><div class="chips">${seen.join('') || '<span class="faint" style="font-size:13px">Noch niemand</span>'}</div></div>
-                    <div><h5 style="color:#ff5a63">${I('clock', 'icon-sm')} Offen (${open.length})</h5><div class="chips">${open.join('') || '<span class="faint" style="font-size:13px">Alle erledigt</span>'}</div></div>
+                    <div><h5 style="color:#ff5a63">${I('clock', 'icon-sm')} Offen (${open.length})</h5><div class="chips">${open.join('') || '<span class="faint" style="font-size:13px">Alle erledigt</span>'}</div>
+                        ${open.length ? `<div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap">
+                            <button class="btn btn-sm btn-primary" onclick="remind('${item.id}', 'whatsapp')">${I('message', 'icon-sm')} Erinnerung per WhatsApp</button>
+                            <button class="btn btn-sm" onclick="remind('${item.id}', 'copy')">${I('copy', 'icon-sm')} Text kopieren</button>
+                        </div>` : ''}</div>
                 </div>
             </div>`;
         }).join('');
+    }
+
+    /* ----------------------------------------------------- Erinnerungen */
+    let reminders = {};
+    function reminderText(id) {
+        const { item, mode, openPlayers } = reminders[id];
+        const base = location.href.replace(/admin\.html.*$/, '');
+        const link = mode === 'sessions' ? `${base}session_view.html?id=${item.id}`
+            : mode === 'clips' ? `${base}analyze.html?id=${item.id}&type=${item.type === 'drive' ? 'drive' : 'youtube'}`
+            : `${base}recording_view.html?type=${mode === 'games' ? 'game' : 'training'}&id=${item.id}`;
+        const what = { sessions: 'die Session', clips: 'den Clip', games: 'die Spielanalyse', trainings: 'die Trainingsanalyse' }[mode];
+        const until = item.dueDate ? ` bis ${new Date(item.dueDate).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}` : '';
+        const names = openPlayers.map(p => `#${p.id} ${p.name.split(' ')[0]}`).join(', ');
+        return `Hallo zusammen 👋\nBitte schaut euch${until} ${what} „${item.title}“ im Analyse-Hub an:\n${link}\n\nNoch offen: ${names}`;
+    }
+    async function remind(id, how) {
+        const text = reminderText(id);
+        if (how === 'whatsapp') return window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+        try { await navigator.clipboard.writeText(text); F.toast('Text kopiert – z. B. in die WhatsApp-Gruppe einfügen'); }
+        catch (e) { prompt('Text kopieren:', text); }
     }
 
     /* -------------------------------------------------------- Sessions */
@@ -296,10 +327,18 @@
             <td><strong>${F.esc(s.title)}</strong>${s.description ? `<div class="faint" style="font-size:12px">${F.esc(s.description).slice(0, 90)}</div>` : ''}</td>
             <td>${(s.videoIds || []).length}</td>
             <td class="muted">${F.fmtDate(s.createdAt)}</td>
+            <td><input type="date" class="input" style="height:32px; width:150px; font-size:13px" value="${s.dueDate || ''}" onchange="setDue('${s.id}', this.value)"></td>
             <td class="actions">
                 <a class="btn btn-ghost btn-sm" href="session_view.html?id=${s.id}">${I('eye', 'icon-sm')} Ansehen</a>
                 <button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('sessions','${s.id}')">${I('trash', 'icon-sm')}</button>
-            </td></tr>`).join('') : `<tr><td colspan="4" class="muted">Noch keine Sessions.</td></tr>`;
+            </td></tr>`).join('') : `<tr><td colspan="5" class="muted">Noch keine Sessions.</td></tr>`;
+    }
+
+    async function setDue(id, value) {
+        await F.T('sessions').doc(id).update({ dueDate: value || firebase.firestore.FieldValue.delete() });
+        const s = sessions.find(x => x.id === id); if (s) { if (value) s.dueDate = value; else delete s.dueDate; }
+        F.toast(value ? `Frist: ${F.fmtDate(value)}` : 'Frist entfernt');
+        if (statusMode === 'sessions') loadStatus('sessions');
     }
 
     function renderPicker() {
@@ -317,8 +356,10 @@
         const title = $('s-title').value.trim();
         if (!title) return F.toast('Bitte einen Titel eingeben', 'error');
         if (!selected.length) return F.toast('Bitte mindestens einen Inhalt auswählen', 'error');
-        await F.T('sessions').add({ title, description: $('s-desc').value.trim(), videoIds: selected, createdAt: new Date() });
-        $('s-title').value = $('s-desc').value = ''; selected = [];
+        const data = { title, description: $('s-desc').value.trim(), videoIds: selected, createdAt: new Date() };
+        if ($('s-due').value) data.dueDate = $('s-due').value;
+        await F.T('sessions').add(data);
+        $('s-title').value = $('s-desc').value = $('s-due').value = ''; selected = [];
         F.toast('Session erstellt'); loadAll();
     }
 

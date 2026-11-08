@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108e">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108f">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108e"></script>
-    <script src="assets/js/core.js?v=20261108e"></script>
+    <script src="assets/js/config.js?v=20261108f"></script>
+    <script src="assets/js/core.js?v=20261108f"></script>
     <style>
         .help h2 { font-size: 18px; display: flex; align-items: center; gap: 10px; }
         .help h3 { font-size: 15px; margin: 22px 0 6px; }
@@ -70,7 +70,7 @@
         <p>Oben siehst du die <b>neueste Session</b>, darunter alle Clips, in denen du <b>markiert</b> wurdest, alle Sessions mit deinem Fortschritt und die <b>Clip-Bibliothek</b> nach Spielsituation und Position.</p>
 
         <h3>Sessions</h3>
-        <p>Eine Session ist eine vom Trainer zusammengestellte Playlist aus Clips und Taktik-Boards. Mit <b>Weiter</b> / <b>Zurück</b> (oder den Tasten <kbd>N</kbd> / <kbd>P</kbd>) gehst du sie durch. Dein Fortschritt wird gespeichert – beim nächsten Öffnen geht es dort weiter.</p>
+        <p>Eine Session ist eine vom Trainer zusammengestellte Playlist aus Clips und Taktik-Boards. Mit <b>Weiter</b> / <b>Zurück</b> (oder den Tasten <kbd>N</kbd> / <kbd>P</kbd>) gehst du sie durch. Dein Fortschritt wird gespeichert – beim nächsten Öffnen geht es dort weiter. Hat eine Session eine <b>Frist</b> („Bis Do, 12.11.“), steht sie oben auf dem Dashboard, bis du sie komplett angesehen hast; danach wird sie als <span class="badge badge-brand">Überfällig</span> markiert.</p>
 
         <h3>Video-Player</h3>
         <p>Unter jedem YouTube-Video gibt es eine Steuerleiste für die Analyse:</p>
@@ -129,8 +129,9 @@
             <li>Unter <b>Spieler-Feedback</b> einen Spieler wählen und privates Feedback schreiben – Zeitstempel werden klickbar.</li>
         </ul>
 
-        <h3>Status-Check</h3>
-        <p>Zeigt pro Session, Clip, Spiel und Training, welche Spieler es <b>gesehen</b> haben und wer noch <b>offen</b> ist. Eine Session zählt als gesehen, wenn alle Clips durchgeklickt wurden.</p>
+        <h3>Fristen & Status-Check</h3>
+        <p>Beim Erstellen einer Session (oder später in der Session-Tabelle) ein Datum bei <b>Ansehen bis</b> setzen. Der Status-Check zeigt pro Session, Clip, Spiel und Training, wer es <b>gesehen</b> hat und wer noch <b>offen</b> ist – Sessions mit Frist stehen oben, überfällige sind rot markiert. Eine Session zählt als gesehen, wenn alle Clips durchgeklickt wurden.</p>
+        <p>Mit <b>Erinnerung per WhatsApp</b> öffnet sich WhatsApp mit einer fertigen Nachricht (Titel, Frist, Link und die Namen aller, die noch offen sind) – einfach die Team-Gruppe auswählen und senden. <b>Text kopieren</b> legt dieselbe Nachricht in die Zwischenablage.</p>
 
         <h3>Kader & Rollen</h3>
         <p>Die Verwaltung gilt immer für das Team, das oben angezeigt wird. Spieler anlegen, PINs zurücksetzen und die <b>Rolle</b> wählen: <b>Spieler</b> oder <b>Coach</b> (verwaltet dieses Team). <b>Vereins-Admins</b> sehen und verwalten alle Teams, wechseln oben ins jeweilige Team und können weitere Vereins-Admins ernennen. Nach einem PIN-Reset wählt der Spieler in diesem Team beim nächsten Login eine neue PIN.</p>

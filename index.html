@@ -24,14 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108e">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108f">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108e"></script>
-    <script src="assets/js/core.js?v=20261108e"></script>
-    <script src="assets/js/player.js?v=20261108e"></script>
-    <script src="assets/js/migrate.js?v=20261108e"></script>
+    <script src="assets/js/config.js?v=20261108f"></script>
+    <script src="assets/js/core.js?v=20261108f"></script>
+    <script src="assets/js/player.js?v=20261108f"></script>
+    <script src="assets/js/migrate.js?v=20261108f"></script>
     <style>
         /* ---------- Login ---------- */
         .login-screen {
@@ -377,13 +377,18 @@
         }
         const items = snap.docs.map(d => {
             const s = d.data(), total = (s.videoIds || []).length, done = Math.min(progress[d.id] || 0, total);
-            return { id: d.id, ...s, total, done, pct: total ? Math.round(done / total * 100) : 0 };
+            const complete = total > 0 && done >= total;
+            return { id: d.id, ...s, total, done, complete, due: F.dueInfo(s.dueDate, complete), pct: total ? Math.round(done / total * 100) : 0 };
         });
+        // Offene Sessions mit Frist zuerst (dringendste oben), danach nach Erstelldatum
+        const urgent = s => s.due && !s.complete ? 0 : 1;
+        items.sort((a, b) => urgent(a) - urgent(b) || (urgent(a) === 0 ? String(a.dueDate).localeCompare(String(b.dueDate)) : 0));
 
         const h = items[0];
+        const heroLabel = h.due && !h.complete ? (h.due.overdue ? 'Überfällig – bitte ansehen' : `Zu erledigen · ${h.due.label}`) : 'Neueste Session';
         $('hero-wrap').innerHTML = `<div class="hero">
             <div>
-                <div class="eyebrow">Neueste Session</div>
+                <div class="eyebrow">${heroLabel}</div>
                 <h2>${F.esc(h.title)}</h2>
                 ${h.description ? `<p>${F.esc(h.description)}</p>` : ''}
                 <div class="stats">
@@ -399,10 +404,10 @@
         $('session-grid').innerHTML = items.map(s => `
             <a class="card session-card" href="session_view.html?id=${s.id}">
                 <div class="top">
-                    <span class="badge ${s.done >= s.total && s.total ? 'badge-success' : s.done ? 'badge-warning' : 'badge-brand'}">
-                        ${s.done >= s.total && s.total ? I('check', 'icon-sm') + ' Abgeschlossen' : s.done ? 'In Bearbeitung' : 'Neu'}
+                    <span class="badge ${s.complete ? 'badge-success' : s.done ? 'badge-warning' : 'badge-brand'}">
+                        ${s.complete ? I('check', 'icon-sm') + ' Abgeschlossen' : s.done ? 'In Bearbeitung' : 'Neu'}
                     </span>
-                    <span class="faint" style="font-size:12px">${F.fmtDate(s.createdAt)}</span>
+                    ${s.due && !s.complete ? `<span class="badge ${s.due.cls}">${I('clock', 'icon-sm')} ${s.due.label}</span>` : `<span class="faint" style="font-size:12px">${F.fmtDate(s.createdAt)}</span>`}
                 </div>
                 <h3>${F.esc(s.title)}</h3>
                 ${s.description ? `<p>${F.esc(s.description)}</p>` : ''}
