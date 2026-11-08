@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108d">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108e">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108d"></script>
-    <script src="assets/js/core.js?v=20261108d"></script>
+    <script src="assets/js/config.js?v=20261108e"></script>
+    <script src="assets/js/core.js?v=20261108e"></script>
     <style>
         .help h2 { font-size: 18px; display: flex; align-items: center; gap: 10px; }
         .help h3 { font-size: 15px; margin: 22px 0 6px; }
@@ -100,6 +100,9 @@
             <li>Unter <b>Meine Boards</b> kannst du eigene Boards anlegen – nur du siehst sie. Ein Team-Board kannst du mit <b>Als Kopie speichern</b> übernehmen und verändern.</li>
         </ul>
 
+        <h3>Statistik & Meine Szenen</h3>
+        <p>Unter <b>Statistik</b> findest du alle Szenen, in denen dich ein Coach markiert hat – als Torschütze, Vorlagengeber, „auf dem Feld“ oder beteiligt – sowie Clips für dich. Ein Klick springt direkt an die Stelle im Spiel. Der Reiter <b>Team</b> zeigt Tore, Vorlagen, Punkte und +/− aller Spieler pro Saison.</p>
+
         <h3>Spiele & Trainings</h3>
         <p>Komplette Aufzeichnungen mit einer <b>Timeline</b> (Tore, Über-/Unterzahl bzw. Übungen) – ein Klick springt zur Szene. Unter <b>Mein Feedback</b> siehst du <b>privates Feedback</b>, das nur du und die Trainer sehen.</p>
     </div></div>
@@ -119,6 +122,8 @@
 
         <h3>Spiele & Trainings analysieren</h3>
         <ul>
+            <li><b>Spieler markieren:</b> Beim Ereignis „Falcons Tor“ Torschütze, Vorlage und „Auf dem Feld“ wählen, beim Gegentor „Auf dem Feld“, sonst die beteiligten Spieler. Daraus entstehen „Meine Szenen“ und die Statistik (+/− nur, wenn „Auf dem Feld“ gepflegt ist). Ereignisse lassen sich nachträglich bearbeiten (Stift-Symbol).</li>
+            <li><b>Clips schneiden:</b> Reiter <b>Clips</b> → Start und Ende setzen (Uhr-Button = aktuelle Videozeit, oder im Player A und B drücken und „A–B-Schleife übernehmen“), Titel, Situation, Position und Spieler wählen und optional direkt in eine bestehende oder neue Session aufnehmen. Schneller: bei einem Ereignis auf das Video-Symbol klicken – Start/Ende und Spieler werden vorgeschlagen. Markierte Spieler sehen den Clip auf ihrem Dashboard.</li>
             <li>Spiel/Training in der Verwaltung mit YouTube-Link und Datum anlegen.</li>
             <li>In der Aufzeichnung unten <b>Ereignisse/Übungen</b> mit Zeit eintragen. Der <b>Uhr-Button</b> übernimmt die aktuelle Videozeit.</li>
             <li>Unter <b>Spieler-Feedback</b> einen Spieler wählen und privates Feedback schreiben – Zeitstempel werden klickbar.</li>

@@ -233,6 +233,7 @@ const Falcons = (() => {
         { id: 'dashboard', href: 'index.html', label: 'Dashboard', icon: 'home' },
         { id: 'library', href: 'recordings.html', label: 'Spiele & Trainings', short: 'Videos', icon: 'video' },
         { id: 'tactic', href: 'tactic.html', label: 'Taktikboard', short: 'Taktik', icon: 'clipboard' },
+        { id: 'stats', href: 'stats.html', label: 'Statistik', short: 'Statistik', icon: 'activity' },
         { id: 'admin', href: 'admin.html', label: 'Verwaltung', short: 'Admin', icon: 'sliders', admin: true },
         { id: 'help', href: 'help.html', label: 'Hilfe', icon: 'help' }
     ];
@@ -380,6 +381,17 @@ const Falcons = (() => {
     }
     function ytThumb(id) { return id ? `https://img.youtube.com/vi/${id}/mqdefault.jpg` : null; }
 
+    /** Datum (String, Date oder Firestore-Timestamp) → Date */
+    function toDate(d) { if (!d) return null; const x = d.toDate ? d.toDate() : new Date(d); return isNaN(x) ? null : x; }
+    /** Saison eines Datums, z. B. "2026/27" (Beginn: CFG.seasonStartMonth) */
+    function season(d) {
+        const x = toDate(d); if (!x) return '';
+        const y = x.getMonth() + 1 >= (CFG.seasonStartMonth || 8) ? x.getFullYear() : x.getFullYear() - 1;
+        return `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
+    }
+    /** Sekunden → "0:12:05" */
+    function fmtTime(s) { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; }
+
     function fmtDate(d) {
         if (!d) return '';
         const date = d.toDate ? d.toDate() : new Date(d);
@@ -516,6 +528,7 @@ const Falcons = (() => {
         get ready() { return ready(); },
         get ctx() { return ctx; }, openLinkTeam,
         CFG, TEAMS, T, teamName, currentTeam, setTeam, switchTeam, linkTeam, migrated, isClubAdmin,
+        toDate, season, fmtTime,
         icon, getUser, setUser, logout, requireUser, isAdmin, mountShell, authState, signIn, register, authError,
         esc, parseTime, hasTime, formatText, resolveMentions, parseYouTube, ytThumb, fmtDate, playerMap,
         loadMedia, mediaCard, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,

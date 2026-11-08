@@ -29,6 +29,9 @@ const FALCONS_CONFIG = {
     categories: ["Offense", "Defense", "Powerplay", "Penalty Kill", "Setplays"],
     positions: ["Angriff", "Center", "Verteidigung", "Goalie"],
 
+    // Saison beginnt in diesem Monat (8 = August) → z. B. "2026/27"
+    seasonStartMonth: 8,
+
     // Kategorien für Taktik-Boards
     tacticCategories: ["Offense", "Defense", "Breakout", "Powerplay", "Penalty Kill", "Setplays", "Übungen", "Sonstiges"]
 };

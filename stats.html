@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Statistik · Falcons Analyse-Hub</title>
+    <link rel="icon" href="assets/img/favicon.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    <script>
+        window.addEventListener('error', function (e) { showLoadError(e.message); });
+        window.addEventListener('unhandledrejection', function (e) { showLoadError(e.reason && (e.reason.message || e.reason)); });
+        function showLoadError(msg) {
+            if (document.getElementById('load-error')) return;
+            var go = function () {
+                var d = document.createElement('div'); d.id = 'load-error';
+                d.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99999;max-width:calc(100% - 32px);background:#22262c;border:1px solid #e30613;color:#eceef1;padding:14px 16px;border-radius:12px;font:14px system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;gap:12px;align-items:center;flex-wrap:wrap';
+                d.innerHTML = '<span>Es ist ein Fehler aufgetreten. Bitte neu laden.<br><small style="color:#9aa1ac">' + String(msg || '').replace(/</g, '&lt;').slice(0, 160) + '</small></span>';
+                var b = document.createElement('button'); b.textContent = 'Neu laden';
+                b.style.cssText = 'background:#e30613;color:#fff;border:0;border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer';
+                b.onclick = function () { location.reload(); }; d.appendChild(b); document.body.appendChild(d);
+            };
+            document.body ? go() : document.addEventListener('DOMContentLoaded', go);
+        }
+    </script>
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108e">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="assets/js/config.js?v=20261108e"></script>
+    <script src="assets/js/core.js?v=20261108e"></script>
+    <style>
+        .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 28px; }
+        .kpi { padding: 16px 18px; }
+        .kpi small { display: block; font-size: 12px; color: var(--text-muted); }
+        .kpi strong { font-size: 26px; font-weight: 800; font-family: var(--font-display); }
+        .scene-group + .scene-group { margin-top: 26px; }
+        .scene-group h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .scene-group h3 .faint { font-weight: 500; font-size: 12.5px; }
+        .scene { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--ev-color, var(--text-faint)); }
+        .scene + .scene { margin-top: 8px; }
+        .scene:hover { background: var(--surface-2); }
+        .scene .event-icon { width: 30px; height: 30px; }
+        .scene .m { flex: 1; min-width: 0; }
+        .scene .m b { font-size: 12px; letter-spacing: .4px; text-transform: uppercase; color: var(--ev-color, var(--text)); }
+        .scene .m p { font-size: 14px; color: #cfd3d9; }
+        .scene .role { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--surface-3); color: var(--text-muted); white-space: nowrap; }
+        .scene .role.goal { background: var(--brand-soft); color: #ff6b73; }
+        .scene .t { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+        .ev-clip { --ev-color: var(--info); --ev-soft: var(--info-soft); }
+        .table th.sortable { cursor: pointer; user-select: none; }
+        .table th.sortable:hover { color: var(--text); }
+        .table th.sorted { color: var(--text); }
+        .table td.num, .table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+        .table tr.me td { background: var(--brand-soft); }
+        .pm-pos { color: var(--success); } .pm-neg { color: #ff5a63; }
+    </style>
+</head>
+<body>
+
+<main class="page">
+    <div class="page-head">
+        <div>
+            <div class="eyebrow" id="eyebrow">Statistik</div>
+            <h1 id="h1">Szenen & Statistik</h1>
+            <p>Alle Spielszenen, in denen du markiert wurdest, und die Werte des Teams.</p>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <select class="select" id="season" style="width:auto"></select>
+            <div class="segmented">
+                <button id="tab-mine" onclick="show('mine')">Meine Szenen</button>
+                <button id="tab-team" onclick="show('team')">Team</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-mine">
+        <div class="kpis" id="my-kpis"></div>
+        <div id="my-scenes"></div>
+    </div>
+    <div id="view-team" class="hidden">
+        <div class="kpis" id="team-kpis"></div>
+        <div class="card"><div class="table-wrap"><table class="table" id="team-table"></table></div></div>
+        <p class="faint" style="font-size:12.5px; margin-top:12px">+/− zählt nur Tore/Gegentore, bei denen der Coach „Auf dem Feld“ eingetragen hat. Spiele = Spiele mit mindestens einer markierten Szene.</p>
+    </div>
+</main>
+
+<script>
+    const F = Falcons, I = F.icon, $ = id => document.getElementById(id);
+    const user = F.requireUser();
+    F.mountShell('stats');
+
+    const TYPES = {
+        goal: { label: 'Falcons Tor', icon: 'target' }, conceded: { label: 'Gegentor', icon: 'net' },
+        pp: { label: 'Überzahl', icon: 'zap' }, pk: { label: 'Unterzahl', icon: 'minusCircle' },
+        other: { label: 'Sonstiges', icon: 'flag' }, drill: { label: 'Übung', icon: 'repeat' }
+    };
+    let data = null, tab = 'mine', sortKey = 'points', sortDir = -1;
+
+    async function init() {
+        $('eyebrow').textContent = `Statistik · ${F.teamName(F.currentTeam())}`;
+        const [games, trainings, gEv, tEv, clips, players] = await Promise.all([
+            F.T('games').get(), F.T('trainings').get(), F.T('game_events').get(), F.T('training_events').get(),
+            F.T('youtube_clips').get(), F.T('players').get()
+        ]);
+        const byId = snap => Object.fromEntries(snap.docs.map(d => [d.id, { id: d.id, ...d.data() }]));
+        data = {
+            games: byId(games), trainings: byId(trainings),
+            events: [
+                ...gEv.docs.map(d => ({ id: d.id, kind: 'game', recId: d.data().gameId, ...d.data() })),
+                ...tEv.docs.map(d => ({ id: d.id, kind: 'training', recId: d.data().trainingId, type: 'drill', ...d.data() }))
+            ],
+            clips: clips.docs.map(d => ({ id: d.id, ...d.data() })),
+            players: players.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.id.localeCompare(b.id))
+        };
+        // Saisons aus den Daten (Saison beginnt am 1. August)
+        const seasons = new Set([F.season(new Date())]);
+        Object.values(data.games).concat(Object.values(data.trainings)).forEach(r => r.date && seasons.add(F.season(r.date)));
+        $('season').innerHTML = `<option value="">Alle Saisons</option>` + [...seasons].sort().reverse().map(s => `<option value="${s}">Saison ${s}</option>`).join('');
+        $('season').value = F.season(new Date());
+        $('season').onchange = render;
+        show(new URLSearchParams(location.search).get('tab') === 'team' ? 'team' : 'mine');
+    }
+
+    function show(t) {
+        tab = t;
+        $('tab-mine').classList.toggle('active', t === 'mine');
+        $('tab-team').classList.toggle('active', t === 'team');
+        $('view-mine').classList.toggle('hidden', t !== 'mine');
+        $('view-team').classList.toggle('hidden', t !== 'team');
+        render();
+    }
+
+    const recOf = e => (e.kind === 'game' ? data.games : data.trainings)[e.recId];
+    const inSeason = date => { const s = $('season').value; return !s || (date && F.season(date) === s); };
+    const seasonEvents = () => data.events.filter(e => { const r = recOf(e); return r && inSeason(r.date); });
+
+    function render() {
+        if (!data) return;
+        tab === 'mine' ? renderMine() : renderTeam();
+    }
+
+    /* ---------------------------------------------------------- Meine Szenen */
+    function renderMine() {
+        const me = user.nr;
+        if (!me) { $('my-kpis').innerHTML = ''; $('my-scenes').innerHTML = F.empty('Keine eigenen Szenen', 'Du hast in diesem Team keine Trikotnummer.', 'user'); return; }
+        const mine = seasonEvents().filter(e => (e.players || []).includes(me));
+        const myClips = data.clips.filter(c => (c.players || []).includes(me) && inSeason(c.createdAt && c.createdAt.toDate ? c.createdAt.toDate() : c.createdAt));
+        const s = statsFor(me, seasonEvents());
+        const k = (l, v, cls = '') => `<div class="card kpi"><small>${l}</small><strong class="${cls}">${v}</strong></div>`;
+        $('my-kpis').innerHTML = k('Tore', s.goals) + k('Vorlagen', s.assists) + k('Punkte', s.goals + s.assists) + k('+/−', fmtPm(s.pm), s.pm > 0 ? 'pm-pos' : s.pm < 0 ? 'pm-neg' : '') + k('Szenen', mine.length) + k('Clips für dich', myClips.length);
+
+        if (!mine.length && !myClips.length) { $('my-scenes').innerHTML = F.empty('Noch keine Szenen', 'Sobald dich ein Coach bei einem Ereignis oder Clip markiert, erscheint es hier.', 'target'); return; }
+        // nach Aufzeichnung gruppieren, neueste zuerst
+        const groups = new Map();
+        mine.forEach(e => { const key = e.kind + ':' + e.recId; if (!groups.has(key)) groups.set(key, { rec: recOf(e), kind: e.kind, items: [] }); groups.get(key).items.push({ ...e, _t: 'event' }); });
+        myClips.forEach(c => {
+            const key = c.source ? c.source.type + ':' + c.source.id : 'clips';
+            const rec = c.source ? (c.source.type === 'game' ? data.games : data.trainings)[c.source.id] : null;
+            if (!groups.has(key)) groups.set(key, { rec: rec || { title: 'Einzelclips' }, kind: c.source ? c.source.type : null, items: [] });
+            groups.get(key).items.push({ ...c, _t: 'clip', sec: c.startTime || 0 });
+        });
+        const sorted = [...groups.values()].sort((a, b) => String(b.rec.date || '').localeCompare(String(a.rec.date || '')));
+        $('my-scenes').innerHTML = sorted.map(g => `
+            <div class="scene-group">
+                <h3>${I(g.kind === 'training' ? 'repeat' : 'video', 'icon-sm')} ${F.esc(g.rec.title)} <span class="faint">${F.fmtDate(g.rec.date)}</span></h3>
+                ${g.items.sort((a, b) => a.sec - b.sec).map(it => sceneHtml(it, g)).join('')}
+            </div>`).join('');
+    }
+
+    function sceneHtml(it, g) {
+        if (it._t === 'clip') {
+            return `<a class="scene ev-clip" href="analyze.html?id=${it.id}&type=youtube">
+                <div class="event-icon">${I('play', 'icon-sm')}</div>
+                <div class="m"><b>Clip</b><p>${F.esc(it.title)}</p></div>
+                <span class="t">${F.fmtTime(it.startTime)}–${F.fmtTime(it.endTime)}</span></a>`;
+        }
+        const type = TYPES[it.type] ? it.type : 'other', t = TYPES[type], me = user.nr;
+        const role = it.scorer === me ? ['Torschütze', 'goal'] : it.assist === me ? ['Vorlage', 'goal'] : (it.onIce || []).includes(me) ? ['Auf dem Feld', ''] : ['Beteiligt', ''];
+        return `<a class="scene ev-${type === 'drill' ? 'drill' : type}" href="recording_view.html?type=${it.kind}&id=${it.recId}&t=${Math.max(0, (it.sec || 0) - 5)}">
+            <div class="event-icon">${I(t.icon, 'icon-sm')}</div>
+            <div class="m"><b>${t.label}</b><p>${F.esc(it.desc || '')}</p></div>
+            <span class="role ${role[1]}">${role[0]}</span>
+            <span class="t">${F.esc(it.time || '')}</span></a>`;
+    }
+
+    /* ------------------------------------------------------------- Team */
+    function statsFor(nr, evs) {
+        const s = { goals: 0, assists: 0, pm: 0, scenes: 0, games: new Set() };
+        evs.forEach(e => {
+            if (e.kind !== 'game') return;
+            const involved = (e.players || []).includes(nr);
+            if (involved) { s.scenes++; s.games.add(e.recId); }
+            if (e.type === 'goal' && e.scorer === nr) s.goals++;
+            if (e.type === 'goal' && e.assist === nr) s.assists++;
+            if ((e.onIce || []).includes(nr)) s.pm += e.type === 'goal' ? 1 : e.type === 'conceded' ? -1 : 0;
+        });
+        return s;
+    }
+    const fmtPm = v => v > 0 ? '+' + v : String(v);
+
+    function renderTeam() {
+        const evs = seasonEvents().filter(e => e.kind === 'game');
+        const goals = evs.filter(e => e.type === 'goal').length, against = evs.filter(e => e.type === 'conceded').length;
+        const games = new Set(evs.map(e => e.recId)).size;
+        const k = (l, v) => `<div class="card kpi"><small>${l}</small><strong>${v}</strong></div>`;
+        $('team-kpis').innerHTML = k('Spiele mit Analyse', games) + k('Tore', goals) + k('Gegentore', against) + k('Tordifferenz', fmtPm(goals - against));
+
+        const rows = data.players.map(p => { const s = statsFor(p.id, evs); return { nr: p.id, name: p.name, games: s.games.size, goals: s.goals, assists: s.assists, points: s.goals + s.assists, pm: s.pm, scenes: s.scenes }; })
+            .sort((a, b) => ((a[sortKey] > b[sortKey]) - (a[sortKey] < b[sortKey])) * sortDir || a.nr.localeCompare(b.nr));
+        const col = (key, label, num = true) => `<th class="${num ? 'num ' : ''}sortable ${sortKey === key ? 'sorted' : ''}" onclick="sortBy('${key}')">${label}${sortKey === key ? (sortDir < 0 ? ' ↓' : ' ↑') : ''}</th>`;
+        $('team-table').innerHTML = `<thead><tr>${col('nr', 'Nr.', false)}${col('name', 'Spieler', false)}${col('games', 'Spiele')}${col('goals', 'Tore')}${col('assists', 'Vorlagen')}${col('points', 'Punkte')}${col('pm', '+/−')}${col('scenes', 'Szenen')}</tr></thead><tbody>`
+            + (rows.map(r => `<tr class="${r.nr === user.nr ? 'me' : ''}"><td class="mono">#${F.esc(r.nr)}</td><td><strong>${F.esc(r.name)}</strong></td><td class="num">${r.games}</td><td class="num">${r.goals}</td><td class="num">${r.assists}</td><td class="num"><strong>${r.points}</strong></td><td class="num ${r.pm > 0 ? 'pm-pos' : r.pm < 0 ? 'pm-neg' : ''}">${fmtPm(r.pm)}</td><td class="num">${r.scenes}</td></tr>`).join('')
+            || `<tr><td colspan="8" class="muted">Noch kein Kader.</td></tr>`) + '</tbody>';
+    }
+    function sortBy(k) { if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = ['nr', 'name'].includes(k) ? 1 : -1; } renderTeam(); }
+
+    F.ready.then(init);
+</script>
+</body>
+</html>

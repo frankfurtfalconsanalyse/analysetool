@@ -24,19 +24,39 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108d">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108e">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108d"></script>
-    <script src="assets/js/core.js?v=20261108d"></script>
-    <script src="assets/js/player.js?v=20261108d"></script>
+    <script src="assets/js/config.js?v=20261108e"></script>
+    <script src="assets/js/core.js?v=20261108e"></script>
+    <script src="assets/js/player.js?v=20261108e"></script>
     <style>
         .time-row { display: flex; gap: 8px; }
         .time-row .input { font-family: var(--mono); }
         .admin-form { display: flex; flex-direction: column; gap: 10px; }
         .admin-form .textarea { min-height: 64px; }
         .admin-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-faint); }
+        .side-foot { max-height: 58%; overflow-y: auto; }
+        .people { display: flex; flex-direction: column; gap: 8px; }
+        .people .lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+        .chip-pick { display: flex; flex-wrap: wrap; gap: 5px; }
+        .chip-pick button { height: 28px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-muted); font-size: 12px; font-weight: 600; cursor: pointer; }
+        .chip-pick button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+        .tagline { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+        .tag { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--surface-3); color: var(--text-muted); }
+        .tag.me { background: var(--brand-soft); color: #ff6b73; }
+        .tag b { color: var(--text); font-weight: 700; }
+        .ev-actions { display: flex; gap: 2px; }
+        .clip-row { display: flex; gap: 12px; padding: 12px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); cursor: pointer; }
+        .clip-row + .clip-row { margin-top: 8px; }
+        .clip-row:hover { background: var(--surface-3); }
+        .clip-row.active { border-color: var(--info); }
+        .clip-row .ci { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--info-soft); color: var(--info); flex-shrink: 0; }
+        .clip-row .cm { flex: 1; min-width: 0; }
+        .clip-row strong { display: block; font-size: 14px; }
+        .clip-row small { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+        .form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     </style>
 </head>
 <body>
@@ -60,12 +80,14 @@
             <p class="muted" id="date" style="font-size:13px; margin-top:2px"></p>
             <div class="segmented full" style="margin-top:14px">
                 <button id="tab-events" onclick="setMode('events')"></button>
+                <button id="tab-clips" onclick="setMode('clips')"></button>
                 <button id="tab-feedback" onclick="setMode('feedback')"></button>
             </div>
         </div>
 
         <div class="side-scroll">
             <div id="view-events"></div>
+            <div id="view-clips" class="hidden"></div>
             <div id="view-feedback" class="hidden">
                 <div id="player-pick" class="field hidden" style="margin-bottom:12px">
                     <label>Feedback für Spieler</label>
@@ -85,7 +107,30 @@
                     <button class="btn btn-icon" onclick="useCurrentTime('ev-time')" title="Aktuelle Videozeit übernehmen" id="btn-now1"></button>
                 </div>
                 <textarea id="ev-desc" class="textarea" placeholder="Beschreibung …"></textarea>
-                <button class="btn btn-primary" onclick="saveEvent()" id="btn-save-event">Speichern</button>
+                <div class="people" id="ev-people"></div>
+                <div class="time-row">
+                    <button class="btn hidden" onclick="resetEventForm()" id="btn-cancel-event" style="flex:1">Abbrechen</button>
+                    <button class="btn btn-primary" onclick="saveEvent()" id="btn-save-event" style="flex:2">Speichern</button>
+                </div>
+            </div>
+            <div class="admin-form hidden" id="form-clips">
+                <div class="admin-label" id="lbl-clips"></div>
+                <div class="form-2">
+                    <div class="field"><label>Start</label><div class="time-row"><input id="cl-start" class="input" placeholder="0:00:00"><button class="btn btn-icon" onclick="useCurrentTime('cl-start')" title="Aktuelle Videozeit" id="btn-now3"></button></div></div>
+                    <div class="field"><label>Ende</label><div class="time-row"><input id="cl-end" class="input" placeholder="0:00:00"><button class="btn btn-icon" onclick="useCurrentTime('cl-end')" title="Aktuelle Videozeit" id="btn-now4"></button></div></div>
+                </div>
+                <button class="btn btn-sm" onclick="takeLoop()" id="btn-take-loop" title="Start/Ende aus der A–B-Schleife des Players übernehmen"></button>
+                <input id="cl-title" class="input" placeholder="Titel, z. B. Konter über links">
+                <div class="form-2">
+                    <select id="cl-cat" class="select"></select>
+                    <select id="cl-pos" class="select"></select>
+                </div>
+                <div class="people"><span class="lbl">Spieler markieren (sehen den Clip auf ihrem Dashboard)</span><div class="chip-pick" id="cl-players"></div></div>
+                <div class="field"><label>In Session aufnehmen</label>
+                    <select id="cl-session" class="select" onchange="$('cl-new-session').classList.toggle('hidden', this.value !== '__new')"></select>
+                    <input id="cl-new-session" class="input hidden" placeholder="Titel der neuen Session" style="margin-top:6px">
+                </div>
+                <button class="btn btn-primary" onclick="saveClip()" id="btn-save-clip"></button>
             </div>
             <div class="admin-form hidden" id="form-feedback">
                 <div class="admin-label" id="lbl-feedback"></div>
@@ -127,12 +172,22 @@
     const params = new URLSearchParams(location.search);
     const kindKey = params.get('type') === 'training' ? 'training' : 'game';
     const K = KINDS[kindKey], itemId = params.get('id');
-    let admin = false, yt = null, ytId = '', blocked = false, mode = 'events', unsubEvents = null, unsubFeedback = null;
+    let admin = false, yt = null, ytId = '', blocked = false, mode = 'events', unsubEvents = null, unsubFeedback = null, unsubClips = null;
+    let roster = [], rec = {}, editingEvent = null, eventPeople = { scorer: '', assist: '', onIce: new Set(), players: new Set() }, clipPlayers = new Set();
+    const pname = nr => { const p = roster.find(x => x.id === nr); return p ? p.name : ''; };
 
     // Statische Beschriftungen
     $('crumb').href = K.back;
     $('crumb').innerHTML = I('arrowLeft', 'icon-sm') + ' ' + K.backLabel;
     $('tab-events').innerHTML = I('list', 'icon-sm') + ' ' + K.eventsLabel;
+    $('tab-clips').innerHTML = I('video', 'icon-sm') + ' Clips';
+    $('lbl-clips').innerHTML = I('plus', 'icon-sm') + ' Clip aus dieser Aufzeichnung schneiden';
+    $('btn-now3').innerHTML = $('btn-now4').innerHTML = I('clock', 'icon-sm');
+    $('btn-take-loop').innerHTML = I('repeat', 'icon-sm') + ' A–B-Schleife übernehmen';
+    $('btn-save-clip').innerHTML = I('save', 'icon-sm') + ' Clip speichern';
+    $('cl-cat').innerHTML = F.CFG.categories.map(c => `<option>${c}</option>`).join('');
+    $('cl-pos').innerHTML = ['Alle', ...F.CFG.positions].map(p => `<option value="${p}">${p === 'Alle' ? 'Alle Positionen' : p}</option>`).join('');
+    $('ev-type').addEventListener('change', () => renderEventPeople());
     $('tab-feedback').innerHTML = I('message', 'icon-sm') + ' Mein Feedback';
     $('lbl-events').innerHTML = I('plus', 'icon-sm') + ' ' + K.eventSingular + ' hinzufügen';
     $('lbl-feedback').innerHTML = I('lock', 'icon-sm') + ' Privates Feedback senden';
@@ -148,7 +203,8 @@
         const doc = await F.T(K.col).doc(itemId).get();
         if (!doc.exists) { $('view-events').innerHTML = F.empty('Nicht gefunden', 'Diese Aufzeichnung existiert nicht mehr.', 'video'); return; }
         const d = doc.data();
-        ytId = d.ytId;
+        rec = d; ytId = d.ytId;
+        roster = (await F.T('players').get()).docs.map(x => ({ id: x.id, ...x.data() })).sort((a, b) => a.id.localeCompare(b.id));
         $('title').textContent = d.title;
         $('date').textContent = F.fmtDate(d.date);
         document.title = `${d.title} · Falcons Analyse-Hub`;
@@ -159,9 +215,8 @@
             $('admin-area').classList.remove('hidden');
             $('player-pick').classList.remove('hidden');
             $('tab-feedback').innerHTML = I('message', 'icon-sm') + ' Spieler-Feedback';
-            const pSnap = await F.T('players').get();
-            pSnap.docs.sort((a, b) => a.id.localeCompare(b.id))
-                .forEach(p => $('player-select').insertAdjacentHTML('beforeend', `<option value="${p.id}">#${p.id} ${F.esc(p.data().name)}</option>`));
+            roster.forEach(p => $('player-select').insertAdjacentHTML('beforeend', `<option value="${p.id}">#${p.id} ${F.esc(p.name)}</option>`));
+            renderEventPeople(); renderClipPlayers(); loadSessionOptions();
         }
 
         yt = new FalconsPlayer($('stage'), { onError: code => {
@@ -171,8 +226,8 @@
                 $('blocked').classList.remove('hidden');
             }
         } });
-        if (ytId) yt.load(ytId, { autoplay: false });
-        setMode('events');
+        if (ytId) yt.load(ytId, { autoplay: false }).then(() => { const t = +params.get('t'); if (t) yt.seek(t); });
+        setMode(params.get('tab') === 'clips' ? 'clips' : 'events');
     }
 
     function jumpTo(sec) {
@@ -184,11 +239,9 @@
         mode = m;
         $('tab-events').classList.toggle('active', m === 'events');
         $('tab-feedback').classList.toggle('active', m === 'feedback');
-        $('view-events').classList.toggle('hidden', m !== 'events');
-        $('view-feedback').classList.toggle('hidden', m !== 'feedback');
-        $('form-events').classList.toggle('hidden', m !== 'events');
-        $('form-feedback').classList.toggle('hidden', m !== 'feedback');
-        if (m === 'events') loadEvents(); else loadFeedback();
+        $('tab-clips').classList.toggle('active', m === 'clips');
+        ['events', 'clips', 'feedback'].forEach(k => { $('view-' + k).classList.toggle('hidden', m !== k); $('form-' + k).classList.toggle('hidden', m !== k); });
+        if (m === 'events') loadEvents(); else if (m === 'clips') loadClips(); else loadFeedback();
     }
 
     /* ------------------------------------------------------------- Ereignisse */
@@ -197,6 +250,7 @@
         $('view-events').innerHTML = F.loading();
         unsubEvents = F.T(K.events).where(K.fk, '==', itemId).onSnapshot(snap => {
             const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.sec - b.sec);
+            events = docs;
             if (!docs.length) { $('view-events').innerHTML = F.empty(`Noch keine ${K.eventsLabel}`, admin ? `Füge unten das erste ${K.eventSingular} hinzu.` : 'Der Trainer hat hier noch nichts markiert.', 'list'); return; }
             $('view-events').innerHTML = docs.map(e => {
                 const type = K.types[e.type] ? e.type : Object.keys(K.types)[0];
@@ -206,22 +260,158 @@
                     <div class="event-main">
                         <div class="event-title">${t.label} <span class="event-time">${F.esc(e.time)}</span></div>
                         <div class="event-desc">${F.esc(e.desc)}</div>
+                        ${peopleTags(e)}
                     </div>
-                    ${admin ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger del" onclick="event.stopPropagation(); F.deleteDoc('${K.events}', '${e.id}')">${I('trash', 'icon-sm')}</button>` : ''}
+                    ${admin ? `<div class="ev-actions del">
+                        <button class="btn btn-ghost btn-icon btn-sm" title="Clip aus dieser Szene" onclick="event.stopPropagation(); clipFromEvent('${e.id}')">${I('video', 'icon-sm')}</button>
+                        <button class="btn btn-ghost btn-icon btn-sm" title="Bearbeiten" onclick="event.stopPropagation(); editEvent('${e.id}')">${I('pen', 'icon-sm')}</button>
+                        <button class="btn btn-ghost btn-icon btn-sm btn-danger" title="Löschen" onclick="event.stopPropagation(); F.deleteDoc('${K.events}', '${e.id}')">${I('trash', 'icon-sm')}</button>
+                    </div>` : ''}
                 </div>`;
             }).join('');
         });
+    }
+
+    let events = [];
+
+    /* Beteiligte Spieler: Tor → Torschütze, Vorlage, Auf dem Feld · Gegentor → Auf dem Feld · sonst → Beteiligt */
+    function peopleTags(e) {
+        const me = user.nr, tag = (nr, role) => `<span class="tag ${nr === me ? 'me' : ''}">${role ? role + ' ' : ''}<b>#${F.esc(nr)}</b> ${F.esc(pname(nr))}</span>`;
+        const out = [];
+        if (e.scorer) out.push(tag(e.scorer, 'Tor'));
+        if (e.assist) out.push(tag(e.assist, 'Vorlage'));
+        const rest = (e.onIce && e.onIce.length ? e.onIce : (e.players || [])).filter(n => n !== e.scorer && n !== e.assist);
+        rest.forEach(n => out.push(tag(n, '')));
+        return out.length ? `<div class="tagline">${out.join('')}</div>` : '';
+    }
+    function chipPick(id, set, onToggle) {
+        $(id).innerHTML = roster.map(p => `<button type="button" class="${set.has(p.id) ? 'on' : ''}" data-nr="${p.id}" title="${F.esc(p.name)}">#${p.id} ${F.esc(p.name.split(' ')[0])}</button>`).join('') || '<span class="faint" style="font-size:12px">Kein Kader</span>';
+        $(id).onclick = e => { const b = e.target.closest('button'); if (!b) return; const nr = b.dataset.nr; set.has(nr) ? set.delete(nr) : set.add(nr); b.classList.toggle('on'); if (onToggle) onToggle(); };
+    }
+    function renderEventPeople() {
+        const type = kindKey === 'game' ? $('ev-type').value : 'drill', P = eventPeople;
+        const opts = sel => `<option value="">–</option>` + roster.map(p => `<option value="${p.id}" ${sel === p.id ? 'selected' : ''}>#${p.id} ${F.esc(p.name)}</option>`).join('');
+        let html = '';
+        if (type === 'goal') html += `<div class="form-2"><div class="field"><label>Torschütze</label><select class="select" id="ev-scorer">${opts(P.scorer)}</select></div><div class="field"><label>Vorlage</label><select class="select" id="ev-assist">${opts(P.assist)}</select></div></div>`;
+        const label = type === 'goal' || type === 'conceded' ? 'Auf dem Feld (für +/−)' : 'Beteiligte Spieler';
+        html += `<span class="lbl">${label}</span><div class="chip-pick" id="ev-chips"></div>`;
+        $('ev-people').innerHTML = html;
+        chipPick('ev-chips', type === 'goal' || type === 'conceded' ? P.onIce : P.players);
+        if ($('ev-scorer')) { $('ev-scorer').onchange = e => P.scorer = e.target.value; $('ev-assist').onchange = e => P.assist = e.target.value; }
+    }
+    function resetEventForm() {
+        editingEvent = null; eventPeople = { scorer: '', assist: '', onIce: new Set(), players: new Set() };
+        $('ev-time').value = ''; $('ev-desc').value = '';
+        $('btn-cancel-event').classList.add('hidden');
+        $('btn-save-event').textContent = 'Speichern';
+        $('lbl-events').innerHTML = I('plus', 'icon-sm') + ' ' + K.eventSingular + ' hinzufügen';
+        renderEventPeople();
+    }
+    function editEvent(id) {
+        const e = events.find(x => x.id === id); if (!e) return;
+        editingEvent = id;
+        eventPeople = { scorer: e.scorer || '', assist: e.assist || '', onIce: new Set(e.onIce || []), players: new Set(e.onIce && e.onIce.length ? [] : (e.players || [])) };
+        if (kindKey === 'game') $('ev-type').value = K.types[e.type] ? e.type : 'other';
+        $('ev-time').value = e.time || ''; $('ev-desc').value = e.desc || '';
+        $('btn-cancel-event').classList.remove('hidden');
+        $('btn-save-event').textContent = 'Änderungen speichern';
+        $('lbl-events').innerHTML = I('pen', 'icon-sm') + ' ' + K.eventSingular + ' bearbeiten';
+        renderEventPeople();
+        $('form-events').scrollIntoView({ block: 'nearest' });
     }
 
     async function saveEvent() {
         const time = $('ev-time').value.trim(), desc = $('ev-desc').value.trim();
         if (!F.hasTime(time)) return F.toast('Bitte Zeit im Format 0:15:30 angeben', 'error');
         if (!desc) return F.toast('Bitte eine Beschreibung eingeben', 'error');
-        const data = { [K.fk]: itemId, time, desc, sec: F.parseTime(time), createdAt: firebase.firestore.FieldValue.serverTimestamp() };
-        if (kindKey === 'game') data.type = $('ev-type').value;
-        await F.T(K.events).add(data);
-        $('ev-time').value = ''; $('ev-desc').value = '';
-        F.toast(`${K.eventSingular} gespeichert`);
+        const type = kindKey === 'game' ? $('ev-type').value : 'drill', P = eventPeople;
+        const withIce = type === 'goal' || type === 'conceded';
+        const data = { [K.fk]: itemId, time, desc, sec: F.parseTime(time) };
+        if (kindKey === 'game') data.type = type;
+        data.scorer = type === 'goal' ? P.scorer : '';
+        data.assist = type === 'goal' ? P.assist : '';
+        data.onIce = withIce ? [...P.onIce] : [];
+        // players = alle Beteiligten → für „Meine Szenen“ (array-contains)
+        data.players = [...new Set([data.scorer, data.assist, ...(withIce ? P.onIce : P.players)].filter(Boolean))];
+        if (editingEvent) await F.T(K.events).doc(editingEvent).update(data);
+        else await F.T(K.events).add({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        F.toast(editingEvent ? 'Änderungen gespeichert' : `${K.eventSingular} gespeichert`);
+        resetEventForm();
+    }
+
+    /* ----------------------------------------------------------------- Clips */
+    function loadClips() {
+        if (unsubClips) return;
+        $('view-clips').innerHTML = F.loading();
+        unsubClips = F.T('youtube_clips').where('source.id', '==', itemId).onSnapshot(snap => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.startTime || 0) - (b.startTime || 0));
+            clips = list;
+            $('view-clips').innerHTML = list.length ? list.map(c => `
+                <div class="clip-row" data-id="${c.id}" onclick="playClip('${c.id}')">
+                    <div class="ci">${I('play', 'icon-sm')}</div>
+                    <div class="cm">
+                        <strong>${F.esc(c.title)}</strong>
+                        <small>${FalconsPlayer.fmt(c.startTime)} – ${FalconsPlayer.fmt(c.endTime)} · ${F.esc(c.category || '')}</small>
+                        ${(c.players || []).length ? `<div class="tagline">${c.players.map(n => `<span class="tag ${n === user.nr ? 'me' : ''}"><b>#${F.esc(n)}</b> ${F.esc(pname(n))}</span>`).join('')}</div>` : ''}
+                    </div>
+                    <div class="ev-actions">
+                        <a class="btn btn-ghost btn-icon btn-sm" title="Analyse-Modus" href="analyze.html?id=${c.id}&type=youtube" onclick="event.stopPropagation()">${I('pen', 'icon-sm')}</a>
+                        ${admin ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger del" title="Löschen" onclick="event.stopPropagation(); F.deleteDoc('youtube_clips', '${c.id}', 'Clip löschen?')">${I('trash', 'icon-sm')}</button>` : ''}
+                    </div>
+                </div>`).join('')
+                : F.empty('Noch keine Clips', admin ? 'Szene im Video suchen, Start und Ende setzen und unten speichern – oder bei einem Ereignis auf das Video-Symbol klicken.' : 'Aus dieser Aufzeichnung wurden noch keine Clips geschnitten.', 'video');
+        });
+    }
+    let clips = [];
+    /** Clip im großen Player als Schleife abspielen */
+    function playClip(id) {
+        const c = clips.find(x => x.id === id); if (!c || !yt.ready) return;
+        document.querySelectorAll('.clip-row').forEach(r => r.classList.toggle('active', r.dataset.id === id));
+        yt.loopA = c.startTime; yt.loopB = c.endTime; yt.renderLoop(); yt.seek(c.startTime);
+    }
+    function renderClipPlayers() { chipPick('cl-players', clipPlayers); }
+    async function loadSessionOptions() {
+        const snap = await F.T('sessions').orderBy('createdAt', 'desc').get();
+        $('cl-session').innerHTML = `<option value="">Nicht in eine Session</option><option value="__new">+ Neue Session …</option>`
+            + snap.docs.map(d => `<option value="${d.id}">${F.esc(d.data().title)}</option>`).join('');
+    }
+    function takeLoop() {
+        if (!yt || yt.loopA === null || yt.loopB === null) return F.toast('Im Player erst A (Start) und B (Ende) setzen', 'error');
+        $('cl-start').value = FalconsPlayer.fmt(yt.loopA); $('cl-end').value = FalconsPlayer.fmt(Math.ceil(yt.loopB));
+    }
+    function clipFromEvent(id) {
+        const e = events.find(x => x.id === id); if (!e) return;
+        setMode('clips');
+        $('cl-start').value = FalconsPlayer.fmt(Math.max(0, e.sec - 8));
+        $('cl-end').value = FalconsPlayer.fmt(e.sec + 4);
+        $('cl-title').value = `${K.types[e.type] ? K.types[e.type].label : K.eventSingular}: ${e.desc}`.slice(0, 80);
+        clipPlayers = new Set(e.players || []); renderClipPlayers();
+        yt.loopA = Math.max(0, e.sec - 8); yt.loopB = e.sec + 4; yt.renderLoop(); yt.seek(yt.loopA);
+        F.toast('Start/Ende vorgeschlagen – bei Bedarf anpassen');
+    }
+    async function saveClip() {
+        const start = F.parseTime($('cl-start').value), end = F.parseTime($('cl-end').value), title = $('cl-title').value.trim();
+        if (!F.hasTime($('cl-start').value) || !F.hasTime($('cl-end').value)) return F.toast('Start und Ende im Format 0:15:30 angeben', 'error');
+        if (end <= start) return F.toast('Das Ende muss nach dem Start liegen', 'error');
+        if (!title) return F.toast('Bitte einen Titel eingeben', 'error');
+        const sessionChoice = $('cl-session').value, newTitle = $('cl-new-session').value.trim();
+        if (sessionChoice === '__new' && !newTitle) return F.toast('Bitte einen Titel für die neue Session eingeben', 'error');
+        const clip = {
+            title, ytId, startTime: start, endTime: end, category: $('cl-cat').value, position: $('cl-pos').value,
+            players: [...clipPlayers], source: { type: kindKey, id: itemId, title: rec.title || '' }, createdAt: new Date()
+        };
+        if (rec.opponentId) clip.opponentId = rec.opponentId;
+        const ref = await F.T('youtube_clips').add(clip);
+        if (sessionChoice === '__new') {
+            await F.T('sessions').add({ title: newTitle, description: '', videoIds: [ref.id], createdAt: new Date() });
+            loadSessionOptions();
+        } else if (sessionChoice) {
+            await F.T('sessions').doc(sessionChoice).update({ videoIds: firebase.firestore.FieldValue.arrayUnion(ref.id) });
+        }
+        F.toast(sessionChoice ? 'Clip gespeichert und zur Session hinzugefügt' : 'Clip gespeichert');
+        $('cl-title').value = ''; $('cl-start').value = ''; $('cl-end').value = ''; $('cl-new-session').value = '';
+        $('cl-session').value = ''; $('cl-new-session').classList.add('hidden');
+        clipPlayers = new Set(); renderClipPlayers();
     }
 
     /* --------------------------------------------------------------- Feedback */

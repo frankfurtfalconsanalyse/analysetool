@@ -24,14 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108d">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261108e">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108d"></script>
-    <script src="assets/js/core.js?v=20261108d"></script>
-    <script src="assets/js/player.js?v=20261108d"></script>
-    <script src="assets/js/migrate.js?v=20261108d"></script>
+    <script src="assets/js/config.js?v=20261108e"></script>
+    <script src="assets/js/core.js?v=20261108e"></script>
+    <script src="assets/js/player.js?v=20261108e"></script>
+    <script src="assets/js/migrate.js?v=20261108e"></script>
     <style>
         /* ---------- Login ---------- */
         .login-screen {
@@ -418,13 +418,16 @@
             if ((c.readBy || []).includes(user.nr)) return;
             byClip.set(c.videoId, (byClip.get(c.videoId) || 0) + 1);
         });
+        // Clips, in denen ein Coach dich markiert hat und die du noch nicht angesehen hast
+        const viewed = user.nr ? ((await F.T('video_views').doc(user.nr).get().catch(() => null)) || { data: () => ({}) }).data() || {} : {};
+        media.filter(v => (v.players || []).includes(user.nr) && !viewed[v.id] && !byClip.has(v.id)).forEach(v => byClip.set(v.id, 'clip'));
         const cards = [...byClip].map(([vid, n]) => {
             const v = media.find(x => x.id === vid);
-            return v ? F.mediaCard(v, { label: n === 1 ? 'Neue Markierung' : `${n} neue Markierungen` }) : '';
+            return v ? F.mediaCard(v, { label: n === 'clip' ? 'Du bist markiert' : n === 1 ? 'Neue Markierung' : `${n} neue Markierungen` }) : '';
         }).filter(Boolean);
         $('mention-count').textContent = cards.length;
         $('mention-grid').className = cards.length ? 'grid' : '';
-        $('mention-grid').innerHTML = cards.length ? cards.join('') : F.empty('Alles erledigt', 'Du hast kein offenes Feedback. Wenn dich ein Trainer mit @Nummer markiert, erscheint der Clip hier.', 'at');
+        $('mention-grid').innerHTML = cards.length ? cards.join('') : F.empty('Alles erledigt', 'Du hast kein offenes Feedback. Wenn dich ein Coach in einem Clip oder mit @Nummer markiert, erscheint er hier.', 'at');
     }
 
     const CAT_ICONS = { 'Offense': 'arrowUpRight', 'Defense': 'shield', 'Powerplay': 'zap', 'Penalty Kill': 'minusCircle', 'Setplays': 'target' };
