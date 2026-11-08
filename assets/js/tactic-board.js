@@ -78,6 +78,25 @@ const TacticBoard = (() => {
         if (dist(out[out.length - 1], p[p.length - 1]) > step * 0.3) out.push(p[p.length - 1]);
         return out;
     }
+    /** Zeichnung nur bis zum Anteil t (0…1) – für mitwachsende Pfeile beim Abspielen */
+    function partialDrawing(d, t) {
+        if (t >= 1) return d;
+        const pts = pairs(d.points);
+        if (t <= 0.02 || pts.length < 2) return null;
+        let cut;
+        if (TOOLS[d.tool] && TOOLS[d.tool].straight) {
+            const a = pts[0], b = pts[pts.length - 1];
+            cut = [a, [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]];
+        } else {
+            const total = pathLength(pts); let target = total * t; cut = [pts[0]];
+            for (let i = 1; i < pts.length; i++) {
+                const seg = dist(pts[i - 1], pts[i]);
+                if (target <= seg) { const k = seg ? target / seg : 1; cut.push([pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * k, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * k]); break; }
+                cut.push(pts[i]); target -= seg;
+            }
+        }
+        return { ...d, points: cut.flat() };
+    }
     function pathLength(p) { let l = 0; for (let i = 1; i < p.length; i++) l += dist(p[i - 1], p[i]); return l; }
     function pointAt(p, t) {
         const total = pathLength(p); let target = total * t;
@@ -389,11 +408,19 @@ const TacticBoard = (() => {
             this.svg.setAttribute('viewBox', VIEW[this.board.field] || VIEW.full);
             this.legacyLayer.innerHTML = '';
             if (this.board.legacyImage && this.phase === 0) el('image', { href: this.board.legacyImage, x: -0.15, y: -0.15, width: W + .3, height: H + .3, preserveAspectRatio: 'none' }, this.legacyLayer);
-            this.drawLayer.innerHTML = '';
-            this.current.drawings.forEach(d => this.drawLayer.appendChild(this.drawingEl(d)));
+            this.renderDrawings(this.current.drawings, this.drawProgress);
             this.renderGhosts();
             this.renderPieces();
             this.onChange('render');
+        }
+
+        /** progress = null → vollständig; 0…1 → Pfeile nur bis zu diesem Anteil (Abspielen) */
+        renderDrawings(list, progress = null) {
+            this.drawLayer.innerHTML = '';
+            list.forEach(d => {
+                const part = progress === null || progress === undefined ? d : partialDrawing(d, progress);
+                if (part) this.drawLayer.appendChild(this.drawingEl(part));
+            });
         }
 
         renderGhosts() {
@@ -471,7 +498,7 @@ const TacticBoard = (() => {
         }
 
         /* ---------------------------------------------------- Abspielen */
-        stop() { if (this.playing) { this.playing.cancel = true; this.playing = null; this.render(); } }
+        stop() { if (this.playing) { this.playing.cancel = true; this.playing = null; this.drawProgress = null; this.render(); } }
 
         async play({ speed = 1 } = {}) {
             this.stop();
@@ -479,14 +506,19 @@ const TacticBoard = (() => {
             const phases = this.board.phases;
             let start = this.phase >= phases.length - 1 ? 0 : this.phase;
             this.selected = null;
+            // Jede Phase: Aufstellung zeigen, dann wachsen die Pfeile gleichzeitig mit den laufenden Spielern
             for (let i = start; i < phases.length; i++) {
                 if (run.cancel) return;
-                this.phase = i; this.render();
-                await sleep(900 / speed);
+                this.phase = i; this.drawProgress = 0; this.render();
+                await sleep(700 / speed);
                 if (run.cancel) return;
                 if (i < phases.length - 1) await this.tween(phases[i], phases[i + 1], 1500 / speed, run);
+                else await this.tween(phases[i], phases[i], 1200 / speed, run); // letzte Phase: nur Pfeile ziehen
+                if (run.cancel) return;
+                this.drawProgress = null; this.renderDrawings(phases[i].drawings);
+                await sleep(500 / speed);
             }
-            if (this.playing === run) { this.playing = null; this.render(); }
+            if (this.playing === run) { this.playing = null; this.drawProgress = null; this.render(); }
         }
 
         /** Figuren von Phase a nach Phase b bewegen – entlang passender Laufwege/Pässe */
@@ -516,6 +548,7 @@ const TacticBoard = (() => {
                 const frame = now => {
                     if (run.cancel) return resolve();
                     const k = Math.min((now - t0) / ms, 1), e = ease(k);
+                    this.renderDrawings(a.drawings, e);
                     const list = routes.map(({ p, route }) => {
                         if (!route) return { ...p, _op: e };
                         const [x, y] = route.length === 1 ? route[0] : pointAt(route, e);
