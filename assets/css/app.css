@@ -473,3 +473,5 @@ img { max-width: 100%; display: block; }
 .reply-box .textarea { min-height: 40px; height: 40px; resize: none; }
 .reply-box .btn { height: 40px; }
 .comment.highlight { border-color: var(--info); box-shadow: 0 0 0 2px var(--info-soft); }
+/* Kartenkopf auf schmalen Bildschirmen umbrechen (z. B. Status-Check) */
+@media (max-width: 720px) { .card-head { flex-wrap: wrap; } .card-head .segmented { max-width: 100%; overflow-x: auto; } }

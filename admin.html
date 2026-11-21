@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261121a">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261121b">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261121a"></script>
-    <script src="assets/js/core.js?v=20261121a"></script>
+    <script src="assets/js/config.js?v=20261121b"></script>
+    <script src="assets/js/core.js?v=20261121b"></script>
     <style>
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
@@ -245,7 +245,8 @@
             F.T('players').get(), F.ready, F.loadMedia({ tactics: true }),
             F.T('sessions').orderBy('createdAt', 'desc').get(),
             F.T('games').orderBy('date', 'desc').get(), F.T('trainings').orderBy('date', 'desc').get(),
-            F.T('opponents').get()
+            // Gegner sind optional – fehlen die neuen Datenbank-Regeln, läuft die Verwaltung trotzdem
+            F.T('opponents').get().catch(e => { console.warn('Gegner nicht ladbar', e); F.toast('Gegner nicht ladbar – Datenbank-Regeln in Firebase aktualisieren', 'error'); return { docs: [] }; })
         ]);
         opponents = oSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
         $('g-opp').innerHTML = `<option value="">– kein Gegner –</option>` + opponents.map(o => `<option value="${o.id}">${F.esc(o.name)}</option>`).join('');
