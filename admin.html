@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261108h">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261121a">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261108h"></script>
-    <script src="assets/js/core.js?v=20261108h"></script>
+    <script src="assets/js/config.js?v=20261121a"></script>
+    <script src="assets/js/core.js?v=20261121a"></script>
     <style>
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
@@ -195,6 +195,17 @@
                 <button class="btn btn-primary" onclick="addMember()">Speichern</button>
             </div></div>
         </div>
+        <div class="card">
+            <div class="card-head">
+                <div><h3>Kaderliste importieren</h3><p>Aus Excel kopieren und einfügen: pro Zeile Nummer und Name (z. B. „5 Johannes Bender“). Überschriften werden ignoriert.</p></div>
+                <button class="btn btn-sm" onclick="$('import-box').classList.toggle('hidden')" id="btn-import-toggle"></button>
+            </div>
+            <div class="card-body hidden" id="import-box" style="display:flex; flex-direction:column; gap:12px">
+                <textarea id="import-text" class="textarea" style="min-height:160px; font-family:var(--mono)" placeholder="Rückennummer	Name&#10;3	Marta Banachowicz&#10;5	Johannes Bender" oninput="previewImport()"></textarea>
+                <div id="import-preview"></div>
+                <div><button class="btn btn-primary hidden" id="btn-import" onclick="runImport()"></button></div>
+            </div>
+        </div>
         <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Nr.</th><th>Name</th><th>Login</th><th>Rolle</th><th class="club-only hidden">Vereins-Admin</th><th></th></tr></thead><tbody id="kader-table"></tbody></table></div></div>
     </section>
 </main>
@@ -211,6 +222,7 @@
     F.ready.then(F.isAdmin).then(ok => {
         if (!ok) { document.body.insertAdjacentHTML('beforeend', `<main class="page">${F.empty('Kein Zugriff', 'Dieser Bereich ist nur für Trainer und Admins.', 'lock')}</main>`); return; }
         $('app').classList.remove('hidden');
+        $('btn-import-toggle').innerHTML = I('list', 'icon-sm') + ' Liste einfügen';
         $('yt-cat').innerHTML = F.CFG.categories.map(c => `<option>${c}</option>`).join('');
         $('yt-pos').innerHTML = ['Alle', ...F.CFG.positions].map(p => `<option>${p}</option>`).join('');
         $('p-nr').addEventListener('input', e => e.target.value = e.target.value.replace(/\D/g, ''));
@@ -467,6 +479,57 @@
                     <button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('players','${p.id}')">${I('trash', 'icon-sm')}</button>
                 </td></tr>`;
         }).join('') || `<tr><td colspan="6" class="muted">Noch keine Spieler.</td></tr>`;
+    }
+
+    /* ------------------------------------------------------ Kader-Import */
+    let importRows = [];
+    function parseImport(text) {
+        const rows = [];
+        text.split(/\r?\n/).forEach(line => {
+            const m = line.trim().match(/^#?(\d{1,2})[\s;,|\t]+(.+)$/);
+            if (!m) return;
+            const name = m[2].replace(/[;,|\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+            if (name) rows.push({ nr: m[1].padStart(2, '0'), name, role: 'player' });
+        });
+        return rows;
+    }
+    function previewImport() {
+        const old = Object.fromEntries(importRows.map(r => [r.nr + r.name, r.role]));
+        importRows = parseImport($('import-text').value).map(r => ({ ...r, role: old[r.nr + r.name] || r.role }));
+        const nrCount = {}, nameCount = {};
+        importRows.forEach(r => { nrCount[r.nr] = (nrCount[r.nr] || 0) + 1; nameCount[r.name.toLowerCase()] = (nameCount[r.name.toLowerCase()] || 0) + 1; });
+        if (!importRows.length) { $('import-preview').innerHTML = ''; $('btn-import').classList.add('hidden'); return; }
+        $('import-preview').innerHTML = `<div class="table-wrap"><table class="table"><thead><tr><th>Nr.</th><th>Name</th><th>Rolle</th><th>Hinweis</th></tr></thead><tbody>${importRows.map((r, i) => {
+            const existing = players.find(p => p.id === r.nr);
+            const notes = [];
+            if (nrCount[r.nr] > 1) notes.push(`<span class="badge badge-brand">Nummer doppelt – nur die letzte Zeile zählt</span>`);
+            if (nameCount[r.name.toLowerCase()] > 1) notes.push(`<span class="badge badge-warning">Name doppelt</span>`);
+            if (existing && existing.name !== r.name) notes.push(`<span class="badge badge-warning">ersetzt „${F.esc(existing.name)}“</span>`);
+            else if (existing) notes.push(`<span class="badge">schon im Kader</span>`);
+            return `<tr><td class="mono">#${r.nr}</td><td>${F.esc(r.name)}</td>
+                <td><select class="select" onchange="importRows[${i}].role = this.value"><option value="player" ${r.role === 'player' ? 'selected' : ''}>Spieler</option><option value="coach" ${r.role === 'coach' ? 'selected' : ''}>Coach</option></select></td>
+                <td>${notes.join(' ') || '<span class="faint">neu</span>'}</td></tr>`;
+        }).join('')}</tbody></table></div>`;
+        $('btn-import').classList.remove('hidden');
+        $('btn-import').innerHTML = `${I('plus', 'icon-sm')} ${importRows.length} Einträge in ${F.esc(F.teamName(ctx.team))} importieren`;
+    }
+    async function runImport() {
+        if (!importRows.length) return;
+        if (!confirm(`${importRows.length} Einträge in den Kader „${F.teamName(ctx.team)}“ übernehmen? Bestehende Nummern bekommen den neuen Namen, Logins bleiben erhalten.`)) return;
+        $('btn-import').disabled = true;
+        try {
+            const batch = db.batch();
+            importRows.forEach(r => {
+                const existing = players.find(p => p.id === r.nr);
+                const data = existing ? { name: r.name, role: r.role } : { name: r.name, nr: r.nr, role: r.role };
+                batch.set(F.T('players').doc(r.nr), data, { merge: true });
+            });
+            await batch.commit();
+            F.toast(`${importRows.length} Spieler importiert`);
+            $('import-text').value = ''; importRows = []; previewImport(); $('import-box').classList.add('hidden');
+            loadAll();
+        } catch (e) { console.error(e); F.toast('Import fehlgeschlagen', 'error'); }
+        $('btn-import').disabled = false;
     }
 
     async function addMember() {
