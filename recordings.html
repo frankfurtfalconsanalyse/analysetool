@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261121b">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261122a">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261121b"></script>
-    <script src="assets/js/core.js?v=20261121b"></script>
+    <script src="assets/js/config.js?v=20261122a"></script>
+    <script src="assets/js/core.js?v=20261122a"></script>
 </head>
 <body>
 
@@ -61,7 +61,11 @@
         trainings: { views: 'training_views', viewType: 'training', label: 'Training', empty: 'Noch keine Trainings hochgeladen.' }
     };
 
-    let season = '', seasonReady = false, currentKind = 'games';
+    let season = '', seasonReady = false, currentKind = 'games', isCoach = false, cards = {};
+    function editCard(id) {
+        const kind = currentKind === 'games' ? 'game' : 'training';
+        F.editRecording(kind, cards[id], { onDone: () => show(currentKind), onDeleted: () => show(currentKind) });
+    }
     async function show(kind) {
         if (!KINDS[kind]) kind = 'games';
         currentKind = kind;
@@ -77,6 +81,8 @@
             user.nr ? F.T(k.views).doc(user.nr).get() : Promise.resolve({ exists: false, data: () => ({}) }),
             kind === 'games' ? F.T('opponents').get().catch(() => null) : null
         ]);
+        isCoach = await F.isAdmin();
+        cards = Object.fromEntries(snap.docs.map(d => [d.id, { id: d.id, ...d.data() }]));
         const opps = {}; if (oppSnap) oppSnap.forEach(d => opps[d.id] = d.data().name);
         // Saison-Auswahl beim ersten Laden aufbauen
         if (!seasonReady) { seasonReady = true; F.seasonSelect($('season'), snap.docs.map(d => d.data().date), sv => { season = sv; show(currentKind); }); return; }
@@ -91,6 +97,7 @@
             return `<a class="media-card" href="recording_view.html?type=${k.viewType}&id=${d.id}">
                 <div class="media-thumb" style="background-image:url('${F.ytThumb(g.ytId)}')">
                     <div class="play">${I('play')}</div>
+                    ${isCoach ? `<button class="card-edit" title="Bearbeiten / Löschen" onclick="event.preventDefault(); event.stopPropagation(); editCard('${d.id}')">${I('pen', 'icon-sm')}</button>` : ''}
                     <div class="corner">${seen[d.id] ? `<span class="badge badge-success">${I('check', 'icon-sm')} Gesehen</span>` : `<span class="badge badge-brand">Neu</span>`}</div>
                 </div>
                 <div class="media-body">

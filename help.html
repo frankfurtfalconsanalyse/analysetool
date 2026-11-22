@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261121b">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261122a">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261121b"></script>
-    <script src="assets/js/core.js?v=20261121b"></script>
+    <script src="assets/js/config.js?v=20261122a"></script>
+    <script src="assets/js/core.js?v=20261122a"></script>
     <style>
         .help h2 { font-size: 18px; display: flex; align-items: center; gap: 10px; }
         .help h3 { font-size: 15px; margin: 22px 0 6px; }
@@ -129,6 +129,7 @@
 
         <h3>Spiele & Trainings analysieren</h3>
         <ul>
+            <li><b>Bearbeiten & Löschen:</b> Spiele, Trainings und Clips lassen sich jederzeit ändern (Titel, YouTube-Link, Datum, Gegner, Ergebnis bzw. Start/Ende eines Clips) oder löschen – über das Stift-Symbol auf der Karte unter „Spiele & Trainings“, über „Bearbeiten“ oben in der Aufzeichnung, im Reiter „Clips“, im Analyse-Modus oder in der Verwaltung. Beim Löschen eines Spiels werden Ereignisse und Feedback mit gelöscht, daraus geschnittene Clips bleiben erhalten.</li>
             <li><b>Spieler markieren:</b> Beim Ereignis „Falcons Tor“ Torschütze, Vorlage und „Auf dem Feld“ wählen, beim Gegentor „Auf dem Feld“, sonst die beteiligten Spieler. Daraus entstehen „Meine Szenen“ und die Statistik (+/− nur, wenn „Auf dem Feld“ gepflegt ist). Ereignisse lassen sich nachträglich bearbeiten (Stift-Symbol).</li>
             <li><b>Clips schneiden:</b> Reiter <b>Clips</b> → Start und Ende setzen (Uhr-Button = aktuelle Videozeit, oder im Player A und B drücken und „A–B-Schleife übernehmen“), Titel, Situation, Position und Spieler wählen und optional direkt in eine bestehende oder neue Session aufnehmen. Schneller: bei einem Ereignis auf das Video-Symbol klicken – Start/Ende und Spieler werden vorgeschlagen. Markierte Spieler sehen den Clip auf ihrem Dashboard.</li>
             <li>Spiel/Training in der Verwaltung mit YouTube-Link und Datum anlegen.</li>
@@ -153,7 +154,7 @@
         <ul>
             <li><b>Figuren</b> aus der Seitenleiste aufs Feld ziehen (oder antippen = Mitte). Doppelklick/Doppeltipp auf eine Figur trägt Nummer oder Position ein (z. B. 7, C, LV). Zum Entfernen auf den Papierkorb ziehen oder den Radierer nutzen.</li>
             <li><b>Werkzeuge:</b> Stift (frei), Laufweg (Pfeil), Dribbling (Welle), Pass (gestrichelt), Linie, Radierer. Rückgängig/Wiederholen mit den Pfeilen oder <kbd>Strg</kbd>+<kbd>Z</kbd>.</li>
-            <li><b>Phasen:</b> Mit <b>+ Phase</b> wird die aktuelle Aufstellung übernommen – Figuren dann an die neue Position ziehen (die alte Position ist blass zu sehen). <b>Abspielen</b> bewegt die Figuren entlang der gezeichneten Laufwege und Pässe.</li>
+            <li><b>Phasen:</b> Mit <b>+ Phase</b> wird die aktuelle Aufstellung übernommen – Figuren dann an die neue Position ziehen (die alte Position ist blass zu sehen). <b>Abspielen</b> zeigt pro Phase erst die Aufstellung, dann werden die Pfeile gezogen, danach bewegen sich Figuren und Ball entlang der gezeichneten Laufwege und Pässe.</li>
             <li><b>Feld:</b> ganzes oder halbes Feld. <b>Kategorie</b> und <b>Sichtbar für</b> (Team oder nur ich) beim Speichern wählen. <b>Speichern</b> überschreibt das Board, <b>Als neues Board speichern</b> legt eine Kopie an.</li>
             <li>Team-Boards können in Sessions eingebaut werden und sind dort mit Phasen abspielbar.</li>
         </ul>

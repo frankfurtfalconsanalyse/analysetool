@@ -475,3 +475,6 @@ img { max-width: 100%; display: block; }
 .comment.highlight { border-color: var(--info); box-shadow: 0 0 0 2px var(--info-soft); }
 /* Kartenkopf auf schmalen Bildschirmen umbrechen (z. B. Status-Check) */
 @media (max-width: 720px) { .card-head { flex-wrap: wrap; } .card-head .segmented { max-width: 100%; overflow-x: auto; } }
+#form-dialog .modal-panel { max-height: calc(100vh - 48px); } @media (max-width: 640px) { #form-dialog .card-body { grid-template-columns: 1fr !important; } }
+.card-edit { position: absolute; top: 10px; left: 10px; z-index: 2; width: 34px; height: 34px; border-radius: 9px; border: 1px solid rgba(255,255,255,.2); background: rgba(0,0,0,.6); color: #fff; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(4px); }
+.card-edit:hover { background: var(--brand); border-color: var(--brand); }

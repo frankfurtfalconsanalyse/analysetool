@@ -594,6 +594,126 @@ const Falcons = (() => {
         await T('comments').doc(commentId).update({ readBy: isRead ? FV.arrayRemove(u.nr) : FV.arrayUnion(u.nr) });
     }
 
+    /**
+     * Bearbeiten-Fenster.
+     * fields: [{ key, label, type: 'text'|'date'|'select'|'time'|'number'|'textarea', value, options: [[value, label]], placeholder, hint }]
+     * onSave(values) → true/undefined schließt das Fenster; onDelete() optional (zeigt „Löschen“)
+     */
+    function formDialog({ title, fields, onSave, onDelete, deleteLabel = 'Löschen' }) {
+        let m = document.getElementById('form-dialog');
+        if (!m) { m = document.createElement('div'); m.id = 'form-dialog'; m.className = 'modal'; document.body.appendChild(m); }
+        const field = f => {
+            const v = f.value ?? '';
+            let input;
+            if (f.type === 'select') input = `<select class="select" data-key="${f.key}">${f.options.map(([ov, ol]) => `<option value="${esc(ov)}" ${String(ov) === String(v) ? 'selected' : ''}>${esc(ol)}</option>`).join('')}</select>`;
+            else if (f.type === 'textarea') input = `<textarea class="textarea" data-key="${f.key}" placeholder="${esc(f.placeholder || '')}">${esc(v)}</textarea>`;
+            else input = `<input class="input" data-key="${f.key}" type="${f.type === 'date' ? 'date' : 'text'}" ${f.type === 'number' ? 'inputmode="numeric"' : ''} value="${esc(v)}" placeholder="${esc(f.placeholder || '')}" ${f.type === 'time' ? 'style="font-family:var(--mono)"' : ''}>`;
+            return `<div class="field" ${f.half ? 'style="grid-column:span 1"' : 'style="grid-column:1 / -1"'}><label>${esc(f.label)}</label>${input}${f.hint ? `<span class="form-hint">${esc(f.hint)}</span>` : ''}</div>`;
+        };
+        m.innerHTML = `<div class="modal-panel" style="max-width:520px">
+            <div class="modal-head"><h3>${esc(title)}</h3><button class="btn btn-ghost btn-icon btn-sm" data-act="close">${icon('x')}</button></div>
+            <div class="card-body" style="display:grid; grid-template-columns:1fr 1fr; gap:14px; overflow-y:auto">${fields.map(field).join('')}</div>
+            <div class="modal-head" style="border-top:1px solid var(--border); border-bottom:0">
+                ${onDelete ? `<button class="btn btn-ghost btn-danger" data-act="delete">${icon('trash', 'icon-sm')} ${esc(deleteLabel)}</button>` : '<span></span>'}
+                <div style="display:flex; gap:8px"><button class="btn" data-act="close">Abbrechen</button><button class="btn btn-primary" data-act="save">${icon('save', 'icon-sm')} Speichern</button></div>
+            </div></div>`;
+        m.classList.add('open');
+        const close = () => m.classList.remove('open');
+        m.onclick = async e => {
+            if (e.target === m) return close();
+            const b = e.target.closest('[data-act]'); if (!b) return;
+            if (b.dataset.act === 'close') return close();
+            b.disabled = true;
+            try {
+                if (b.dataset.act === 'delete') { if (await onDelete() !== false) close(); }
+                else {
+                    const values = {}; m.querySelectorAll('[data-key]').forEach(el => values[el.dataset.key] = el.value.trim());
+                    if (await onSave(values) !== false) close();
+                }
+            } catch (err) { console.error(err); toast('Speichern fehlgeschlagen', 'error'); }
+            b.disabled = false;
+        };
+        const first = m.querySelector('[data-key]'); if (first) setTimeout(() => first.focus(), 50);
+    }
+
+    /** Spiel/Training samt Ereignissen und privatem Feedback löschen (Clips daraus bleiben erhalten) */
+    async function deleteRecording(kind, id, title) {
+        if (!confirm(`„${title}“ wirklich löschen? Ereignisse und Feedback dazu werden mit gelöscht. Daraus geschnittene Clips bleiben erhalten.`)) return false;
+        const col = kind === 'game' ? 'games' : 'trainings', fk = kind === 'game' ? 'gameId' : 'trainingId';
+        const [ev, cm] = await Promise.all([T(kind + '_events').where(fk, '==', id).get(), T(kind + '_comments').where(fk, '==', id).get()]);
+        const refs = [...ev.docs.map(d => T(kind + '_events').doc(d.id)), ...cm.docs.map(d => T(kind + '_comments').doc(d.id)), T(col).doc(id)];
+        for (let i = 0; i < refs.length; i += 400) { const b = db.batch(); refs.slice(i, i + 400).forEach(r => b.delete(r)); await b.commit(); }
+        toast('Gelöscht');
+        return true;
+    }
+
+    /** Spiel/Training bearbeiten. rec = { id, title, ytId, date, opponentId, scoreFor, scoreAgainst } */
+    async function editRecording(kind, rec, { onDone, onDeleted } = {}) {
+        const col = kind === 'game' ? 'games' : 'trainings';
+        const opps = kind === 'game' ? ((await T('opponents').get().catch(() => null)) || { docs: [] }).docs.map(d => [d.id, d.data().name]).sort((a, b) => a[1].localeCompare(b[1], 'de')) : [];
+        const fields = [
+            { key: 'title', label: kind === 'game' ? 'Spiel' : 'Fokus / Titel', value: rec.title },
+            { key: 'url', label: 'YouTube-Link', value: rec.ytId ? `https://youtu.be/${rec.ytId}` : '', hint: 'Neuen Link einfügen, um das Video auszutauschen' },
+            { key: 'date', label: 'Datum', type: 'date', value: rec.date || '', half: true }
+        ];
+        if (kind === 'game') fields.push(
+            { key: 'opponentId', label: 'Gegner', type: 'select', value: rec.opponentId || '', options: [['', '– kein Gegner –'], ...opps], half: true },
+            { key: 'scoreFor', label: 'Tore Falcons', type: 'number', value: rec.scoreFor ?? '', half: true },
+            { key: 'scoreAgainst', label: 'Tore Gegner', type: 'number', value: rec.scoreAgainst ?? '', half: true });
+        formDialog({
+            title: kind === 'game' ? 'Spiel bearbeiten' : 'Training bearbeiten', fields,
+            onSave: async v => {
+                const { id } = parseYouTube(v.url);
+                if (!v.title) { toast('Bitte einen Titel eingeben', 'error'); return false; }
+                if (!id) { toast('Ungültiger YouTube-Link', 'error'); return false; }
+                if (!v.date) { toast('Bitte ein Datum wählen', 'error'); return false; }
+                const FVd = firebase.firestore.FieldValue.delete();
+                const data = { title: v.title, ytId: id, date: v.date };
+                if (kind === 'game') {
+                    data.opponentId = v.opponentId || FVd;
+                    data.scoreFor = v.scoreFor === '' ? FVd : Math.max(0, parseInt(v.scoreFor) || 0);
+                    data.scoreAgainst = v.scoreAgainst === '' ? FVd : Math.max(0, parseInt(v.scoreAgainst) || 0);
+                }
+                await T(col).doc(rec.id).update(data);
+                toast('Gespeichert');
+                if (onDone) onDone();
+            },
+            onDelete: async () => { if (!(await deleteRecording(kind, rec.id, rec.title))) return false; if (onDeleted) onDeleted(); }
+        });
+    }
+
+    /** Clip bearbeiten (YouTube-Clips: Titel, Link, Start/Ende, Situation, Position) */
+    function editClip(clip, { onDone, onDeleted } = {}) {
+        const col = clip.shared ? 'club_clips' : 'youtube_clips';
+        formDialog({
+            title: 'Clip bearbeiten',
+            fields: [
+                { key: 'title', label: 'Titel', value: clip.title },
+                { key: 'url', label: 'YouTube-Link', value: clip.ytId ? `https://youtu.be/${clip.ytId}` : '' },
+                { key: 'start', label: 'Start', type: 'time', value: fmtTime(clip.startTime || 0), half: true },
+                { key: 'end', label: 'Ende (leer = bis zum Schluss)', type: 'time', value: clip.endTime ? fmtTime(clip.endTime) : '', half: true },
+                { key: 'category', label: 'Spielsituation', type: 'select', value: clip.category || CFG.categories[0], options: CFG.categories.map(c => [c, c]), half: true },
+                { key: 'position', label: 'Position', type: 'select', value: clip.position || 'Alle', options: ['Alle', ...CFG.positions].map(p => [p, p === 'Alle' ? 'Alle Positionen' : p]), half: true }
+            ],
+            onSave: async v => {
+                const { id } = parseYouTube(v.url);
+                if (!v.title) { toast('Bitte einen Titel eingeben', 'error'); return false; }
+                if (!id) { toast('Ungültiger YouTube-Link', 'error'); return false; }
+                const start = hasTime(v.start) ? parseTime(v.start) : 0, end = hasTime(v.end) ? parseTime(v.end) : null;
+                if (end !== null && end <= start) { toast('Das Ende muss nach dem Start liegen', 'error'); return false; }
+                await T(col).doc(clip.id).update({ title: v.title, ytId: id, startTime: start, endTime: end === null ? firebase.firestore.FieldValue.delete() : end, category: v.category, position: v.position });
+                toast('Clip gespeichert');
+                if (onDone) onDone();
+            },
+            onDelete: async () => {
+                if (!confirm(`Clip „${clip.title}“ löschen? Er verschwindet auch aus Sessions.`)) return false;
+                await T(col).doc(clip.id).delete();
+                toast('Clip gelöscht');
+                if (onDeleted) onDeleted();
+            }
+        });
+    }
+
     /** Enter = senden, Shift+Enter = neue Zeile */
     function submitOnEnter(textarea, fn) {
         textarea.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); fn(); } });
@@ -606,7 +726,7 @@ const Falcons = (() => {
         toDate, season, seasonSelect, inSeason, fmtTime, dueInfo,
         icon, getUser, setUser, logout, requireUser, isAdmin, mountShell, authState, signIn, register, authError,
         esc, parseTime, hasTime, formatText, resolveMentions, parseYouTube, ytThumb, fmtDate, playerMap,
-        loadMedia, mediaCard, threadHtml, openReply, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
+        loadMedia, mediaCard, threadHtml, openReply, formDialog, deleteRecording, editRecording, editClip, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
         onTimestamp: null, openClip: null, onDrawing: null
     };
     return api;

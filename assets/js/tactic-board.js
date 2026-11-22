@@ -506,19 +506,37 @@ const TacticBoard = (() => {
             const phases = this.board.phases;
             let start = this.phase >= phases.length - 1 ? 0 : this.phase;
             this.selected = null;
-            // Jede Phase: Aufstellung zeigen, dann wachsen die Pfeile gleichzeitig mit den laufenden Spielern
+            // Jede Phase: 1. Aufstellung zeigen  2. Pfeile von Anfang bis Ende ziehen  3. Figuren/Ball bewegen
             for (let i = start; i < phases.length; i++) {
                 if (run.cancel) return;
                 this.phase = i; this.drawProgress = 0; this.render();
-                await sleep(700 / speed);
+                await sleep(600 / speed);
                 if (run.cancel) return;
-                if (i < phases.length - 1) await this.tween(phases[i], phases[i + 1], 1500 / speed, run);
-                else await this.tween(phases[i], phases[i], 1200 / speed, run); // letzte Phase: nur Pfeile ziehen
-                if (run.cancel) return;
+                if (phases[i].drawings.length) {
+                    await this.growDrawings(phases[i].drawings, 1100 / speed, run);
+                    if (run.cancel) return;
+                    await sleep(250 / speed);
+                }
                 this.drawProgress = null; this.renderDrawings(phases[i].drawings);
+                if (i < phases.length - 1) await this.tween(phases[i], phases[i + 1], 1500 / speed, run);
+                if (run.cancel) return;
                 await sleep(500 / speed);
             }
             if (this.playing === run) { this.playing = null; this.drawProgress = null; this.render(); }
+        }
+
+        /** Pfeile/Zeichnungen der Phase von 0 auf volle Länge „ziehen“ */
+        growDrawings(list, ms, run) {
+            return new Promise(resolve => {
+                const t0 = performance.now();
+                const frame = now => {
+                    if (run.cancel) return resolve();
+                    const k = Math.min((now - t0) / ms, 1);
+                    this.renderDrawings(list, ease(k));
+                    k < 1 ? requestAnimationFrame(frame) : resolve();
+                };
+                requestAnimationFrame(frame);
+            });
         }
 
         /** Figuren von Phase a nach Phase b bewegen – entlang passender Laufwege/Pässe */
@@ -548,7 +566,6 @@ const TacticBoard = (() => {
                 const frame = now => {
                     if (run.cancel) return resolve();
                     const k = Math.min((now - t0) / ms, 1), e = ease(k);
-                    this.renderDrawings(a.drawings, e);
                     const list = routes.map(({ p, route }) => {
                         if (!route) return { ...p, _op: e };
                         const [x, y] = route.length === 1 ? route[0] : pointAt(route, e);

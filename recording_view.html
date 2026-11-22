@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261121b">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261122a">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261121b"></script>
-    <script src="assets/js/core.js?v=20261121b"></script>
-    <script src="assets/js/player.js?v=20261121b"></script>
+    <script src="assets/js/config.js?v=20261122a"></script>
+    <script src="assets/js/core.js?v=20261122a"></script>
+    <script src="assets/js/player.js?v=20261122a"></script>
     <style>
         .time-row { display: flex; gap: 8px; }
         .time-row .input { font-family: var(--mono); }
@@ -78,6 +78,10 @@
             <a class="crumb" id="crumb">Zurück</a>
             <h1 id="title">Aufzeichnung</h1>
             <p class="muted" id="date" style="font-size:13px; margin-top:2px"></p>
+            <div class="hidden" id="rec-admin" style="display:flex; gap:6px; margin-top:10px">
+                <button class="btn btn-sm" onclick="editThis()" id="btn-edit-rec"></button>
+                <button class="btn btn-sm btn-ghost btn-danger" onclick="deleteThis()" id="btn-del-rec"></button>
+            </div>
             <div class="segmented full" style="margin-top:14px">
                 <button id="tab-events" onclick="setMode('events')"></button>
                 <button id="tab-clips" onclick="setMode('clips')"></button>
@@ -213,6 +217,9 @@
         admin = await F.isAdmin();
         if (admin) {
             $('admin-area').classList.remove('hidden');
+            $('rec-admin').classList.remove('hidden');
+            $('btn-edit-rec').innerHTML = I('pen', 'icon-sm') + ' Bearbeiten';
+            $('btn-del-rec').innerHTML = I('trash', 'icon-sm') + ' Löschen';
             $('player-pick').classList.remove('hidden');
             $('tab-feedback').innerHTML = I('message', 'icon-sm') + ' Spieler-Feedback';
             roster.forEach(p => $('player-select').insertAdjacentHTML('beforeend', `<option value="${p.id}">#${p.id} ${F.esc(p.name)}</option>`));
@@ -355,14 +362,21 @@
                         ${(c.players || []).length ? `<div class="tagline">${c.players.map(n => `<span class="tag ${n === user.nr ? 'me' : ''}"><b>#${F.esc(n)}</b> ${F.esc(pname(n))}</span>`).join('')}</div>` : ''}
                     </div>
                     <div class="ev-actions">
-                        <a class="btn btn-ghost btn-icon btn-sm" title="Analyse-Modus" href="analyze.html?id=${c.id}&type=youtube" onclick="event.stopPropagation()">${I('pen', 'icon-sm')}</a>
-                        ${admin ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger del" title="Löschen" onclick="event.stopPropagation(); F.deleteDoc('youtube_clips', '${c.id}', 'Clip löschen?')">${I('trash', 'icon-sm')}</button>` : ''}
+                        <a class="btn btn-ghost btn-icon btn-sm" title="Analyse-Modus" href="analyze.html?id=${c.id}&type=youtube" onclick="event.stopPropagation()">${I('eye', 'icon-sm')}</a>
+                        ${admin ? `<button class="btn btn-ghost btn-icon btn-sm" title="Bearbeiten" onclick="event.stopPropagation(); editCutClip('${c.id}')">${I('pen', 'icon-sm')}</button>
+                        <button class="btn btn-ghost btn-icon btn-sm btn-danger" title="Löschen" onclick="event.stopPropagation(); F.deleteDoc('youtube_clips', '${c.id}', 'Clip löschen?')">${I('trash', 'icon-sm')}</button>` : ''}
                     </div>
                 </div>`).join('')
                 : F.empty('Noch keine Clips', admin ? 'Szene im Video suchen, Start und Ende setzen und unten speichern – oder bei einem Ereignis auf das Video-Symbol klicken.' : 'Aus dieser Aufzeichnung wurden noch keine Clips geschnitten.', 'video');
         });
     }
     let clips = [];
+    function editCutClip(id) { const c = clips.find(x => x.id === id); if (c) F.editClip(c); }
+    /** Diese Aufzeichnung bearbeiten / löschen */
+    function editThis() {
+        F.editRecording(kindKey, { id: itemId, ...rec }, { onDone: () => location.reload(), onDeleted: () => location.replace(K.back) });
+    }
+    async function deleteThis() { if (await F.deleteRecording(kindKey, itemId, rec.title)) location.replace(K.back); }
     /** Clip im großen Player als Schleife abspielen */
     function playClip(id) {
         const c = clips.find(x => x.id === id); if (!c || !yt.ready) return;
