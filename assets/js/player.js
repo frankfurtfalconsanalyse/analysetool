@@ -43,6 +43,7 @@ const FalconsPlayer = (() => {
         const map = {
             ' ': () => p.toggle(), 'k': () => p.toggle(),
             'ArrowLeft': () => p.skip(e.shiftKey ? -1 : -5), 'ArrowRight': () => p.skip(e.shiftKey ? 1 : 5),
+            'Home': () => p.clipNav && p.toStart(), 'End': () => p.clipNav && p.toEnd(),
             ',': () => p.step(-1), '.': () => p.step(1),
             '1': () => p.setRate(0.25), '2': () => p.setRate(0.5), '3': () => p.setRate(1), '4': () => p.setRate(2),
             'a': () => p.setA(), 'b': () => p.setB(), 'x': () => p.clearLoop()
@@ -61,10 +62,14 @@ const FalconsPlayer = (() => {
                 <div class="fp-stage"><div class="fp-video"></div></div>
                 <div class="fp-bar">
                     <button class="fp-btn fp-play" title="Abspielen / Pause (Leertaste)">${ICON('play')}</button>
+                    <button class="fp-btn fp-clipnav hidden" data-act="start" title="Zum Anfang des Clips (Pos1)">${ICON('skipBack')}</button>
                     <button class="fp-btn" data-act="skip-5" title="5 s zurück (←)">−5s</button>
+                    <button class="fp-btn" data-act="skip-1" title="1 s zurück (Shift+←)">−1s</button>
                     <button class="fp-btn" data-act="step-1" title="Ein Bild zurück (,)">${ICON('chevronLeft')}</button>
                     <button class="fp-btn" data-act="step1" title="Ein Bild vor (.)">${ICON('chevronRight')}</button>
+                    <button class="fp-btn" data-act="skip1" title="1 s vor (Shift+→)">+1s</button>
                     <button class="fp-btn" data-act="skip5" title="5 s vor (→)">+5s</button>
+                    <button class="fp-btn fp-clipnav hidden" data-act="end" title="Zum Ende des Clips (Ende)">${ICON('skipForward')}</button>
                     <span class="fp-time">0:00:00</span>
                     <span class="fp-sep"></span>
                     <div class="fp-rates">${RATES.map((r, i) => `<button class="fp-rate ${r === 1 ? 'active' : ''}" data-rate="${r}" title="Tempo ${r}× (${i + 1})">${r === 0.25 ? '¼' : r === 0.5 ? '½' : r}×</button>`).join('')}</div>
@@ -73,7 +78,7 @@ const FalconsPlayer = (() => {
                     <button class="fp-btn" data-act="b" title="Schleife: Ende setzen (B)">B</button>
                     <span class="fp-loop hidden"></span>
                     <button class="fp-btn fp-clear hidden" data-act="x" title="Schleife beenden (X)">${ICON('x')}</button>
-                    <span class="fp-help" title="Tastenkürzel: Leertaste = Play/Pause · ← → = 5 s · Shift+← → = 1 s · , . = Bild für Bild · 1–4 = Tempo · A/B = Schleife · X = Schleife beenden">?</span>
+                    <span class="fp-help" title="Tastenkürzel: Leertaste = Play/Pause · ← → = 5 s · Shift+← → = 1 s · , . = Bild für Bild · Pos1/Ende = Clip-Anfang/-Ende · 1–4 = Tempo · A/B = Schleife · X = Schleife beenden">?</span>
                 </div>`;
             host.appendChild(this.root);
             this.stage = this.root.querySelector('.fp-stage');
@@ -86,6 +91,8 @@ const FalconsPlayer = (() => {
                 if (b.dataset.rate) return this.setRate(+b.dataset.rate);
                 const a = b.dataset.act;
                 if (a === 'skip-5') this.skip(-5); else if (a === 'skip5') this.skip(5);
+                else if (a === 'skip-1') this.skip(-1); else if (a === 'skip1') this.skip(1);
+                else if (a === 'start') this.toStart(); else if (a === 'end') this.toEnd();
                 else if (a === 'step-1') this.step(-1); else if (a === 'step1') this.step(1);
                 else if (a === 'a') this.setA(); else if (a === 'b') this.setB(); else if (a === 'x') this.clearLoop();
             });
@@ -148,6 +155,14 @@ const FalconsPlayer = (() => {
         }
         seek(sec, { play = true } = {}) { if (!this.ready) return; this.yt.seekTo(Math.max(0, sec), true); if (play) this.play(); }
         skip(d) { this.seek(this.time() + d, { play: this.playing() }); }
+        /** Clip-Navigation: Anfang/Ende des Clips (ohne Ende → Videoende) */
+        setClipNav(on) { this.clipNav = on; this.root.querySelectorAll('.fp-clipnav').forEach(b => b.classList.toggle('hidden', !on)); }
+        toStart() { this.seek(this.clipStart || 0, { play: this.playing() }); }
+        toEnd() {
+            if (!this.ready) return;
+            const end = this.end || this.duration();
+            this.pause(); this.yt.seekTo(Math.max(0, end - 0.05), true);
+        }
         step(dir) { if (!this.ready) return; this.pause(); this.yt.seekTo(Math.max(0, this.time() + dir / FPS), true); }
         setRate(r) {
             this.rate = r;
@@ -193,6 +208,7 @@ const FalconsPlayer = (() => {
                 if (!this.player) this.player = new Player(this.host, this.opts);
                 this.player.root.classList.remove('hidden');
                 this.player.clipStart = clip.startTime || 0;
+                this.player.setClipNav(true);
                 return this.player.load(clip.ytId, { start: clip.startTime || 0, end: clip.endTime || null, autoplay: this.opts.autoplay !== false });
             }
             if (this.player) { this.player.pause(); this.player.root.classList.add('hidden'); }

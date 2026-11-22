@@ -24,20 +24,28 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261122a">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261122b">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261122a"></script>
-    <script src="assets/js/core.js?v=20261122a"></script>
-    <script src="assets/js/player.js?v=20261122a"></script>
+    <script src="assets/js/config.js?v=20261122b"></script>
+    <script src="assets/js/core.js?v=20261122b"></script>
+    <script src="assets/js/player.js?v=20261122b"></script>
     <style>
         .time-row { display: flex; gap: 8px; }
         .time-row .input { font-family: var(--mono); }
         .admin-form { display: flex; flex-direction: column; gap: 10px; }
         .admin-form .textarea { min-height: 64px; }
         .admin-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-faint); }
-        .side-foot { max-height: 58%; overflow-y: auto; }
+        .side-foot { max-height: 58%; overflow-y: auto; padding: 0; }
+        .side-foot .admin-form { padding: 12px 14px 14px; }
+        /* Eingabebereich einklappbar: eingeklappt ist nur die Kopfzeile sichtbar */
+        .admin-label { cursor: pointer; user-select: none; margin: -12px -14px 0; padding: 12px 14px; border-radius: 0; }
+        .admin-label:hover { color: var(--text); background: var(--surface-2); }
+        .admin-label .chev { margin-left: auto; transition: transform .2s; }
+        .side-foot.collapsed .admin-label { margin-bottom: -14px; color: var(--text-muted); }
+        .side-foot.collapsed .admin-label .chev { transform: rotate(180deg); }
+        .side-foot.collapsed .admin-form > :not(.admin-label) { display: none; }
         .people { display: flex; flex-direction: column; gap: 8px; }
         .people .lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); }
         .chip-pick { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -102,9 +110,9 @@
         </div>
 
         <!-- nur für Trainer/Admins -->
-        <div class="side-foot hidden" id="admin-area">
+        <div class="side-foot collapsed hidden" id="admin-area">
             <div class="admin-form" id="form-events">
-                <div class="admin-label" id="lbl-events"></div>
+                <div class="admin-label" id="lbl-events" onclick="toggleFoot()"></div>
                 <div class="time-row">
                     <select id="ev-type" class="select" style="flex:1"></select>
                     <input id="ev-time" class="input" placeholder="0:00:00" style="width:100px">
@@ -118,7 +126,7 @@
                 </div>
             </div>
             <div class="admin-form hidden" id="form-clips">
-                <div class="admin-label" id="lbl-clips"></div>
+                <div class="admin-label" id="lbl-clips" onclick="toggleFoot()"></div>
                 <div class="form-2">
                     <div class="field"><label>Start</label><div class="time-row"><input id="cl-start" class="input" placeholder="0:00:00"><button class="btn btn-icon" onclick="useCurrentTime('cl-start')" title="Aktuelle Videozeit" id="btn-now3"></button></div></div>
                     <div class="field"><label>Ende</label><div class="time-row"><input id="cl-end" class="input" placeholder="0:00:00"><button class="btn btn-icon" onclick="useCurrentTime('cl-end')" title="Aktuelle Videozeit" id="btn-now4"></button></div></div>
@@ -137,7 +145,7 @@
                 <button class="btn btn-primary" onclick="saveClip()" id="btn-save-clip"></button>
             </div>
             <div class="admin-form hidden" id="form-feedback">
-                <div class="admin-label" id="lbl-feedback"></div>
+                <div class="admin-label" id="lbl-feedback" onclick="toggleFoot()"></div>
                 <textarea id="fb-text" class="textarea" placeholder="Privates Feedback … Zeitstempel als 0:15:30"></textarea>
                 <div class="time-row">
                     <button class="btn" onclick="insertCurrentTime()" id="btn-now2" style="flex:1"></button>
@@ -185,7 +193,8 @@
     $('crumb').innerHTML = I('arrowLeft', 'icon-sm') + ' ' + K.backLabel;
     $('tab-events').innerHTML = I('list', 'icon-sm') + ' ' + K.eventsLabel;
     $('tab-clips').innerHTML = I('video', 'icon-sm') + ' Clips';
-    $('lbl-clips').innerHTML = I('plus', 'icon-sm') + ' Clip aus dieser Aufzeichnung schneiden';
+    const CHEV = I('chevronDown', 'icon-sm chev');
+    $('lbl-clips').innerHTML = I('plus', 'icon-sm') + ' Clip aus dieser Aufzeichnung schneiden' + CHEV;
     $('btn-now3').innerHTML = $('btn-now4').innerHTML = I('clock', 'icon-sm');
     $('btn-take-loop').innerHTML = I('repeat', 'icon-sm') + ' A–B-Schleife übernehmen';
     $('btn-save-clip').innerHTML = I('save', 'icon-sm') + ' Clip speichern';
@@ -193,8 +202,8 @@
     $('cl-pos').innerHTML = ['Alle', ...F.CFG.positions].map(p => `<option value="${p}">${p === 'Alle' ? 'Alle Positionen' : p}</option>`).join('');
     $('ev-type').addEventListener('change', () => renderEventPeople());
     $('tab-feedback').innerHTML = I('message', 'icon-sm') + ' Mein Feedback';
-    $('lbl-events').innerHTML = I('plus', 'icon-sm') + ' ' + K.eventSingular + ' hinzufügen';
-    $('lbl-feedback').innerHTML = I('lock', 'icon-sm') + ' Privates Feedback senden';
+    $('lbl-events').innerHTML = I('plus', 'icon-sm') + ' ' + K.eventSingular + ' hinzufügen' + CHEV;
+    $('lbl-feedback').innerHTML = I('lock', 'icon-sm') + ' Privates Feedback senden' + CHEV;
     $('btn-now1').innerHTML = I('clock', 'icon-sm');
     $('btn-now2').innerHTML = I('clock', 'icon-sm') + ' Zeit einfügen';
     $('btn-send-fb').innerHTML = I('send', 'icon-sm') + ' Senden';
@@ -241,6 +250,15 @@
         if (blocked || !yt || !yt.ready) return window.open(`https://www.youtube.com/watch?v=${ytId}&t=${sec}s`, '_blank');
         yt.seek(sec);
     }
+
+    /** Eingabebereich auf-/zuklappen (Zustand wird gemerkt; Standard: zugeklappt) */
+    function toggleFoot(open) {
+        const foot = $('admin-area');
+        const willOpen = open === undefined ? foot.classList.contains('collapsed') : open;
+        foot.classList.toggle('collapsed', !willOpen);
+        try { localStorage.setItem('falcons_foot_open', willOpen ? '1' : ''); } catch (e) {}
+    }
+    try { if (localStorage.getItem('falcons_foot_open') === '1') $('admin-area').classList.remove('collapsed'); } catch (e) {}
 
     function setMode(m) {
         mode = m;
@@ -311,7 +329,7 @@
         $('ev-time').value = ''; $('ev-desc').value = '';
         $('btn-cancel-event').classList.add('hidden');
         $('btn-save-event').textContent = 'Speichern';
-        $('lbl-events').innerHTML = I('plus', 'icon-sm') + ' ' + K.eventSingular + ' hinzufügen';
+        $('lbl-events').innerHTML = I('plus', 'icon-sm') + ' ' + K.eventSingular + ' hinzufügen' + CHEV;
         renderEventPeople();
     }
     function editEvent(id) {
@@ -322,7 +340,8 @@
         $('ev-time').value = e.time || ''; $('ev-desc').value = e.desc || '';
         $('btn-cancel-event').classList.remove('hidden');
         $('btn-save-event').textContent = 'Änderungen speichern';
-        $('lbl-events').innerHTML = I('pen', 'icon-sm') + ' ' + K.eventSingular + ' bearbeiten';
+        $('lbl-events').innerHTML = I('pen', 'icon-sm') + ' ' + K.eventSingular + ' bearbeiten' + CHEV;
+        toggleFoot(true);
         renderEventPeople();
         $('form-events').scrollIntoView({ block: 'nearest' });
     }
@@ -395,7 +414,7 @@
     }
     function clipFromEvent(id) {
         const e = events.find(x => x.id === id); if (!e) return;
-        setMode('clips');
+        setMode('clips'); toggleFoot(true);
         $('cl-start').value = FalconsPlayer.fmt(Math.max(0, e.sec - 8));
         $('cl-end').value = FalconsPlayer.fmt(e.sec + 4);
         $('cl-title').value = `${K.types[e.type] ? K.types[e.type].label : K.eventSingular}: ${e.desc}`.slice(0, 80);

@@ -67,6 +67,8 @@ const Falcons = (() => {
         pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
         copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
         book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+        skipBack: '<path d="M19 20 9 12l10-8v16z"/><path d="M5 19V5"/>',
+        skipForward: '<path d="m5 4 10 8-10 8V4z"/><path d="M19 5v14"/>',
         field: '<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M12 5v14"/>'
     };
     function icon(name, cls = '') {
