@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261123g">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261123h">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261123g"></script>
-    <script src="assets/js/core.js?v=20261123g"></script>
+    <script src="assets/js/config.js?v=20261123h"></script>
+    <script src="assets/js/core.js?v=20261123h"></script>
     <style>
         .help h2 { font-size: 18px; display: flex; align-items: center; gap: 10px; }
         .help h3 { font-size: 15px; margin: 22px 0 6px; }
@@ -144,11 +144,11 @@
         <p>Tore und Strafen eines Spiels lassen sich aus dem Saisonmanager übernehmen – mit Torschütze, Vorlage, Spielstand und Spielzeit. Jedes Ereignis wird <b>10 Sekunden vor dem Tor</b> eingetragen, damit die Szene davor mit drin ist.</p>
         <ol>
             <li><b>Link eintragen:</b> Beim Anlegen eines Spiels (Verwaltung → Spiele) den Saisonmanager-Link einfügen, z. B. <code>saisonmanager.de/…/spiel/58691</code>, und <b>Übernehmen</b> klicken – Titel, Datum, Video-Link, Ergebnis und Gegner werden ausgefüllt. Bei bestehenden Spielen: <b>Bearbeiten</b> → Feld „Saisonmanager-Link“.</li>
-            <li><b>Abgleichen:</b> In der Aufzeichnung auf <b>Spielbericht</b> tippen. Das Video an den Anpfiff eines Drittels spulen und <b>„Anpfiff 1. Drittel ist jetzt“</b> tippen – das für jedes Drittel wiederholen. Genauer wird es, wenn du zusätzlich an weiteren Stellen die Spieluhr aus dem Video-Scoreboard abliest: Drittel wählen, Uhrzeit eintragen (z. B. 10:00) und auf das Uhr-Symbol tippen.</li>
-            <li><b>Prüfen:</b> In der Liste springt ▶ zur geschätzten Stelle. Liegt ein Tor daneben, das Tor im Video suchen und <b>Jetzt</b> tippen – das verbessert auch alle folgenden Schätzungen (Unterbrechungen werden so ausgeglichen).</li>
+            <li><b>Drittel markieren:</b> In der Aufzeichnung auf <b>Spielbericht</b> tippen. Floorball läuft mit gestoppter Zeit – ein Drittel dauert im Video oft 30 Minuten und mehr. Deshalb für jedes Drittel zu <b>Anpfiff</b> und <b>Schlusssirene</b> spulen und den jeweiligen Knopf tippen. Die Unterbrechungen nach Toren und Strafen rechnet der Hub dazwischen selbst ein. Läuft die Uhr im Video rückwärts (20:00 → 0:00), das Häkchen darunter setzen.</li>
+            <li><b>Tor für Tor:</b> ▶ springt 10 Sekunden vor die geschätzte Stelle. Siehst du das Tor, <b>Jetzt</b> tippen – das nächste Tor ist dann schon ausgewählt, und jedes bestätigte Tor macht die folgenden Schätzungen genauer. Liegt die Stelle daneben, die <b>Spieluhr im Video ablesen</b> und eintragen (z. B. 7:40 oder einfach 740): Der Hub springt dann so, dass das Tor frühestens 10 Sekunden später kommt – einfach weiterschauen.</li>
             <li><b>Ereignisse eintragen:</b> legt Tore, Gegentore und (optional) Strafen als Ereignisse an. Erneutes Eintragen aktualisiert die Zeiten, ohne doppelte Einträge – von dir ergänzte „Auf dem Feld“-Spieler bleiben erhalten.</li>
         </ol>
-        <p>Danach zeigt die Aufzeichnung oben laufend den <b>Spielstand und die Spielzeit</b> zur aktuellen Videostelle. Das Scoreboard im Video selbst kann der Hub nicht auslesen (YouTube gibt das Bild nicht frei) – deshalb der Abgleich über die Anpfiffe.</p>
+        <p>Nicht bestätigte Tore werden geschätzt eingetragen und lassen sich später jederzeit genauer abgleichen und neu eintragen. Danach zeigt die Aufzeichnung oben laufend den <b>Spielstand und die Spielzeit</b> zur aktuellen Videostelle. Das Scoreboard im Video selbst kann der Hub nicht auslesen (YouTube gibt das Bild nicht frei) – deshalb der Abgleich über Anpfiff, Drittelende und abgelesene Spieluhr.</p>
         <p><b>Einmalige Einrichtung (Vereins-Admin):</b> Der Saisonmanager erlaubt keine direkten Abrufe von anderen Webseiten. Deshalb läuft der Abruf über ein kleines Google-Apps-Script: Code aus <code>tools/saisonmanager-proxy.gs</code> auf script.google.com als Web-App bereitstellen (Ausführen als: Ich · Zugriff: Jeder) und die …/exec-URL unter Verwaltung → Spiele → <b>Saisonmanager-Verbindung</b> eintragen, testen und speichern.</p>
 
         <h3>Fristen & Status-Check</h3>

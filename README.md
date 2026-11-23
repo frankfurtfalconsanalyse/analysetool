@@ -62,7 +62,7 @@ Trikotnummern gelten nur innerhalb eines Teams – #22 bei den Herren ist nicht 
 | `teams/{team}/video_metadata/{driveId}` | `position` für Drive-Clips |
 | `teams/{team}/sessions` | `title`, `description`, `videoIds[]` (Clip- oder Taktik-IDs), `dueDate`, `createdAt` |
 | `teams/{team}/comments` | Kommentare zu Clips: `videoId`, `text`, `author`, `authorNr`, `mentions[]`, `readBy[]`, `parentId` (Antwort), `drawing` + `drawingTime` |
-| `teams/{team}/games` · `trainings` | `title`, `ytId`, `date`; Spiele zusätzlich `opponentId`, `scoreFor`, `scoreAgainst`, `sm` (`id`, `link`, `weAre` = `home`/`guest`, `home`, `guest`), `smSync[]` (Abgleich `{ period, clock, video }`) |
+| `teams/{team}/games` · `trainings` | `title`, `ytId`, `date`; Spiele zusätzlich `opponentId`, `scoreFor`, `scoreAgainst`, `sm` (`id`, `link`, `weAre` = `home`/`guest`, `home`, `guest`, `stops[]`, `countdown`), `smSync[]` (Abgleich `{ period, clock, video, ev? }`) |
 | `teams/{team}/opponents` | Gegner: `name`, `strengths`, `weaknesses`, `keyPlayers`, `plan` |
 | `teams/{team}/game_events` · `training_events` | Timeline: `gameId`/`trainingId`, `type` (nur Spiele), `time`, `sec`, `desc`, `scorer`, `assist`, `onIce[]`, `players[]`; aus dem Saisonmanager zusätzlich `smEventId`, `smGoalSec`, `smScore`, `smPeriod`, `smClock` |
 | `teams/{team}/game_comments` · `training_comments` | privates Feedback: `targetNr`, `text`, `author` |
@@ -82,9 +82,12 @@ erlaubt keine Abrufe von fremden Webseiten (Session-Cookies, kein CORS), daher l
 bereitgestellt wird. Die …/exec-URL trägt ein Vereins-Admin unter Verwaltung → Spiele → *Saisonmanager-Verbindung*
 ein (gespeichert in `teams/herren.smProxyUrl`) oder sie steht fest in `config.js` (`saisonmanagerProxyUrl`).
 
-Abgleich Spielzeit ↔ Videozeit: Anker `{ period, clock, video }` (Sekunden). Zwischen zwei Ankern eines Drittels
-wird linear umgerechnet (Steigung 1–6, Unterbrechungen werden so ausgeglichen); mit nur einem Anker gilt die
-typische Steigung der anderen Drittel. Ereignisse werden 10 Sekunden vor der geschätzten Torzeit eingetragen.
+Abgleich Spielzeit ↔ Videozeit (gestoppte Zeit): Anker `{ period, clock, video, ev? }` (Sekunden; `ev` = bestätigtes
+Saisonmanager-Ereignis). Modell je Drittel: Videodauer bis Spieluhr *c* = 1,35 · *c* + 40 s je Tor bzw. 30 s je Strafe
+vor *c*. Das Modell wird über die Anker skaliert – zwischen zwei Ankern exakt durch beide, davor/danach mit der Skalierung
+des Drittels bzw. der anderen Drittel. Ohne Drittelende wird grob „nächster Anpfiff − 10 min Pause“ angenommen.
+`games.sm.stops` speichert die Unterbrechungen, `games.sm.countdown` eine rückwärts laufende Uhr.
+Ereignisse werden 10 Sekunden vor der geschätzten Torzeit eingetragen.
 
 ## Text-Konventionen in Kommentaren
 

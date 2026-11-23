@@ -527,6 +527,8 @@ const Falcons = (() => {
         el.className = `toast ${type}`;
         el.innerHTML = `${icon(type === 'error' ? 'alert' : 'check')}<span>${esc(msg)}</span>`;
         stack.appendChild(el);
+        // höchstens zwei gleichzeitig – sonst verdecken schnelle Folgen den Inhalt
+        while (stack.children.length > 2) stack.firstElementChild.remove();
         setTimeout(() => el.remove(), 2800);
     }
 

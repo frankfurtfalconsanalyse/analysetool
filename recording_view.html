@@ -24,14 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261123g">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261123h">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261123g"></script>
-    <script src="assets/js/core.js?v=20261123g"></script>
-    <script src="assets/js/player.js?v=20261123g"></script>
-    <script src="assets/js/saisonmanager.js?v=20261123g"></script>
+    <script src="assets/js/config.js?v=20261123h"></script>
+    <script src="assets/js/core.js?v=20261123h"></script>
+    <script src="assets/js/player.js?v=20261123h"></script>
+    <script src="assets/js/saisonmanager.js?v=20261123h"></script>
     <style>
         .time-row { display: flex; gap: 8px; }
         .time-row .input { font-family: var(--mono); }
@@ -80,12 +80,31 @@
         .sm-match { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); margin: 10px 0; }
         .sm-match b { font-family: var(--font-display); font-size: 22px; }
         .sm-match span { font-size: 13px; font-weight: 600; text-align: center; flex: 1; }
-        .anchor-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
-        .anchor-btns .btn { height: auto; min-height: 40px; padding: 6px; font-size: 12px; white-space: normal; line-height: 1.2; }
+        .period-grid { display: grid; gap: 6px; margin-bottom: 10px; }
+        .period-row { display: grid; grid-template-columns: minmax(78px, .8fr) 1fr 1fr; gap: 6px; align-items: center; }
+        .period-row .pl { font-size: 12.5px; font-weight: 600; }
+        .period-row .btn { height: auto; min-height: 40px; padding: 5px 8px; font-size: 12px; line-height: 1.2; flex-direction: column; gap: 1px; }
+        .period-row .btn small { font-family: var(--mono); font-size: 10.5px; font-weight: 500; color: var(--text-faint); }
+        .period-row .btn.is-set { border-color: rgba(47,191,113,.45); background: var(--success-soft); }
+        .period-row .btn.is-set small { color: var(--success); }
+        .sm-opt { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--text-muted); margin-top: 8px; }
+        .sm-opt input { accent-color: var(--brand); }
+        details.sm-more { margin-top: 10px; }
+        details.sm-more summary { cursor: pointer; font-size: 12.5px; color: var(--text-muted); }
+        details.sm-more[open] summary { margin-bottom: 8px; }
         .anchor { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 6px 8px; border-radius: 7px; background: var(--surface); margin-top: 6px; }
         .anchor .mono { color: var(--text); }
         .anchor .sp { flex: 1; }
-        .sm-ev { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; background: var(--surface); border-left: 3px solid var(--ev-color, var(--border-strong)); }
+        .sm-ev { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; background: var(--surface); border-left: 3px solid var(--ev-color, var(--border-strong)); scroll-margin: 12px; }
+        .sm-ev.active { box-shadow: inset 0 0 0 1px var(--border-strong); background: var(--surface-3); }
+        .sm-ev.done .m small { color: var(--success); }
+        .sm-read { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding-top: 8px; border-top: 1px dashed var(--border-strong); font-size: 12px; color: var(--text-muted); }
+        .sm-read .input { width: 86px; height: 34px; font-family: var(--mono); }
+        .sm-read .grow { flex-basis: 100%; line-height: 1.35; }
+        @media (max-width: 960px) and (min-height: 640px) {
+            /* Video steht oben fest: Zeile beim automatischen Scrollen darunter anzeigen */
+            .sm-ev { scroll-margin-top: calc(var(--header-h) + 56.25vw + 110px); }
+        }
         .sm-ev + .sm-ev { margin-top: 6px; }
         .sm-ev .m { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.35; }
         .sm-ev .m b { display: block; font-size: 12px; color: var(--text); }
@@ -528,7 +547,13 @@
 
     /* ------------------------------------------------ Spielbericht (Saisonmanager) */
     const SMx = Saisonmanager;
-    let smGame = null, anchors = [], smSide = null, smError = '', smLoading = false;
+    let smGame = null, anchors = [], smSide = null, smError = '', smLoading = false, smActive = null;
+
+    /** Unterbrechungen nach Toren/Strafen (für die gestoppte Spielzeit) – aus dem Bericht oder am Spiel gespeichert */
+    const smStops = () => smGame ? SMx.stopsFromGame(smGame) : ((rec.sm && rec.sm.stops) || []);
+    const smEst = (period, clock) => SMx.estimate(anchors, period, clock, smStops());
+    const smCountdown = () => !!(rec.sm && rec.sm.countdown);
+    const smList = () => smGame ? smGame.events.filter(e => e.type === 'goal' || e.type === 'penalty') : [];
 
     function openSync() {
         setMode('sync');
@@ -546,35 +571,99 @@
         smLoading = false; renderSync();
     }
 
-    async function saveSmMeta() {
-        const sm = { id: smGame.id, link: smGame.link, weAre: smSide, home: smGame.home, guest: smGame.guest };
+    async function saveSmMeta(extra = {}) {
+        const sm = { id: smGame.id, link: smGame.link, weAre: smSide, home: smGame.home, guest: smGame.guest,
+            stops: SMx.stopsFromGame(smGame), countdown: smCountdown(), ...extra };
         rec.sm = sm;
         await F.T('games').doc(itemId).update({ sm });
     }
     async function setSide(side) { smSide = side; await saveSmMeta(); renderSync(); }
+    async function setCountdown(on) { await saveSmMeta({ countdown: !!on }); renderSync(); }
 
-    /** Abgleichspunkt: aktuelle Videostelle = angegebene Spielzeit */
-    function addAnchor(period, clock) {
-        if (!yt || !yt.ready) return F.toast('Video ist noch nicht bereit', 'error');
+    /** Abgelesene Spieluhr („7:40“, „7.40“, „740“) → Sekunden seit Drittelbeginn (rückwärts laufende Uhr umgerechnet) */
+    function readClock(period, raw) {
+        const m = String(raw || '').trim().match(/^(\d{0,2})[:.,]?(\d{2})$/);
+        if (!m || +m[2] > 59) { F.toast('Spieluhr wie im Video eingeben, z. B. 7:40', 'error'); return null; }
+        const c = (+m[1] || 0) * 60 + (+m[2]), len = SMx.periodLen(period);
+        if (c > len) { F.toast(`Die Uhr geht in diesem Abschnitt nur bis ${len / 60}:00`, 'error'); return null; }
+        return smCountdown() ? len - c : c;
+    }
+
+    /** Abgleichspunkt: aktuelle Videostelle = angegebene Spielzeit. Gibt die Videozeit zurück. */
+    function addAnchor(period, clock, { ev = null, quiet = false } = {}) {
+        if (!yt || !yt.ready) { F.toast('Video ist noch nicht bereit', 'error'); return null; }
         const video = Math.round(yt.time() * 10) / 10;
-        anchors = anchors.filter(a => !(a.period === period && Math.abs(a.clock - clock) < 2));
-        anchors.push({ period, clock, video });
+        anchors = anchors.filter(a => !(a.period === period && Math.abs(a.clock - clock) < 2) && !(ev !== null && a.ev === ev));
+        anchors.push(ev !== null ? { period, clock, video, ev } : { period, clock, video });
         anchors.sort((a, b) => a.period - b.period || a.clock - b.clock);
         F.T('games').doc(itemId).update({ smSync: anchors });
         rec.smSync = anchors;
-        F.toast(`Abgeglichen: ${SMx.periodLabel(period)} ${SMx.fmtClock(clock)} = Video ${F.fmtTime(video)}`);
-        renderSync(); updateLiveScore(yt.time(), true);
+        if (!quiet) F.toast(`Abgeglichen: ${anchorLabel(anchors.find(a => a.video === video && a.period === period))} = Video ${F.fmtTime(video)}`);
+        updateLiveScore(yt.time(), true);
+        return video;
+    }
+    function anchorLabel(a) {
+        if (!a) return '';
+        const p = SMx.periodLabel(a.period);
+        if (a.ev !== undefined && smGame) { const e = smGame.events.find(x => x.id === a.ev); if (e) return `${e.type === 'goal' ? 'Tor ' + e.home + ':' + e.guest : 'Strafe'} · ${p} ${e.time}`; }
+        if (a.clock === 0) return `Anpfiff ${p}`;
+        if (a.clock === SMx.periodLen(a.period)) return `Ende ${p}`;
+        return `${p} · Uhr ${SMx.fmtClock(a.clock)}`;
+    }
+    function markPeriod(period, which) {
+        // Bestätigung steht direkt im Knopf (✓ + Videozeit)
+        if (addAnchor(period, which === 'start' ? 0 : SMx.periodLen(period), { quiet: true }) !== null) renderSync();
     }
     function addClockAnchor() {
-        const period = +$('sm-period').value, raw = $('sm-clock').value.trim();
-        if (!/^\d{1,2}:\d{2}$/.test(raw)) return F.toast('Spieluhr im Format 12:34 eingeben', 'error');
-        addAnchor(period, SMx.clockSec(raw));
-        $('sm-clock').value = '';
+        const period = +$('sm-period').value, c = readClock(period, $('sm-clock').value);
+        if (c === null) return;
+        if (addAnchor(period, c) !== null) { $('sm-clock').value = ''; renderSync(); }
     }
     function removeAnchor(i) {
         anchors.splice(i, 1);
         F.T('games').doc(itemId).update({ smSync: anchors }); rec.smSync = anchors;
+        renderSync(); if (yt) updateLiveScore(yt.time(), true);
+    }
+
+    /* Tor für Tor: ▶ springt hin, „Jetzt“ bestätigt, abgelesene Uhr korrigiert */
+    const smEvent = id => smList().find(e => e.id === id);
+    function showActive() {
+        requestAnimationFrame(() => { const r = document.getElementById('smev-' + smActive); if (r) r.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+    }
+    function smJump(id) {
+        const e = smEvent(id); if (!e) return;
+        const est = smEst(e.period, SMx.clockSec(e.time));
+        smActive = id; renderSync();
+        if (est === null) return F.toast(`Erst Anpfiff ${SMx.periodLabel(e.period)} markieren (Schritt 1)`, 'error');
+        yt.seek(Math.max(0, Math.round(est) - 10));
+    }
+    function smConfirm(id) {
+        const e = smEvent(id); if (!e) return;
+        if (addAnchor(e.period, SMx.clockSec(e.time), { ev: e.id, quiet: true }) === null) return;
+        const list = smList(), i = list.findIndex(x => x.id === id);
+        const next = list.slice(i + 1).find(x => !anchors.some(a => a.ev === x.id));
+        smActive = next ? next.id : null;
+        renderSync(); showActive();
+    }
+    /** Coach liest die Spieluhr im Video ab → neuer Abgleichspunkt, Video springt passend */
+    function smRead(id) {
+        const e = smEvent(id); if (!e) return;
+        const c = readClock(e.period, $('sm-read').value);
+        if (c === null) return;
+        const v = addAnchor(e.period, c, { quiet: true });
+        if (v === null) return;
+        const goal = SMx.clockSec(e.time), gap = goal - c, what = e.type === 'goal' ? 'Tor' : 'Strafe';
+        let target;
+        if (gap >= 0 && gap <= 60) {
+            // Spieluhr läuft nie schneller als das Video: frühestens in „gap“ Sekunden – einfach weiterschauen
+            target = v + gap - 10;
+            F.toast(gap ? `Noch ${gap} s Spielzeit bis zum ${what} – weiterschauen (bei Unterbrechungen dauert es länger)` : `${what} ist genau hier`);
+        } else {
+            target = smEst(e.period, goal) - 10;
+            F.toast(gap < 0 ? `${what} ist schon vorbei – Video springt zurück` : `Noch ${SMx.fmtClock(gap)} Spielzeit – Video springt näher heran`);
+        }
         renderSync();
+        yt.seek(Math.max(0, Math.round(target)));
     }
 
     function renderSync() {
@@ -588,45 +677,59 @@
                 ${smError ? `<p class="sm-err">${F.esc(smError)}</p>` : ''}
             </div>`;
         if (smGame) {
-            const g = smGame, us = smSide;
+            const g = smGame, us = smSide, cd = smCountdown();
             html += `<div class="sm-match"><span>${F.esc(g.home.name)}</span><b>${g.result.home ?? '–'} : ${g.result.guest ?? '–'}</b><span>${F.esc(g.guest.name)}</span></div>
                 <div class="segmented full" style="margin-bottom:10px"><button class="${us === 'home' ? 'active' : ''}" onclick="setSide('home')">Wir sind Heim</button><button class="${us === 'guest' ? 'active' : ''}" onclick="setSide('guest')">Wir sind Gast</button></div>`;
-            // Schritt 1: Abgleich
+            // Schritt 1: Drittel markieren
             const periods = [...new Set(g.events.map(e => e.period).concat([1, 2, 3]))].filter(p => p <= 4).sort();
-            html += `<div class="sync-step"><h4><span class="n">1</span> Spielzeit mit dem Video abgleichen</h4>
-                <p class="h">Spule im Video zum Anpfiff eines Drittels und tippe den passenden Knopf. Genauer wird es, wenn du zusätzlich an weiteren Stellen die eingeblendete Spieluhr abliest und einträgst – Unterbrechungen werden so ausgeglichen.</p>
-                <div class="anchor-btns">${[1, 2, 3].map(p => `<button class="btn" onclick="addAnchor(${p}, 0)">${I('play', 'icon-sm')} Anpfiff ${p}. Drittel ist jetzt</button>`).join('')}</div>
-                <div class="time-row"><select id="sm-period" class="select" style="flex:1">${periods.map(p => `<option value="${p}">${SMx.periodLabel(p)}</option>`).join('')}</select>
-                    <input id="sm-clock" class="input mono" placeholder="12:34" title="Spieluhr laut Scoreboard (Minuten:Sekunden)" inputmode="numeric" style="width:96px">
-                    <button class="btn" onclick="addClockAnchor()" title="Aktuelle Videostelle = diese Spielzeit">${I('clock', 'icon-sm')}</button></div>
-                ${anchors.map((a, i) => `<div class="anchor">${I('check', 'icon-sm')} <span>${SMx.periodLabel(a.period)} <span class="mono">${SMx.fmtClock(a.clock)}</span></span><span class="sp"></span>
-                    <span class="mono ts" data-sec="${Math.floor(a.video)}">${F.fmtTime(a.video)}</span>
-                    <button class="btn btn-ghost btn-icon btn-sm" title="Entfernen" onclick="removeAnchor(${i})">${I('x', 'icon-sm')}</button></div>`).join('') || '<p class="faint" style="font-size:12px; margin-top:6px">Noch kein Abgleich.</p>'}
+            const mark = (p, which) => {
+                const a = anchors.find(x => x.period === p && x.clock === (which === 'start' ? 0 : SMx.periodLen(p)));
+                return `<button class="btn btn-sm ${a ? 'is-set' : ''}" onclick="markPeriod(${p}, '${which}')" title="Aktuelle Videostelle = ${which === 'start' ? 'Anpfiff' : 'Schlusssirene'}">
+                    <span>${a ? I('check', 'icon-sm') : ''} ${which === 'start' ? 'Anpfiff' : 'Ende'}</span><small>${a ? F.fmtTime(a.video) : 'ist jetzt'}</small></button>`;
+            };
+            html += `<div class="sync-step"><h4><span class="n">1</span> Drittel im Video markieren</h4>
+                <p class="h">Floorball läuft mit gestoppter Zeit – ein Drittel dauert im Video oft 30 Minuten und mehr. Spule zu <b>Anpfiff</b> und <b>Schlusssirene</b> jedes Drittels und tippe den Knopf. Die Unterbrechungen nach Toren und Strafen rechnet der Hub dazwischen selbst ein.</p>
+                <div class="period-grid">${periods.map(p => `<div class="period-row"><span class="pl">${SMx.periodLabel(p)}</span>${mark(p, 'start')}${mark(p, 'end')}</div>`).join('')}</div>
+                <label class="sm-opt"><input type="checkbox" ${cd ? 'checked' : ''} onchange="setCountdown(this.checked)"> Die Uhr im Video läuft rückwärts (20:00 → 0:00)</label>
+                <details class="sm-more"><summary>Spieluhr an einer anderen Stelle eintragen · ${anchors.length} Abgleichspunkte</summary>
+                    <div class="time-row"><select id="sm-period" class="select" style="flex:1">${periods.map(p => `<option value="${p}">${SMx.periodLabel(p)}</option>`).join('')}</select>
+                        <input id="sm-clock" class="input mono" placeholder="${cd ? '12:20' : '7:40'}" title="Spieluhr wie im Video (Minuten:Sekunden)" inputmode="decimal" style="width:96px">
+                        <button class="btn" onclick="addClockAnchor()" title="Aktuelle Videostelle = diese Spieluhr">${I('clock', 'icon-sm')}</button></div>
+                    ${anchors.map((a, i) => `<div class="anchor">${I('check', 'icon-sm')} <span>${F.esc(anchorLabel(a))}</span><span class="sp"></span>
+                        <span class="mono ts" data-sec="${Math.floor(a.video)}">${F.fmtTime(a.video)}</span>
+                        <button class="btn btn-ghost btn-icon btn-sm" title="Entfernen" onclick="removeAnchor(${i})">${I('x', 'icon-sm')}</button></div>`).join('')}
+                </details>
             </div>`;
-            // Schritt 2: Tore & Strafen
-            const list = g.events.filter(e => e.type === 'goal' || e.type === 'penalty');
-            html += `<div class="sync-step"><h4><span class="n">2</span> Tore & Strafen prüfen (${list.filter(e => e.type === 'goal').length} Tore, ${list.filter(e => e.type === 'penalty').length} Strafen)</h4>
-                <p class="h">▶ springt 10 Sekunden vor die geschätzte Stelle. Liegt sie daneben: Tor im Video suchen und „Jetzt“ tippen – das verbessert auch alle folgenden Schätzungen.</p>
+            // Schritt 2: Tor für Tor
+            const list = smList();
+            html += `<div class="sync-step"><h4><span class="n">2</span> Tore & Strafen im Video finden (${list.filter(e => e.type === 'goal').length} Tore, ${list.filter(e => e.type === 'penalty').length} Strafen)</h4>
+                <p class="h">▶ springt 10 Sekunden vor die geschätzte Stelle. Siehst du das Tor: <b>Jetzt</b> tippen – das nächste ist dann schon ausgewählt. Passt es nicht, die <b>Spieluhr im Video ablesen</b> und eintragen: der Hub springt dann so, dass du nur noch weiterschauen musst.</p>
                 ${list.map(e => {
-                    const est = SMx.estimate(anchors, e.period, SMx.clockSec(e.time));
+                    const est = smEst(e.period, SMx.clockSec(e.time));
                     const ours = e.team === us, isGoal = e.type === 'goal';
+                    const done = anchors.find(a => a.ev === e.id), active = smActive === e.id;
                     const color = isGoal ? (ours ? 'var(--brand)' : 'var(--text-muted)') : (ours ? 'var(--warning)' : 'var(--info)');
                     const who = e.number ? `#${e.number} ${SMx.playerName(g, e.team, e.number)}` : '';
-                    return `<div class="sm-ev" style="--ev-color:${color}">
+                    const info = done ? `✓ bestätigt · Video ${F.fmtTime(done.video)}` : est === null ? `Anpfiff ${SMx.periodLabel(e.period)} fehlt` : 'Video ≈ ' + F.fmtTime(est);
+                    return `<div class="sm-ev ${active ? 'active' : ''} ${done ? 'done' : ''}" id="smev-${e.id}" style="--ev-color:${color}">
                         ${isGoal ? `<span class="score-chip">${e.home}:${e.guest}</span>` : `<span class="score-chip">2'</span>`}
                         <div class="m"><b>${isGoal ? (ours ? 'Tor' : 'Gegentor') : (ours ? 'Strafe gegen uns' : 'Strafe Gegner')} · ${SMx.periodLabel(e.period)} ${F.esc(e.time)}</b>${F.esc(who)}${isGoal && e.assist ? ' · V: #' + e.assist : ''}${!isGoal && e.reason ? ' · ' + F.esc(e.reason) : ''}
-                            <br><small>${est === null ? 'Abgleich für dieses Drittel fehlt' : 'Video ≈ ' + F.fmtTime(est)}</small></div>
-                        ${est !== null ? `<button class="btn btn-sm btn-icon" title="10 s vorher anspringen" onclick="yt.seek(${Math.max(0, Math.round(est) - 10)})">${I('play', 'icon-sm')}</button>` : ''}
-                        <button class="btn btn-sm" title="Das Ereignis passiert genau jetzt im Video" onclick="addAnchor(${e.period}, ${SMx.clockSec(e.time)})">Jetzt</button>
+                            <br><small>${info}</small></div>
+                        <button class="btn btn-sm btn-icon" title="10 s vorher anspringen" onclick="smJump(${e.id})" ${est === null ? 'disabled' : ''}>${I('play', 'icon-sm')}</button>
+                        <button class="btn btn-sm ${active ? 'btn-primary' : ''}" title="${isGoal ? 'Das Tor fällt' : 'Die Strafe wird gepfiffen'} genau jetzt im Video" onclick="smConfirm(${e.id})">Jetzt</button>
+                        ${active ? `<div class="sm-read"><span class="grow">Andere Zeit im Video? Spieluhr ablesen:</span>
+                            <input id="sm-read" class="input" placeholder="${cd ? '12:20' : '7:40'}" inputmode="decimal" onkeydown="if (event.key === 'Enter') smRead(${e.id})">
+                            <button class="btn btn-sm" onclick="smRead(${e.id})">${I('clock', 'icon-sm')} Springen</button></div>` : ''}
                     </div>`;
                 }).join('')}
             </div>`;
             // Schritt 3: Eintragen
-            const ready = list.filter(e => SMx.estimate(anchors, e.period, SMx.clockSec(e.time)) !== null).length;
+            const ready = list.filter(e => smEst(e.period, SMx.clockSec(e.time)) !== null).length;
+            const confirmed = list.filter(e => anchors.some(a => a.ev === e.id)).length;
             html += `<div class="sync-step"><h4><span class="n">3</span> Als Ereignisse eintragen</h4>
-                <label style="display:flex; gap:8px; align-items:center; font-size:13px; margin-bottom:10px"><input type="checkbox" id="sm-pen" checked style="accent-color:var(--brand)"> Strafen als Über-/Unterzahl eintragen</label>
+                <label class="sm-opt" style="margin:0 0 10px"><input type="checkbox" id="sm-pen" checked> Strafen als Über-/Unterzahl eintragen</label>
                 <button class="btn btn-primary btn-block" onclick="importSm()" ${ready ? '' : 'disabled'}>${I('save', 'icon-sm')} ${ready} Ereignisse eintragen / aktualisieren</button>
-                <p class="h" style="margin:10px 0 0">Jedes Tor wird 10 Sekunden vor dem Treffer eingetragen, mit Spielstand, Torschütze und Vorlage (unsere Spieler werden markiert). Erneutes Eintragen aktualisiert die Zeiten statt doppelt anzulegen. Das Endergebnis wird ins Spiel übernommen.</p>
+                <p class="h" style="margin:10px 0 0">${confirmed} von ${list.length} im Video bestätigt${confirmed < ready ? ' – die übrigen werden geschätzt eingetragen und lassen sich später jederzeit genauer abgleichen und neu eintragen' : ''}. Jedes Tor wird 10 Sekunden vor dem Treffer eingetragen, mit Spielstand, Torschütze und Vorlage (unsere Spieler werden markiert). Erneutes Eintragen aktualisiert die Zeiten statt doppelt anzulegen.</p>
             </div>`;
         }
         el.innerHTML = html;
@@ -690,7 +793,7 @@
             const ours = all.filter(e => e.type === 'goal' && e.sec <= t).length, theirs = all.filter(e => e.type === 'conceded' && e.sec <= t).length;
             html = `<span>Falcons</span><b>${ours}:${theirs}</b><span>Gegner</span>`;
         }
-        const pos = anchors.length ? SMx.inverse(anchors, t) : null;
+        const pos = anchors.length ? SMx.inverse(anchors, t, smStops()) : null;
         if (pos) html += `<em>${pos.pause ? 'Pause nach dem ' + SMx.periodLabel(pos.period) : SMx.periodLabel(pos.period) + ' ≈ ' + SMx.fmtClock(pos.clock)}</em>`;
         el.innerHTML = html; el.classList.remove('hidden');
     }

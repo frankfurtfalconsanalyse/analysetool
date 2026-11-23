@@ -66,51 +66,92 @@ const Saisonmanager = (() => {
         return p ? `${p.first} ${p.last}`.trim() : '';
     }
 
-    /* ---------------------------------------------------------- Abgleich */
-    const sortA = list => list.slice().sort((a, b) => a.clock - b.clock || a.video - b.video);
-    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+    /* ---------------------------------------------------------- Abgleich
+       Floorball wird mit gestoppter Zeit gespielt: 20 Minuten Spielzeit dauern im Video meist 30+ Minuten.
+       Modell: Videodauer bis Spieluhr c = Grundtempo · c + Unterbrechungen nach Toren/Strafen vor c.
+       Dieses Modell wird über die Abgleichspunkte (Anker) skaliert – zwischen zwei Ankern exakt durch beide,
+       Unterbrechungen landen dort, wo Tore und Strafen passiert sind. */
+    const BASE_RATE = 1.35;                       // kleine Unterbrechungen (Freischläge, Bandenbälle …)
+    const STOP = { goal: 40, penalty: 30 };       // typische Unterbrechung nach Tor / Strafe (Sekunden)
+    const PAUSE_SEC = 10 * 60;                    // Drittelpause (nur für die Grobschätzung ohne Drittelende)
+    const periodLen = p => p === 4 ? 10 * 60 : PERIOD_SEC;
 
-    /** Verhältnis Videozeit / Spielzeit aus anderen Dritteln (für Drittel mit nur einem Anker) */
-    function typicalSlope(anchors) {
-        const slopes = [];
-        [1, 2, 3, 4].forEach(p => {
-            const a = sortA(anchors.filter(x => x.period === p));
-            if (a.length >= 2) { const s = (a[a.length - 1].video - a[0].video) / Math.max(1, a[a.length - 1].clock - a[0].clock); slopes.push(clamp(s, 1, 4)); }
-        });
-        if (!slopes.length) return 1;
-        slopes.sort((x, y) => x - y);
-        return slopes[Math.floor(slopes.length / 2)];
+    /** Unterbrechungen aus dem Spielbericht: [{ p, c, d }] (Drittel, Spieluhr in s, Dauer in s) */
+    function stopsFromGame(game) {
+        return ((game && game.events) || []).filter(e => STOP[e.type])
+            .map(e => ({ p: e.period, c: clockSec(e.time), d: STOP[e.type] }));
+    }
+    /** Modell-Videodauer vom Drittelbeginn bis Spieluhr c */
+    function model(stops, p, c) {
+        let v = BASE_RATE * c;
+        (stops || []).forEach(s => { if (s.p === p && s.c < c) v += s.d; });
+        return v;
     }
 
-    /** Spielzeit (Drittel, Sekunden) → Videozeit in Sekunden, oder null ohne passenden Anker */
-    function estimate(anchors, period, clock) {
+    const sortA = list => list.slice().sort((a, b) => a.clock - b.clock || a.video - b.video);
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+    const scaleOf = (stops, p, a1, a2) => {
+        const dm = model(stops, p, a2.clock) - model(stops, p, a1.clock);
+        return dm > 0 && a2.video > a1.video ? (a2.video - a1.video) / dm : null;
+    };
+
+    /** Skalierung des Modells aus den anderen Dritteln (für Drittel mit nur einem Anker) */
+    function typicalScale(anchors, stops) {
+        const found = [];
+        const periods = [...new Set(anchors.map(x => x.period))];
+        periods.forEach(p => {
+            const a = sortA(anchors.filter(x => x.period === p));
+            if (a.length >= 2 && a[a.length - 1].clock - a[0].clock >= 60) {
+                const s = scaleOf(stops, p, a[0], a[a.length - 1]);
+                if (s) found.push(clamp(s, 0.6, 3));
+            }
+        });
+        if (!found.length) {
+            // Grobschätzung: Anpfiff des nächsten Drittels minus Drittelpause = Ende dieses Drittels
+            periods.forEach(p => {
+                const st = anchors.find(x => x.period === p && x.clock === 0), nx = anchors.find(x => x.period === p + 1 && x.clock === 0);
+                if (!st || !nx || p >= 3) return;
+                const end = { clock: periodLen(p), video: nx.video - PAUSE_SEC };
+                const s = end.video - st.video >= periodLen(p) ? scaleOf(stops, p, st, end) : null;
+                if (s) found.push(clamp(s, 0.6, 3));
+            });
+        }
+        if (!found.length) return 1;
+        found.sort((x, y) => x - y);
+        return found[Math.floor(found.length / 2)];
+    }
+
+    /** Spielzeit (Drittel, Sekunden) → Videozeit in Sekunden, oder null ohne Anker in diesem Drittel */
+    function estimate(anchors, period, clock, stops = []) {
         const a = sortA(anchors.filter(x => x.period === period));
         if (!a.length) return null;
-        if (a.length === 1) return Math.max(0, a[0].video + (clock - a[0].clock) * typicalSlope(anchors));
-        // umgebendes Anker-Paar suchen (außerhalb: die beiden nächsten)
+        const m = model(stops, period, clock);
+        const at = (x, s) => Math.max(0, x.video + (m - model(stops, period, x.clock)) * s);
+        // zwischen zwei Ankern: exakt durch beide
         const i = a.findIndex(x => x.clock >= clock);
-        let p1, p2;
-        if (i === -1) { p1 = a[a.length - 2]; p2 = a[a.length - 1]; }
-        else if (i === 0) { p1 = a[0]; p2 = a[1]; }
-        else { p1 = a[i - 1]; p2 = a[i]; }
-        const slope = clamp((p2.video - p1.video) / Math.max(1, p2.clock - p1.clock), 1, 6);
-        return Math.max(0, p1.video + (clock - p1.clock) * slope);
+        if (i > 0) { const s = scaleOf(stops, period, a[i - 1], a[i]); if (s) return at(a[i - 1], s); }
+        if (i === 0 && a[0].clock === clock) return a[0].video;
+        // davor/danach: Skalierung des ganzen Drittels (wenn aussagekräftig), sonst die typische
+        let s = null;
+        if (a.length >= 2 && a[a.length - 1].clock - a[0].clock >= 60) s = scaleOf(stops, period, a[0], a[a.length - 1]);
+        s = clamp(s || typicalScale(anchors, stops), 0.6, 3);
+        return at(i === -1 ? a[a.length - 1] : a[0], s);
     }
 
     /** Videozeit → { period, clock, pause } (für die Spielstand-Anzeige) */
-    function inverse(anchors, t) {
+    function inverse(anchors, t, stops = []) {
         const periods = [...new Set(anchors.map(x => x.period))].sort((x, y) => x - y);
         let best = null;
         for (const p of periods) {
-            const start = estimate(anchors, p, 0), end = estimate(anchors, p, PERIOD_SEC);
+            const len = periodLen(p), start = estimate(anchors, p, 0, stops), end = estimate(anchors, p, len, stops);
             if (start === null) continue;
             if (t < start - 5) continue;
             if (t <= end + 5) {
                 // innerhalb des Drittels: Spielzeit zurückrechnen (binäre Suche über die stückweise Funktion)
-                let lo = 0, hi = PERIOD_SEC;
-                for (let k = 0; k < 30; k++) { const mid = (lo + hi) / 2; (estimate(anchors, p, mid) < t ? lo = mid : hi = mid); }
-                best = { period: p, clock: clamp(lo, 0, PERIOD_SEC), pause: false };
-            } else best = { period: p, clock: PERIOD_SEC, pause: true };
+                let lo = 0, hi = len;
+                for (let k = 0; k < 30; k++) { const mid = (lo + hi) / 2; (estimate(anchors, p, mid, stops) < t ? lo = mid : hi = mid); }
+                best = { period: p, clock: clamp(lo, 0, len), pause: false };
+            } else best = { period: p, clock: len, pause: true };
         }
         return best;
     }
@@ -122,10 +163,10 @@ const Saisonmanager = (() => {
     function buildEvents(game, anchors, side, roster, { penalties = true, leadIn = 10 } = {}) {
         const other = side === 'home' ? 'guest' : 'home';
         const sh = (game.home && game.home.short) || 'Heim', sg = (game.guest && game.guest.short) || 'Gast';
-        const out = [], missing = [];
+        const out = [], missing = [], stops = stopsFromGame(game);
         (game.events || []).forEach(e => {
             if (e.type !== 'goal' && !(penalties && e.type === 'penalty')) return;
-            const clock = clockSec(e.time), goalSec = estimate(anchors, e.period, clock);
+            const clock = clockSec(e.time), goalSec = estimate(anchors, e.period, clock, stops);
             if (goalSec === null) { missing.push(e); return; }
             const ours = e.team === side;
             const team = e.team === 'home' ? 'home' : 'guest';
@@ -152,5 +193,5 @@ const Saisonmanager = (() => {
         return { events: out, missing };
     }
 
-    return { gameId, proxyUrl, setProxyUrl, load, weAre, clockSec, fmtClock, periodLabel, playerName, estimate, inverse, buildEvents, PERIOD_SEC };
+    return { gameId, proxyUrl, setProxyUrl, load, weAre, clockSec, fmtClock, periodLabel, playerName, stopsFromGame, periodLen, estimate, inverse, buildEvents, PERIOD_SEC };
 })();
