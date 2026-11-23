@@ -646,3 +646,16 @@ button, a, .tile, .list-item, .event, .media-card { -webkit-tap-highlight-color:
     .user-dropdown { position: fixed; top: calc(var(--header-h) - 4px); right: 10px; left: auto; max-height: calc(100dvh - var(--header-h) - 16px); overflow-y: auto; }
 }
 @keyframes sheetIn { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+
+/* Video-Player auf Touch-Geräten: kein Doppeltipp-Zoom, Tippzonen links/rechts */
+button, a, .fp, .fp-bar, .tboard, .tile, .media-card { touch-action: manipulation; }
+.fp-tap { display: none; }
+@media (pointer: coarse) {
+    .fp-tap { display: flex; position: absolute; top: 0; bottom: 48px; width: 34%; z-index: 4; align-items: center; justify-content: center; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+    .fp-tap-l { left: 0; }
+    .fp-tap-r { right: 0; }
+    .fp-ripple { opacity: 0; transition: opacity .15s; padding: 10px 16px; border-radius: 999px; background: rgba(0,0,0,.55); color: #fff; font-weight: 800; font-size: 15px; white-space: nowrap; pointer-events: none; }
+    .fp-tap.show .fp-ripple { opacity: 1; }
+    .fp-tap-l.show { background: radial-gradient(ellipse at left center, rgba(255,255,255,.18), transparent 70%); }
+    .fp-tap-r.show { background: radial-gradient(ellipse at right center, rgba(255,255,255,.18), transparent 70%); }
+}

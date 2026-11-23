@@ -59,7 +59,10 @@ const FalconsPlayer = (() => {
             this.root = document.createElement('div');
             this.root.className = 'fp';
             this.root.innerHTML = `
-                <div class="fp-stage"><div class="fp-video"></div></div>
+                <div class="fp-stage"><div class="fp-video"></div>
+                    <div class="fp-tap fp-tap-l"><span class="fp-ripple"></span></div>
+                    <div class="fp-tap fp-tap-r"><span class="fp-ripple"></span></div>
+                </div>
                 <div class="fp-bar">
                     <button class="fp-btn fp-play" title="Abspielen / Pause (Leertaste)">${ICON('play')}</button>
                     <button class="fp-btn fp-clipnav hidden" data-act="start" title="Zum Anfang des Clips (Pos1)">${ICON('skipBack')}</button>
@@ -83,6 +86,9 @@ const FalconsPlayer = (() => {
                 </div>`;
             host.appendChild(this.root);
             this.stage = this.root.querySelector('.fp-stage');
+            this.timeEl = this.root.querySelector('.fp-time');
+            this.pending = null; this.seekTimer = null; this.resumeAfterSeek = false;
+            this.initTapZones();
             this.mount = document.createElement('div');
             this.root.querySelector('.fp-video').appendChild(this.mount);
             this.root.addEventListener('click', e => {
@@ -128,11 +134,15 @@ const FalconsPlayer = (() => {
             clearInterval(this.ticker);
             this.ticker = setInterval(() => {
                 if (!this.ready || !this.yt.getCurrentTime) return;
-                const t = this.yt.getCurrentTime();
-                if (this.loopA !== null && this.loopB !== null && t >= this.loopB) this.yt.seekTo(this.loopA, true);
-                else if (this.end && t >= this.end && this.playing()) { this.yt.pauseVideo(); this.yt.seekTo(this.end, true); }
+                // Während ein gesammelter Sprung aussteht, nichts nachregeln – nur das Ziel anzeigen
+                const t = this.pending !== null ? this.pending : this.yt.getCurrentTime();
+                if (this.pending === null) {
+                    if (this.loopA !== null && this.loopB !== null && t >= this.loopB) this.yt.seekTo(this.loopA, true);
+                    else if (this.end && t >= this.end && this.playing()) { this.yt.pauseVideo(); this.yt.seekTo(this.end, true); }
+                }
                 const dur = this.yt.getDuration ? this.yt.getDuration() : 0;
-                this.root.querySelector('.fp-time').textContent = `${fmt(t)}${dur ? ' / ' + fmt(this.end || dur) : ''}`;
+                const txt = `${fmt(t)}${dur ? ' / ' + fmt(this.end || dur) : ''}`;
+                if (this.timeEl.textContent !== txt) this.timeEl.textContent = txt;
                 if (this.onTime) this.onTime(t);
             }, 120);
         }
@@ -143,7 +153,7 @@ const FalconsPlayer = (() => {
         }
 
         playing() { return this.ready && [1, 3].includes(this.yt.getPlayerState()); }
-        time() { return this.ready && this.yt.getCurrentTime ? this.yt.getCurrentTime() : 0; }
+        time() { if (this.pending !== null) return this.pending; return this.ready && this.yt.getCurrentTime ? this.yt.getCurrentTime() : 0; }
         duration() { return this.ready && this.yt.getDuration ? this.yt.getDuration() : 0; }
         play() { if (this.ready) this.yt.playVideo(); }
         pause() { if (this.ready) this.yt.pauseVideo(); }
@@ -154,8 +164,33 @@ const FalconsPlayer = (() => {
             if (this.end && this.time() >= this.end - 0.2 && this.loopA === null) this.yt.seekTo(this.clipStart || 0, true);
             this.play();
         }
-        seek(sec, { play = true } = {}) { if (!this.ready) return; this.yt.seekTo(Math.max(0, sec), true); if (play) this.play(); }
-        skip(d) { this.seek(this.time() + d, { play: this.playing() }); }
+        seek(sec, { play = true } = {}) {
+            if (!this.ready) return;
+            clearTimeout(this.seekTimer); this.pending = null;
+            this.yt.seekTo(Math.max(0, sec), true);
+            if (play) this.play();
+        }
+        /**
+         * Spulen: Mehrfaches Tippen wird gesammelt und erst nach einer kurzen Pause
+         * als EIN Sprung ausgeführt. Viele einzelne Sprünge hintereinander lassen
+         * YouTube auf dem Handy sonst ständig neu puffern (ruckelt / hängt).
+         */
+        skip(d, delay = 320) {
+            if (!this.ready) return;
+            if (this.pending === null) this.resumeAfterSeek = this.playing();
+            const max = this.duration() || Infinity;
+            this.pending = Math.min(max, Math.max(0, this.time() + d));
+            this.timeEl.textContent = fmt(this.pending) + (this.duration() ? ' / ' + fmt(this.end || this.duration()) : '');
+            clearTimeout(this.seekTimer);
+            this.seekTimer = setTimeout(() => this.flushSeek(), delay);
+        }
+        flushSeek() {
+            if (this.pending === null) return;
+            const t = this.pending;
+            this.pending = null;
+            this.yt.seekTo(t, true);
+            if (this.resumeAfterSeek) this.play();
+        }
         /** Clip-Navigation: Anfang/Ende des Clips (ohne Ende → Videoende) */
         setClipNav(on) { this.clipNav = on; this.root.querySelectorAll('.fp-clipnav').forEach(b => b.classList.toggle('hidden', !on)); }
         toStart() { this.seek(this.clipStart || 0, { play: this.playing() }); }
@@ -164,7 +199,39 @@ const FalconsPlayer = (() => {
             const end = this.end || this.duration();
             this.pause(); this.yt.seekTo(Math.max(0, end - 0.05), true);
         }
-        step(dir) { if (!this.ready) return; this.pause(); this.yt.seekTo(Math.max(0, this.time() + dir / FPS), true); }
+        step(dir) {
+            if (!this.ready) return;
+            if (this.pending === null) this.pause();
+            this.resumeAfterSeek = false;
+            this.skip(dir / FPS, 160);
+        }
+
+        /** Doppeltipp links/rechts aufs Video = 10 s zurück/vor (wie in der YouTube-App), einfacher Tipp = Play/Pause */
+        initTapZones() {
+            this.stage.querySelectorAll('.fp-tap').forEach(zone => {
+                const dir = zone.classList.contains('fp-tap-l') ? -1 : 1;
+                let lastTap = 0, single = null, streak = 0, hideTimer = null;
+                const ripple = zone.querySelector('.fp-ripple');
+                zone.addEventListener('click', e => {
+                    e.preventDefault();
+                    active = this;
+                    const now = Date.now();
+                    if (now - lastTap < 320 || streak) {
+                        // Doppeltipp (oder weiteres Tippen direkt danach): je 10 s
+                        clearTimeout(single); single = null;
+                        streak++;
+                        this.skip(dir * 10, 500);
+                        ripple.textContent = `${dir < 0 ? '‹‹' : ''} ${streak * 10} s ${dir > 0 ? '››' : ''}`;
+                        zone.classList.add('show');
+                        clearTimeout(hideTimer);
+                        hideTimer = setTimeout(() => { zone.classList.remove('show'); streak = 0; }, 650);
+                    } else {
+                        single = setTimeout(() => { single = null; this.toggle(); }, 330);
+                    }
+                    lastTap = now;
+                });
+            });
+        }
         setRate(r) {
             this.rate = r;
             if (this.ready && this.yt.setPlaybackRate) this.yt.setPlaybackRate(r);
