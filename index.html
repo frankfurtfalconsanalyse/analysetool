@@ -24,14 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261122b">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261123d">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261122b"></script>
-    <script src="assets/js/core.js?v=20261122b"></script>
-    <script src="assets/js/player.js?v=20261122b"></script>
-    <script src="assets/js/migrate.js?v=20261122b"></script>
+    <script src="assets/js/config.js?v=20261123d"></script>
+    <script src="assets/js/core.js?v=20261123d"></script>
+    <script src="assets/js/player.js?v=20261123d"></script>
+    <script src="assets/js/migrate.js?v=20261123d"></script>
     <style>
         /* ---------- Login ---------- */
         .login-screen {
@@ -80,7 +80,17 @@
         .hero .stats { display: flex; gap: 18px; margin-top: 18px; font-size: 13px; color: var(--text-muted); flex-wrap: wrap; }
         .hero .stats span { display: inline-flex; align-items: center; gap: 6px; }
         .hero .progress { margin-top: 18px; max-width: 420px; }
-        @media (max-width: 720px) { .hero { grid-template-columns: 1fr; padding: 24px; } .hero h2 { font-size: 22px; } }
+        @media (max-width: 720px) { .hero { grid-template-columns: 1fr; padding: 20px; gap: 16px; } .hero h2 { font-size: 21px; } .hero p { font-size: 14px; margin-top: 6px; } .hero .stats { gap: 6px 14px; margin-top: 12px; font-size: 12.5px; } .hero .progress { margin-top: 12px; } .hero .btn-lg { width: 100%; } }
+        @media (max-width: 900px) { .clip-layout .clip-video { flex: none; } .clip-layout .clip-side { flex: 1 0 auto; } }
+        @media (max-width: 640px) {
+            .login-screen { padding: 16px; align-items: start; padding-top: 6vh; }
+            .login-card { padding: 26px 20px 20px; }
+            .login-card h1 { font-size: 19px; }
+            .login-logo { width: 92px; height: 92px; }
+            .session-card { padding: 14px; gap: 8px; }
+            .clip-side { min-height: 0; }
+            .modal-head h3 { font-size: 14px; }
+        }
 
         .session-card { display: flex; flex-direction: column; gap: 12px; padding: 18px; cursor: pointer; transition: border-color .2s, transform .2s; }
         .session-card:hover { border-color: var(--border-strong); transform: translateY(-2px); }
@@ -219,7 +229,7 @@
                 <h3 id="clip-title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Clip</h3>
             </div>
             <div style="display:flex; gap:8px; flex-shrink:0">
-                <a class="btn btn-sm btn-primary" id="clip-analyse"><span id="pen-icon"></span>Analyse-Modus</a>
+                <a class="btn btn-sm btn-primary" id="clip-analyse"><span id="pen-icon"></span>Analyse<span class="hide-sm">-Modus</span></a>
                 <button class="btn btn-sm btn-icon" onclick="closeClip()" id="close-btn" title="Schließen"></button>
             </div>
         </div>

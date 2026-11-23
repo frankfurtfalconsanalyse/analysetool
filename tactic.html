@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261122b">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261123d">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261122b"></script>
-    <script src="assets/js/core.js?v=20261122b"></script>
-    <script src="assets/js/tactic-board.js?v=20261122b"></script>
+    <script src="assets/js/config.js?v=20261123d"></script>
+    <script src="assets/js/core.js?v=20261123d"></script>
+    <script src="assets/js/tactic-board.js?v=20261123d"></script>
     <style>
         body { overflow: hidden; }
         .tac { display: flex; height: calc(100vh - var(--header-h)); height: calc(100dvh - var(--header-h)); }
@@ -97,6 +97,26 @@
             .tac-side { width: 100%; border-left: 0; border-top: 1px solid var(--border); overflow: visible; }
             .palette { grid-template-columns: repeat(6, 1fr); }
             .tbtn .lbl { display: none; }
+            /* Werkzeugleiste zweizeilig statt versteckt zu scrollen */
+            .tac-toolbar { flex-wrap: wrap; overflow: visible; row-gap: 6px; gap: 2px; padding: 8px; position: sticky; top: var(--header-h); z-index: 30; }
+            .tac-toolbar .tsep { display: none; }
+            .tbtn { height: 40px; padding: 0 9px; }
+            #colors { order: 2; }
+            #field-select { margin-left: auto; height: 38px !important; }
+            .tac-phases { gap: 6px; padding: 10px; }
+            .phase-note { min-width: 100%; order: 10; }
+            .side-sec { padding: 14px 12px; }
+            .pal { padding: 8px 2px 6px; font-size: 10px; }
+            .pal svg { width: 26px; height: 26px; }
+        }
+        @media (max-width: 860px) and (orientation: portrait) {
+            .tac-stage { padding-bottom: 24px; }
+            .tac-stage::after { content: "Tipp: Handy quer halten für ein größeres Spielfeld"; position: absolute; left: 0; right: 0; bottom: 5px; text-align: center; font-size: 11px; color: var(--text-faint); pointer-events: none; }
+        }
+        @media (max-width: 960px) and (orientation: landscape) and (max-height: 500px) {
+            /* Handy quer: Spielfeld füllt die Höhe */
+            .tac-stage { height: calc(100dvh - var(--header-h) - 62px); min-height: 0; }
+            .tac-toolbar { position: static; }
         }
     </style>
 </head>

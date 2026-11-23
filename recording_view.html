@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261122b">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261123d">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261122b"></script>
-    <script src="assets/js/core.js?v=20261122b"></script>
-    <script src="assets/js/player.js?v=20261122b"></script>
+    <script src="assets/js/config.js?v=20261123d"></script>
+    <script src="assets/js/core.js?v=20261123d"></script>
+    <script src="assets/js/player.js?v=20261123d"></script>
     <style>
         .time-row { display: flex; gap: 8px; }
         .time-row .input { font-family: var(--mono); }
@@ -201,7 +201,7 @@
     $('cl-cat').innerHTML = F.CFG.categories.map(c => `<option>${c}</option>`).join('');
     $('cl-pos').innerHTML = ['Alle', ...F.CFG.positions].map(p => `<option value="${p}">${p === 'Alle' ? 'Alle Positionen' : p}</option>`).join('');
     $('ev-type').addEventListener('change', () => renderEventPeople());
-    $('tab-feedback').innerHTML = I('message', 'icon-sm') + ' Mein Feedback';
+    $('tab-feedback').innerHTML = I('message', 'icon-sm') + ' <span class="hide-sm">Mein </span>Feedback';
     $('lbl-events').innerHTML = I('plus', 'icon-sm') + ' ' + K.eventSingular + ' hinzufügen' + CHEV;
     $('lbl-feedback').innerHTML = I('lock', 'icon-sm') + ' Privates Feedback senden' + CHEV;
     $('btn-now1').innerHTML = I('clock', 'icon-sm');
@@ -230,7 +230,7 @@
             $('btn-edit-rec').innerHTML = I('pen', 'icon-sm') + ' Bearbeiten';
             $('btn-del-rec').innerHTML = I('trash', 'icon-sm') + ' Löschen';
             $('player-pick').classList.remove('hidden');
-            $('tab-feedback').innerHTML = I('message', 'icon-sm') + ' Spieler-Feedback';
+            $('tab-feedback').innerHTML = I('message', 'icon-sm') + ' <span class="hide-sm">Spieler-</span>Feedback';
             roster.forEach(p => $('player-select').insertAdjacentHTML('beforeend', `<option value="${p.id}">#${p.id} ${F.esc(p.name)}</option>`));
             renderEventPeople(); renderClipPlayers(); loadSessionOptions();
         }

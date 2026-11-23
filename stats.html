@@ -23,12 +23,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261122b">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261123d">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261122b"></script>
-    <script src="assets/js/core.js?v=20261122b"></script>
+    <script src="assets/js/config.js?v=20261123d"></script>
+    <script src="assets/js/core.js?v=20261123d"></script>
     <style>
         .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 28px; }
         .kpi { padding: 16px 18px; }
@@ -54,6 +54,14 @@
         .table td.num, .table th.num { text-align: right; font-variant-numeric: tabular-nums; }
         .table tr.me td { background: var(--brand-soft); }
         .pm-pos { color: var(--success); } .pm-neg { color: #ff5a63; }
+        @media (max-width: 640px) {
+            /* Team-Tabelle: Nr.-Spalte weg, Name bleibt beim Wischen links stehen */
+            #team-table th:first-child, #team-table td:first-child { display: none; }
+            #team-table th:nth-child(2), #team-table td:nth-child(2) { position: sticky; left: 0; z-index: 1; background: var(--surface); white-space: nowrap; box-shadow: 6px 0 8px -6px rgba(0,0,0,.6); }
+            #team-table tr.me td:nth-child(2) { background: #2a1517; }
+            .scene { padding: 10px 12px; gap: 10px; }
+            .scene .t { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -80,7 +88,7 @@
     </div>
     <div id="view-team" class="hidden">
         <div class="kpis" id="team-kpis"></div>
-        <div class="card"><div class="table-wrap"><table class="table" id="team-table"></table></div></div>
+        <div class="card"><div class="table-wrap"><table class="table table-keep" id="team-table"></table></div></div>
         <p class="faint" style="font-size:12.5px; margin-top:12px">+/− zählt nur Tore/Gegentore, bei denen der Coach „Auf dem Feld“ eingetragen hat. Spiele = Spiele mit mindestens einer markierten Szene.</p>
     </div>
 </main>

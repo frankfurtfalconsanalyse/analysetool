@@ -259,7 +259,7 @@ const Falcons = (() => {
                 <img class="brand-logo" src="assets/img/logo.png" alt="Frankfurt Falcons">
                 <div class="brand-text"><strong>Falcons</strong><span>Analyse-Hub</span></div>
             </a>
-            ${u ? `<button class="team-chip" type="button" onclick="document.getElementById('user-menu').classList.add('open')" title="Team wechseln">${esc(teamName(u.team))}</button>` : ''}
+            ${u ? `<button class="team-chip" id="team-chip" type="button" onclick="document.getElementById('user-menu').classList.add('open')" title="Team wechseln">${esc(teamName(u.team))}</button>` : ''}
             <nav class="main-nav">${links('nav-link')}</nav>
             ${u ? `
             <div class="user-menu" id="user-menu">
@@ -270,6 +270,7 @@ const Falcons = (() => {
                 </button>
                 <div class="user-dropdown">
                     <div class="meta"><strong>${esc(u.name)}</strong><small>${esc(teamName(u.team))}${u.nr ? ' · #' + esc(u.nr) : ''} · <span id="role-label">Spieler</span></small></div>
+                    <div class="dropdown-nav">${links('dropdown-item')}<div class="dropdown-sep"></div></div>
                     <div id="team-list"></div>
                     <button class="dropdown-item" type="button" onclick="Falcons.openLinkTeam()">${icon('plus')} Weiteres Team verknüpfen</button>
                     <a class="dropdown-item" href="help.html">${icon('help')} Hilfe & Anleitung</a>
@@ -300,6 +301,7 @@ const Falcons = (() => {
                 + '<div class="dropdown-sep"></div>';
             const r = document.getElementById('role-label');
             if (r) r.textContent = c.clubAdmin ? 'Vereins-Admin' : c.coach ? 'Coach' : 'Spieler';
+            const chip = document.getElementById('team-chip'); if (chip) chip.textContent = teamName(c.team);
             if (!c.coach) return;
             document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
         });
@@ -367,6 +369,17 @@ const Falcons = (() => {
         });
         return { text: out, mentions };
     }
+
+    /** Tabellen: Spaltennamen an jede Zelle hängen (data-label) – auf dem Handy werden Zeilen zu Karten */
+    function labelTables() {
+        document.querySelectorAll('table.table:not(.table-keep)').forEach(t => {
+            const heads = [...t.querySelectorAll('thead th')].map(th => th.textContent.replace(/[↑↓]/g, '').trim());
+            t.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => { if (!td.hasAttribute('data-label')) td.setAttribute('data-label', heads[i] || ''); }));
+        });
+    }
+    let labelQueued = false;
+    new MutationObserver(() => { if (labelQueued) return; labelQueued = true; requestAnimationFrame(() => { labelQueued = false; labelTables(); }); })
+        .observe(document.documentElement, { childList: true, subtree: true });
 
     /** Klicks auf Zeitstempel zentral abfangen; Seiten setzen Falcons.onTimestamp */
     document.addEventListener('click', e => {
@@ -546,9 +559,10 @@ const Falcons = (() => {
                 <strong>${esc(c.author || 'Unbekannt')}</strong>${c.authorNr ? `<span class="mono">#${esc(c.authorNr)}</span>` : ''}
                 ${label ? `<span>· ${esc(label)}</span>` : ''}
                 ${ts ? `<span>· ${ts}</span>` : ''}
-                <span class="spacer"></span>
-                ${mentioned ? `<button class="check-btn ${isRead ? 'done' : ''}" onclick="${onRead}('${c.id}', ${isRead})">${isRead ? icon('undo', 'icon-sm') + 'Erledigt' : icon('check', 'icon-sm') + 'Abhaken'}</button>` : ''}
-                ${canDelete ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger del" title="Löschen" onclick="${onDelete}('${c.id}')">${icon('trash', 'icon-sm')}</button>` : ''}
+                <span class="c-actions">
+                    ${mentioned ? `<button class="check-btn ${isRead ? 'done' : ''}" onclick="${onRead}('${c.id}', ${isRead})">${isRead ? icon('undo', 'icon-sm') + 'Erledigt' : icon('check', 'icon-sm') + 'Abhaken'}</button>` : ''}
+                    ${canDelete ? `<button class="btn btn-ghost btn-icon btn-sm btn-danger del" title="Löschen" onclick="${onDelete}('${c.id}')">${icon('trash', 'icon-sm')}</button>` : ''}
+                </span>
             </div>
             <div class="comment-text">${formatText(c.text)}</div>
             ${c.drawing ? `<button class="drawing-chip" onclick="Falcons.onDrawing && Falcons.onDrawing('${c.id}')">${icon('pen', 'icon-sm')} Zeichnung ansehen${c.drawingTime !== undefined ? ' · ' + fmtTime(c.drawingTime) : ''}</button>` : ''}

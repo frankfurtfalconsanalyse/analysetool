@@ -70,6 +70,7 @@ const FalconsPlayer = (() => {
                     <button class="fp-btn" data-act="skip1" title="1 s vor (Shift+→)">+1s</button>
                     <button class="fp-btn" data-act="skip5" title="5 s vor (→)">+5s</button>
                     <button class="fp-btn fp-clipnav hidden" data-act="end" title="Zum Ende des Clips (Ende)">${ICON('skipForward')}</button>
+                    <span class="fp-break"></span>
                     <span class="fp-time">0:00:00</span>
                     <span class="fp-sep"></span>
                     <div class="fp-rates">${RATES.map((r, i) => `<button class="fp-rate ${r === 1 ? 'active' : ''}" data-rate="${r}" title="Tempo ${r}× (${i + 1})">${r === 0.25 ? '¼' : r === 0.5 ? '½' : r}×</button>`).join('')}</div>
