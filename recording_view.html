@@ -24,13 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261123e">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261123g">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261123e"></script>
-    <script src="assets/js/core.js?v=20261123e"></script>
-    <script src="assets/js/player.js?v=20261123e"></script>
+    <script src="assets/js/config.js?v=20261123g"></script>
+    <script src="assets/js/core.js?v=20261123g"></script>
+    <script src="assets/js/player.js?v=20261123g"></script>
+    <script src="assets/js/saisonmanager.js?v=20261123g"></script>
     <style>
         .time-row { display: flex; gap: 8px; }
         .time-row .input { font-family: var(--mono); }
@@ -65,6 +66,32 @@
         .clip-row strong { display: block; font-size: 14px; }
         .clip-row small { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
         .form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        /* Spielstand an der aktuellen Videostelle */
+        .live-score { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border-strong); font-size: 13px; font-weight: 600; color: var(--text-muted); flex-wrap: wrap; }
+        .live-score b { font-family: var(--font-display); font-size: 17px; color: var(--text); letter-spacing: .5px; }
+        .live-score em { font-style: normal; font-weight: 500; font-size: 12px; color: var(--text-faint); }
+        .score-chip { font-family: var(--mono); font-size: 11.5px; font-weight: 700; padding: 1px 7px; border-radius: 6px; background: var(--surface-3); color: var(--text); letter-spacing: 0; }
+        /* Spielbericht / Saisonmanager */
+        .sync-step { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); padding: 14px; }
+        .sync-step + .sync-step { margin-top: 10px; }
+        .sync-step h4 { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .sync-step h4 .n { width: 22px; height: 22px; border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 12px; }
+        .sync-step p.h { font-size: 12.5px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.45; }
+        .sm-match { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); margin: 10px 0; }
+        .sm-match b { font-family: var(--font-display); font-size: 22px; }
+        .sm-match span { font-size: 13px; font-weight: 600; text-align: center; flex: 1; }
+        .anchor-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+        .anchor-btns .btn { height: auto; min-height: 40px; padding: 6px; font-size: 12px; white-space: normal; line-height: 1.2; }
+        .anchor { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 6px 8px; border-radius: 7px; background: var(--surface); margin-top: 6px; }
+        .anchor .mono { color: var(--text); }
+        .anchor .sp { flex: 1; }
+        .sm-ev { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; background: var(--surface); border-left: 3px solid var(--ev-color, var(--border-strong)); }
+        .sm-ev + .sm-ev { margin-top: 6px; }
+        .sm-ev .m { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.35; }
+        .sm-ev .m b { display: block; font-size: 12px; color: var(--text); }
+        .sm-ev .m small { color: var(--text-faint); font-family: var(--mono); }
+        .sm-ev .btn { flex-shrink: 0; }
+        .sm-err { color: #ff5a63; font-size: 13px; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -86,7 +113,9 @@
             <a class="crumb" id="crumb">Zurück</a>
             <h1 id="title">Aufzeichnung</h1>
             <p class="muted" id="date" style="font-size:13px; margin-top:2px"></p>
+            <div class="live-score hidden" id="live-score" title="Spielstand an der aktuellen Videostelle"></div>
             <div class="hidden" id="rec-admin" style="display:flex; gap:6px; margin-top:10px">
+                <button class="btn btn-sm hidden" onclick="openSync()" id="btn-sm"></button>
                 <button class="btn btn-sm" onclick="editThis()" id="btn-edit-rec"></button>
                 <button class="btn btn-sm btn-ghost btn-danger" onclick="deleteThis()" id="btn-del-rec"></button>
             </div>
@@ -100,6 +129,7 @@
         <div class="side-scroll">
             <div id="view-events"></div>
             <div id="view-clips" class="hidden"></div>
+            <div id="view-sync" class="hidden"></div>
             <div id="view-feedback" class="hidden">
                 <div id="player-pick" class="field hidden" style="margin-bottom:12px">
                     <label>Feedback für Spieler</label>
@@ -235,7 +265,9 @@
             renderEventPeople(); renderClipPlayers(); loadSessionOptions();
         }
 
-        yt = new FalconsPlayer($('stage'), { onError: code => {
+        if (admin && kindKey === 'game') { $('btn-sm').classList.remove('hidden'); $('btn-sm').innerHTML = I('list', 'icon-sm') + ' Spielbericht'; }
+        anchors = (rec.smSync || []).slice();
+        yt = new FalconsPlayer($('stage'), { onTime: t => updateLiveScore(t), onError: code => {
             if (code == 101 || code == 150) {
                 blocked = true;
                 $('blocked').innerHTML = `${I('alert')} Dieses Video darf nicht eingebettet werden. Zeitstempel öffnen YouTube in einem neuen Tab.`;
@@ -243,7 +275,9 @@
             }
         } });
         if (ytId) yt.load(ytId, { autoplay: false }).then(() => { const t = +params.get('t'); if (t) yt.seek(t); });
-        setMode(params.get('tab') === 'clips' ? 'clips' : 'events');
+        loadEvents();
+        setMode(params.get('tab') === 'clips' ? 'clips' : params.get('tab') === 'sync' && admin ? 'sync' : 'events');
+        if (mode === 'sync') openSync();
     }
 
     function jumpTo(sec) {
@@ -266,7 +300,9 @@
         $('tab-feedback').classList.toggle('active', m === 'feedback');
         $('tab-clips').classList.toggle('active', m === 'clips');
         ['events', 'clips', 'feedback'].forEach(k => { $('view-' + k).classList.toggle('hidden', m !== k); $('form-' + k).classList.toggle('hidden', m !== k); });
-        if (m === 'events') loadEvents(); else if (m === 'clips') loadClips(); else loadFeedback();
+        $('view-sync').classList.toggle('hidden', m !== 'sync');
+        if (admin) $('admin-area').classList.toggle('hidden', m === 'sync');
+        if (m === 'events') loadEvents(); else if (m === 'clips') loadClips(); else if (m === 'feedback') loadFeedback();
     }
 
     /* ------------------------------------------------------------- Ereignisse */
@@ -283,7 +319,7 @@
                 return `<div class="event ev-${type}" onclick="jumpTo(${+e.sec || 0})">
                     <div class="event-icon">${I(t.icon, 'icon-sm')}</div>
                     <div class="event-main">
-                        <div class="event-title">${t.label} <span class="event-time">${F.esc(e.time)}</span></div>
+                        <div class="event-title">${t.label} <span class="event-time">${F.esc(e.time)}</span>${e.smScore && (e.type === 'goal' || e.type === 'conceded') ? `<span class="score-chip">${F.esc(e.smScore)}</span>` : ''}</div>
                         <div class="event-desc">${F.esc(e.desc)}</div>
                         ${peopleTags(e)}
                     </div>
@@ -487,6 +523,176 @@
         const p = ta.selectionStart ?? ta.value.length;
         ta.value = ta.value.slice(0, p) + t + ta.value.slice(p);
         ta.focus(); ta.selectionStart = ta.selectionEnd = p + t.length;
+    }
+
+
+    /* ------------------------------------------------ Spielbericht (Saisonmanager) */
+    const SMx = Saisonmanager;
+    let smGame = null, anchors = [], smSide = null, smError = '', smLoading = false;
+
+    function openSync() {
+        setMode('sync');
+        renderSync();
+        if (!smGame && !smLoading && rec.sm && rec.sm.link) loadSm(rec.sm.link);
+    }
+
+    async function loadSm(link) {
+        smLoading = true; smError = ''; renderSync();
+        try {
+            smGame = await SMx.load(link);
+            smSide = (rec.sm && rec.sm.weAre) || SMx.weAre(smGame);
+            await saveSmMeta();
+        } catch (e) { console.warn(e); smError = e.message || String(e); }
+        smLoading = false; renderSync();
+    }
+
+    async function saveSmMeta() {
+        const sm = { id: smGame.id, link: smGame.link, weAre: smSide, home: smGame.home, guest: smGame.guest };
+        rec.sm = sm;
+        await F.T('games').doc(itemId).update({ sm });
+    }
+    async function setSide(side) { smSide = side; await saveSmMeta(); renderSync(); }
+
+    /** Abgleichspunkt: aktuelle Videostelle = angegebene Spielzeit */
+    function addAnchor(period, clock) {
+        if (!yt || !yt.ready) return F.toast('Video ist noch nicht bereit', 'error');
+        const video = Math.round(yt.time() * 10) / 10;
+        anchors = anchors.filter(a => !(a.period === period && Math.abs(a.clock - clock) < 2));
+        anchors.push({ period, clock, video });
+        anchors.sort((a, b) => a.period - b.period || a.clock - b.clock);
+        F.T('games').doc(itemId).update({ smSync: anchors });
+        rec.smSync = anchors;
+        F.toast(`Abgeglichen: ${SMx.periodLabel(period)} ${SMx.fmtClock(clock)} = Video ${F.fmtTime(video)}`);
+        renderSync(); updateLiveScore(yt.time(), true);
+    }
+    function addClockAnchor() {
+        const period = +$('sm-period').value, raw = $('sm-clock').value.trim();
+        if (!/^\d{1,2}:\d{2}$/.test(raw)) return F.toast('Spieluhr im Format 12:34 eingeben', 'error');
+        addAnchor(period, SMx.clockSec(raw));
+        $('sm-clock').value = '';
+    }
+    function removeAnchor(i) {
+        anchors.splice(i, 1);
+        F.T('games').doc(itemId).update({ smSync: anchors }); rec.smSync = anchors;
+        renderSync();
+    }
+
+    function renderSync() {
+        const el = $('view-sync');
+        const link = (rec.sm && rec.sm.link) || '';
+        let html = `<button class="crumb" style="background:none;border:0;cursor:pointer;margin-bottom:10px" onclick="setMode('events')">${I('arrowLeft', 'icon-sm')} Zurück zu den Ereignissen</button>
+            <div class="sync-step">
+                <h4>${I('list', 'icon-sm')} Spielbericht aus dem Saisonmanager</h4>
+                <div class="time-row"><input id="sm-link" class="input" placeholder="https://saisonmanager.de/…/spiel/12345" value="${F.esc(link)}">
+                <button class="btn btn-primary" onclick="loadSm($('sm-link').value)" ${smLoading ? 'disabled' : ''}>${smLoading ? 'Lädt …' : 'Laden'}</button></div>
+                ${smError ? `<p class="sm-err">${F.esc(smError)}</p>` : ''}
+            </div>`;
+        if (smGame) {
+            const g = smGame, us = smSide;
+            html += `<div class="sm-match"><span>${F.esc(g.home.name)}</span><b>${g.result.home ?? '–'} : ${g.result.guest ?? '–'}</b><span>${F.esc(g.guest.name)}</span></div>
+                <div class="segmented full" style="margin-bottom:10px"><button class="${us === 'home' ? 'active' : ''}" onclick="setSide('home')">Wir sind Heim</button><button class="${us === 'guest' ? 'active' : ''}" onclick="setSide('guest')">Wir sind Gast</button></div>`;
+            // Schritt 1: Abgleich
+            const periods = [...new Set(g.events.map(e => e.period).concat([1, 2, 3]))].filter(p => p <= 4).sort();
+            html += `<div class="sync-step"><h4><span class="n">1</span> Spielzeit mit dem Video abgleichen</h4>
+                <p class="h">Spule im Video zum Anpfiff eines Drittels und tippe den passenden Knopf. Genauer wird es, wenn du zusätzlich an weiteren Stellen die eingeblendete Spieluhr abliest und einträgst – Unterbrechungen werden so ausgeglichen.</p>
+                <div class="anchor-btns">${[1, 2, 3].map(p => `<button class="btn" onclick="addAnchor(${p}, 0)">${I('play', 'icon-sm')} Anpfiff ${p}. Drittel ist jetzt</button>`).join('')}</div>
+                <div class="time-row"><select id="sm-period" class="select" style="flex:1">${periods.map(p => `<option value="${p}">${SMx.periodLabel(p)}</option>`).join('')}</select>
+                    <input id="sm-clock" class="input mono" placeholder="12:34" title="Spieluhr laut Scoreboard (Minuten:Sekunden)" inputmode="numeric" style="width:96px">
+                    <button class="btn" onclick="addClockAnchor()" title="Aktuelle Videostelle = diese Spielzeit">${I('clock', 'icon-sm')}</button></div>
+                ${anchors.map((a, i) => `<div class="anchor">${I('check', 'icon-sm')} <span>${SMx.periodLabel(a.period)} <span class="mono">${SMx.fmtClock(a.clock)}</span></span><span class="sp"></span>
+                    <span class="mono ts" data-sec="${Math.floor(a.video)}">${F.fmtTime(a.video)}</span>
+                    <button class="btn btn-ghost btn-icon btn-sm" title="Entfernen" onclick="removeAnchor(${i})">${I('x', 'icon-sm')}</button></div>`).join('') || '<p class="faint" style="font-size:12px; margin-top:6px">Noch kein Abgleich.</p>'}
+            </div>`;
+            // Schritt 2: Tore & Strafen
+            const list = g.events.filter(e => e.type === 'goal' || e.type === 'penalty');
+            html += `<div class="sync-step"><h4><span class="n">2</span> Tore & Strafen prüfen (${list.filter(e => e.type === 'goal').length} Tore, ${list.filter(e => e.type === 'penalty').length} Strafen)</h4>
+                <p class="h">▶ springt 10 Sekunden vor die geschätzte Stelle. Liegt sie daneben: Tor im Video suchen und „Jetzt“ tippen – das verbessert auch alle folgenden Schätzungen.</p>
+                ${list.map(e => {
+                    const est = SMx.estimate(anchors, e.period, SMx.clockSec(e.time));
+                    const ours = e.team === us, isGoal = e.type === 'goal';
+                    const color = isGoal ? (ours ? 'var(--brand)' : 'var(--text-muted)') : (ours ? 'var(--warning)' : 'var(--info)');
+                    const who = e.number ? `#${e.number} ${SMx.playerName(g, e.team, e.number)}` : '';
+                    return `<div class="sm-ev" style="--ev-color:${color}">
+                        ${isGoal ? `<span class="score-chip">${e.home}:${e.guest}</span>` : `<span class="score-chip">2'</span>`}
+                        <div class="m"><b>${isGoal ? (ours ? 'Tor' : 'Gegentor') : (ours ? 'Strafe gegen uns' : 'Strafe Gegner')} · ${SMx.periodLabel(e.period)} ${F.esc(e.time)}</b>${F.esc(who)}${isGoal && e.assist ? ' · V: #' + e.assist : ''}${!isGoal && e.reason ? ' · ' + F.esc(e.reason) : ''}
+                            <br><small>${est === null ? 'Abgleich für dieses Drittel fehlt' : 'Video ≈ ' + F.fmtTime(est)}</small></div>
+                        ${est !== null ? `<button class="btn btn-sm btn-icon" title="10 s vorher anspringen" onclick="yt.seek(${Math.max(0, Math.round(est) - 10)})">${I('play', 'icon-sm')}</button>` : ''}
+                        <button class="btn btn-sm" title="Das Ereignis passiert genau jetzt im Video" onclick="addAnchor(${e.period}, ${SMx.clockSec(e.time)})">Jetzt</button>
+                    </div>`;
+                }).join('')}
+            </div>`;
+            // Schritt 3: Eintragen
+            const ready = list.filter(e => SMx.estimate(anchors, e.period, SMx.clockSec(e.time)) !== null).length;
+            html += `<div class="sync-step"><h4><span class="n">3</span> Als Ereignisse eintragen</h4>
+                <label style="display:flex; gap:8px; align-items:center; font-size:13px; margin-bottom:10px"><input type="checkbox" id="sm-pen" checked style="accent-color:var(--brand)"> Strafen als Über-/Unterzahl eintragen</label>
+                <button class="btn btn-primary btn-block" onclick="importSm()" ${ready ? '' : 'disabled'}>${I('save', 'icon-sm')} ${ready} Ereignisse eintragen / aktualisieren</button>
+                <p class="h" style="margin:10px 0 0">Jedes Tor wird 10 Sekunden vor dem Treffer eingetragen, mit Spielstand, Torschütze und Vorlage (unsere Spieler werden markiert). Erneutes Eintragen aktualisiert die Zeiten statt doppelt anzulegen. Das Endergebnis wird ins Spiel übernommen.</p>
+            </div>`;
+        }
+        el.innerHTML = html;
+    }
+
+    async function importSm() {
+        const { events: evs, missing } = SMx.buildEvents(smGame, anchors, smSide, roster.map(p => p.id), { penalties: $('sm-pen').checked });
+        const existingSnap = await F.T(K.events).where(K.fk, '==', itemId).get();
+        const existing = new Map();
+        existingSnap.docs.forEach(d => { const x = d.data(); if (x.smEventId !== undefined && x.smEventId !== null) existing.set(x.smEventId, { id: d.id, ...x }); });
+        let added = 0, updated = 0;
+        const batch = db.batch();
+        evs.forEach(e => {
+            const base = { type: e.type, time: F.fmtTime(e.sec), sec: e.sec, desc: e.desc, smEventId: e.smEventId, smGoalSec: e.smGoalSec, smScore: e.smScore, smPeriod: e.smPeriod, smClock: e.smClock };
+            const old = existing.get(e.smEventId);
+            if (old) {
+                // manuell gepflegte Spieler-Markierungen behalten
+                const upd = { ...base };
+                if (!old.scorer && e.scorer) upd.scorer = e.scorer;
+                if (!old.assist && e.assist) upd.assist = e.assist;
+                upd.players = [...new Set([...(old.players || []), ...e.players])];
+                batch.update(F.T(K.events).doc(old.id), upd); updated++;
+            } else {
+                batch.set(F.T(K.events).doc(), { [K.fk]: itemId, ...base, scorer: e.scorer, assist: e.assist, players: e.players, onIce: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                added++;
+            }
+        });
+        // Endergebnis + Gegner ins Spiel übernehmen
+        const r = smGame.result || {}, us = smSide, them = us === 'home' ? 'guest' : 'home';
+        const gameUpd = {};
+        if (r.home !== undefined && r.home !== null) { gameUpd.scoreFor = +r[us]; gameUpd.scoreAgainst = +r[them]; }
+        if (!rec.opponentId) {
+            const oppName = smGame[them].name;
+            try {
+                const opps = await F.T('opponents').get();
+                const hit = opps.docs.find(d => (d.data().name || '').trim().toLowerCase() === oppName.trim().toLowerCase());
+                gameUpd.opponentId = hit ? hit.id : (await F.T('opponents').add({ name: oppName, createdAt: new Date() })).id;
+            } catch (e) { console.warn('Gegner nicht übernommen', e); }
+        }
+        if (Object.keys(gameUpd).length) batch.update(F.T('games').doc(itemId), gameUpd);
+        await batch.commit();
+        Object.assign(rec, gameUpd);
+        F.toast(`${added} neu, ${updated} aktualisiert${missing.length ? `, ${missing.length} ohne Abgleich übersprungen` : ''}`);
+        setMode('events');
+    }
+
+    /** Spielstand (und geschätzte Spielzeit) an der aktuellen Videostelle */
+    let lastLs = -99;
+    function updateLiveScore(t, force) {
+        if (kindKey !== 'game' || (!force && Math.abs(t - lastLs) < 0.5)) return;
+        lastLs = t;
+        const el = $('live-score');
+        const imported = events.filter(e => e.smScore && e.smGoalSec !== undefined && (e.type === 'goal' || e.type === 'conceded')).sort((a, b) => a.smGoalSec - b.smGoalSec);
+        let html;
+        if (imported.length && rec.sm) {
+            let sc = '0:0'; imported.forEach(e => { if (e.smGoalSec <= t) sc = e.smScore; });
+            html = `<span>${F.esc(rec.sm.home.short || 'Heim')}</span><b>${sc}</b><span>${F.esc(rec.sm.guest.short || 'Gast')}</span>`;
+        } else {
+            const all = events.filter(e => e.type === 'goal' || e.type === 'conceded');
+            if (!all.length) { el.classList.add('hidden'); return; }
+            const ours = all.filter(e => e.type === 'goal' && e.sec <= t).length, theirs = all.filter(e => e.type === 'conceded' && e.sec <= t).length;
+            html = `<span>Falcons</span><b>${ours}:${theirs}</b><span>Gegner</span>`;
+        }
+        const pos = anchors.length ? SMx.inverse(anchors, t) : null;
+        if (pos) html += `<em>${pos.pause ? 'Pause nach dem ' + SMx.periodLabel(pos.period) : SMx.periodLabel(pos.period) + ' ≈ ' + SMx.fmtClock(pos.clock)}</em>`;
+        el.innerHTML = html; el.classList.remove('hidden');
     }
 
     F.ready.then(init);

@@ -675,7 +675,8 @@ const Falcons = (() => {
         if (kind === 'game') fields.push(
             { key: 'opponentId', label: 'Gegner', type: 'select', value: rec.opponentId || '', options: [['', '– kein Gegner –'], ...opps], half: true },
             { key: 'scoreFor', label: 'Tore Falcons', type: 'number', value: rec.scoreFor ?? '', half: true },
-            { key: 'scoreAgainst', label: 'Tore Gegner', type: 'number', value: rec.scoreAgainst ?? '', half: true });
+            { key: 'scoreAgainst', label: 'Tore Gegner', type: 'number', value: rec.scoreAgainst ?? '', half: true },
+            { key: 'smLink', label: 'Saisonmanager-Link (optional)', value: (rec.sm && rec.sm.link) || '', placeholder: 'https://saisonmanager.de/…/spiel/12345', hint: 'Damit lassen sich Tore, Strafen und Spielstand im Spiel unter „Spielbericht“ automatisch eintragen' });
         formDialog({
             title: kind === 'game' ? 'Spiel bearbeiten' : 'Training bearbeiten', fields,
             onSave: async v => {
@@ -689,6 +690,9 @@ const Falcons = (() => {
                     data.opponentId = v.opponentId || FVd;
                     data.scoreFor = v.scoreFor === '' ? FVd : Math.max(0, parseInt(v.scoreFor) || 0);
                     data.scoreAgainst = v.scoreAgainst === '' ? FVd : Math.max(0, parseInt(v.scoreAgainst) || 0);
+                    const smId = (v.smLink.match(/spiel\/(\d+)/) || [])[1];
+                    if (v.smLink && !smId) { toast('Saisonmanager-Link nicht erkannt (…/spiel/12345)', 'error'); return false; }
+                    data.sm = smId ? { ...(rec.sm || {}), link: v.smLink, id: +smId } : FVd;
                 }
                 await T(col).doc(rec.id).update(data);
                 toast('Gespeichert');

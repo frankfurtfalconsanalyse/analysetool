@@ -22,6 +22,10 @@ const FALCONS_CONFIG = {
         { id: "regio", name: "Herren Regio" }
     ],
 
+    // Saisonmanager-Dienst (tools/saisonmanager-proxy.gs als Google-Web-App). Leer lassen, wenn die URL
+    // in der Verwaltung (Spiele → Saisonmanager-Verbindung) hinterlegt wird.
+    saisonmanagerProxyUrl: "",
+
     // Login: technische E-Mail-Domain für Firebase Auth – nicht ändern, sonst kann sich niemand mehr anmelden.
     authDomain: "falcons-hub.app",
 

@@ -55,16 +55,16 @@ Trikotnummern gelten nur innerhalb eines Teams – #22 bei den Herren ist nicht 
 
 | Pfad | Inhalt |
 |---|---|
-| `teams/{team}` | Team-Infos (`name`) |
+| `teams/{team}` | Team-Infos (`name`); im ersten Team zusätzlich `smProxyUrl` (Saisonmanager-Dienst) |
 | `teams/{team}/players/{nr}` | `name`, `nr`, `role` (`player`/`coach`), `clubAdmin`, `uid` + `login` (verknüpftes Login-Konto), `authVersion` |
 | `users/{uid}` | `teams: { herren: '22', regio: '07' }` – Nummer des Kontos je Team |
 | `teams/{team}/youtube_clips` | `title`, `ytId`, `startTime`, `endTime`, `category`, `position`, `players[]`, `source` (Spiel/Training), `opponentId` |
 | `teams/{team}/video_metadata/{driveId}` | `position` für Drive-Clips |
 | `teams/{team}/sessions` | `title`, `description`, `videoIds[]` (Clip- oder Taktik-IDs), `dueDate`, `createdAt` |
 | `teams/{team}/comments` | Kommentare zu Clips: `videoId`, `text`, `author`, `authorNr`, `mentions[]`, `readBy[]`, `parentId` (Antwort), `drawing` + `drawingTime` |
-| `teams/{team}/games` · `trainings` | `title`, `ytId`, `date`; Spiele zusätzlich `opponentId`, `scoreFor`, `scoreAgainst` |
+| `teams/{team}/games` · `trainings` | `title`, `ytId`, `date`; Spiele zusätzlich `opponentId`, `scoreFor`, `scoreAgainst`, `sm` (`id`, `link`, `weAre` = `home`/`guest`, `home`, `guest`), `smSync[]` (Abgleich `{ period, clock, video }`) |
 | `teams/{team}/opponents` | Gegner: `name`, `strengths`, `weaknesses`, `keyPlayers`, `plan` |
-| `teams/{team}/game_events` · `training_events` | Timeline: `gameId`/`trainingId`, `type` (nur Spiele), `time`, `sec`, `desc`, `scorer`, `assist`, `onIce[]`, `players[]` |
+| `teams/{team}/game_events` · `training_events` | Timeline: `gameId`/`trainingId`, `type` (nur Spiele), `time`, `sec`, `desc`, `scorer`, `assist`, `onIce[]`, `players[]`; aus dem Saisonmanager zusätzlich `smEventId`, `smGoalSec`, `smScore`, `smPeriod`, `smClock` |
 | `teams/{team}/game_comments` · `training_comments` | privates Feedback: `targetNr`, `text`, `author` |
 | `teams/{team}/tactics` | Taktik-Boards: `title`, `category`, `field`, `visibility` (`team`/`private`), `ownerNr`, `phases[]` |
 | `teams/{team}/progress/{nr}` | Session-Fortschritt `{ sessionId: angesehene Clips }` |
@@ -73,6 +73,18 @@ Trikotnummern gelten nur innerhalb eines Teams – #22 bei den Herren ist nicht 
 
 Die alten Collections ohne Team (`players`, `sessions`, …) bleiben nach der Umstellung als Sicherung erhalten
 und werden von der App nicht mehr benutzt.
+
+## Saisonmanager
+
+Spiele können mit einem Saisonmanager-Link verknüpft werden (`assets/js/saisonmanager.js`). Der Saisonmanager
+erlaubt keine Abrufe von fremden Webseiten (Session-Cookies, kein CORS), daher läuft der Abruf über
+`tools/saisonmanager-proxy.gs` – ein Google-Apps-Script, das als Web-App (*Ausführen als: Ich*, *Zugriff: Jeder*)
+bereitgestellt wird. Die …/exec-URL trägt ein Vereins-Admin unter Verwaltung → Spiele → *Saisonmanager-Verbindung*
+ein (gespeichert in `teams/herren.smProxyUrl`) oder sie steht fest in `config.js` (`saisonmanagerProxyUrl`).
+
+Abgleich Spielzeit ↔ Videozeit: Anker `{ period, clock, video }` (Sekunden). Zwischen zwei Ankern eines Drittels
+wird linear umgerechnet (Steigung 1–6, Unterbrechungen werden so ausgeglichen); mit nur einem Anker gilt die
+typische Steigung der anderen Drittel. Ereignisse werden 10 Sekunden vor der geschätzten Torzeit eingetragen.
 
 ## Text-Konventionen in Kommentaren
 

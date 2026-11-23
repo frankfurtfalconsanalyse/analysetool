@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261123e">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261123g">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261123e"></script>
-    <script src="assets/js/core.js?v=20261123e"></script>
+    <script src="assets/js/config.js?v=20261123g"></script>
+    <script src="assets/js/core.js?v=20261123g"></script>
     <style>
         .help h2 { font-size: 18px; display: flex; align-items: center; gap: 10px; }
         .help h3 { font-size: 15px; margin: 22px 0 6px; }
@@ -77,7 +77,8 @@
         <ul>
             <li><b>Zeitlupe:</b> ¼×, ½×, 1×, 2× (Tasten <kbd>1</kbd>–<kbd>4</kbd>).</li>
             <li><b>Bild für Bild:</b> die Pfeile ‹ › neben ±5s (Tasten <kbd>,</kbd> und <kbd>.</kbd>) – das Video hält dabei an.</li>
-            <li><b>Springen:</b> −5s / +5s (<kbd>←</kbd> <kbd>→</kbd>) und −1s / +1s (<kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd>).</li>
+            <li><b>Springen:</b> −5s / +5s (<kbd>←</kbd> <kbd>→</kbd>) und −1s / +1s (<kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd>). Mehrfaches Tippen wird zusammengezählt – das Video springt erst, wenn du kurz aufhörst.</li>
+            <li><b>Handy & Tablet:</b> Doppeltipp auf die linke bzw. rechte Seite des Videos springt 10 Sekunden zurück bzw. vor – jeder weitere Tipp noch einmal 10 Sekunden. Einfacher Tipp = Abspielen / Pause.</li>
             <li><b>Clips:</b> I&lt; springt an den Anfang, &gt;I ans Ende des Clips (Tasten <kbd>Pos1</kbd> / <kbd>Ende</kbd>).</li>
             <li><b>Szene in Schleife:</b> <b>A</b> am Anfang der Szene drücken, <b>B</b> am Ende – die Szene läuft dann in Dauerschleife, z. B. in Zeitlupe. <kbd>X</kbd> beendet die Schleife.</li>
             <li><kbd>Leertaste</kbd> = Abspielen / Pause.</li>
@@ -138,6 +139,17 @@
             <li>In der Aufzeichnung unten <b>Ereignisse/Übungen</b> mit Zeit eintragen. Der <b>Uhr-Button</b> übernimmt die aktuelle Videozeit.</li>
             <li>Unter <b>Spieler-Feedback</b> einen Spieler wählen und privates Feedback schreiben – Zeitstempel werden klickbar.</li>
         </ul>
+
+        <h3>Spielbericht aus dem Saisonmanager</h3>
+        <p>Tore und Strafen eines Spiels lassen sich aus dem Saisonmanager übernehmen – mit Torschütze, Vorlage, Spielstand und Spielzeit. Jedes Ereignis wird <b>10 Sekunden vor dem Tor</b> eingetragen, damit die Szene davor mit drin ist.</p>
+        <ol>
+            <li><b>Link eintragen:</b> Beim Anlegen eines Spiels (Verwaltung → Spiele) den Saisonmanager-Link einfügen, z. B. <code>saisonmanager.de/…/spiel/58691</code>, und <b>Übernehmen</b> klicken – Titel, Datum, Video-Link, Ergebnis und Gegner werden ausgefüllt. Bei bestehenden Spielen: <b>Bearbeiten</b> → Feld „Saisonmanager-Link“.</li>
+            <li><b>Abgleichen:</b> In der Aufzeichnung auf <b>Spielbericht</b> tippen. Das Video an den Anpfiff eines Drittels spulen und <b>„Anpfiff 1. Drittel ist jetzt“</b> tippen – das für jedes Drittel wiederholen. Genauer wird es, wenn du zusätzlich an weiteren Stellen die Spieluhr aus dem Video-Scoreboard abliest: Drittel wählen, Uhrzeit eintragen (z. B. 10:00) und auf das Uhr-Symbol tippen.</li>
+            <li><b>Prüfen:</b> In der Liste springt ▶ zur geschätzten Stelle. Liegt ein Tor daneben, das Tor im Video suchen und <b>Jetzt</b> tippen – das verbessert auch alle folgenden Schätzungen (Unterbrechungen werden so ausgeglichen).</li>
+            <li><b>Ereignisse eintragen:</b> legt Tore, Gegentore und (optional) Strafen als Ereignisse an. Erneutes Eintragen aktualisiert die Zeiten, ohne doppelte Einträge – von dir ergänzte „Auf dem Feld“-Spieler bleiben erhalten.</li>
+        </ol>
+        <p>Danach zeigt die Aufzeichnung oben laufend den <b>Spielstand und die Spielzeit</b> zur aktuellen Videostelle. Das Scoreboard im Video selbst kann der Hub nicht auslesen (YouTube gibt das Bild nicht frei) – deshalb der Abgleich über die Anpfiffe.</p>
+        <p><b>Einmalige Einrichtung (Vereins-Admin):</b> Der Saisonmanager erlaubt keine direkten Abrufe von anderen Webseiten. Deshalb läuft der Abruf über ein kleines Google-Apps-Script: Code aus <code>tools/saisonmanager-proxy.gs</code> auf script.google.com als Web-App bereitstellen (Ausführen als: Ich · Zugriff: Jeder) und die …/exec-URL unter Verwaltung → Spiele → <b>Saisonmanager-Verbindung</b> eintragen, testen und speichern.</p>
 
         <h3>Fristen & Status-Check</h3>
         <p>Beim Erstellen einer Session (oder später in der Session-Tabelle) ein Datum bei <b>Ansehen bis</b> setzen. Der Status-Check zeigt pro Session, Clip, Spiel und Training, wer es <b>gesehen</b> hat und wer noch <b>offen</b> ist – Sessions mit Frist stehen oben, überfällige sind rot markiert. Eine Session zählt als gesehen, wenn alle Clips durchgeklickt wurden.</p>

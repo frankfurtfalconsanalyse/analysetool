@@ -24,12 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261123e">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261123g">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261123e"></script>
-    <script src="assets/js/core.js?v=20261123e"></script>
+    <script src="assets/js/config.js?v=20261123g"></script>
+    <script src="assets/js/core.js?v=20261123g"></script>
+    <script src="assets/js/saisonmanager.js?v=20261123g"></script>
     <style>
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
@@ -163,6 +164,9 @@
         <div class="card">
             <div class="card-head"><div><h3>Spiel hinzufügen</h3><p>Komplette Spielaufzeichnung von YouTube. Ereignisse & Feedback trägst du danach direkt im Spiel ein.</p></div></div>
             <div class="card-body"><div class="form-grid">
+                <div class="field" style="grid-column:1 / -1"><label>Saisonmanager-Link (optional – füllt alles automatisch aus)</label>
+                    <div style="display:flex; gap:8px"><input id="g-sm" class="input" placeholder="https://saisonmanager.de/…/spiel/12345"><button class="btn" onclick="prefillFromSm()" id="btn-sm-fill">Übernehmen</button></div>
+                    <span class="form-hint" id="g-sm-msg"></span></div>
                 <div class="field"><label>Spiel</label><input id="g-title" class="input" placeholder="Falcons vs. Gegner"></div>
                 <div class="field"><label>YouTube-Link</label><input id="g-url" class="input" placeholder="https://youtu.be/…"></div>
                 <div class="field"><label>Datum</label><input id="g-date" class="input" type="date"></div>
@@ -172,6 +176,14 @@
             </div></div>
         </div>
         <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Spiel</th><th>Datum</th><th>Gegner</th><th>Ergebnis</th><th></th></tr></thead><tbody id="games-table"></tbody></table></div></div>
+        <div class="card club-only hidden" id="sm-setup-card">
+            <div class="card-head"><div><h3>Saisonmanager-Verbindung</h3><p>Einmalig einrichten (nur Vereins-Admins): Web-App-URL des Saisonmanager-Dienstes eintragen. Anleitung in der Hilfe unter „Saisonmanager“.</p></div></div>
+            <div class="card-body"><div style="display:flex; gap:8px; flex-wrap:wrap">
+                <input id="sm-proxy" class="input" style="flex:1; min-width:220px" placeholder="https://script.google.com/macros/s/…/exec">
+                <button class="btn" onclick="testSmProxy()">Testen</button>
+                <button class="btn btn-primary" onclick="saveSmProxy()">Speichern</button>
+            </div><span class="form-hint" id="sm-proxy-msg"></span></div>
+        </div>
     </section>
 
     <!-- TRAININGS -->
@@ -257,6 +269,7 @@
         ctx = aSnap;
         $('team-eyebrow').textContent = `Coach-Bereich · ${F.teamName(ctx.team)}`;
         document.querySelectorAll('.club-only').forEach(el => el.classList.toggle('hidden', !ctx.clubAdmin));
+        if (ctx.clubAdmin && !$('sm-proxy').value) Saisonmanager.proxyUrl().then(u => $('sm-proxy').value = u || '');
         media = m;
         sessions = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         games = gSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -450,6 +463,45 @@
             </td></tr>`).join('') : `<tr><td colspan="5" class="muted">Noch keine Einträge.</td></tr>`;
     }
 
+    /* ------------------------------------------------ Saisonmanager */
+    let smPrefill = null;
+    /** Spiel aus dem Saisonmanager vorausfüllen: Titel, Datum, YouTube-Link, Gegner, Ergebnis */
+    async function prefillFromSm() {
+        const msg = $('g-sm-msg');
+        msg.textContent = 'Lade Spieldaten …'; $('btn-sm-fill').disabled = true;
+        try {
+            const g = await Saisonmanager.load($('g-sm').value);
+            const weAre = Saisonmanager.weAre(g), them = weAre === 'home' ? 'guest' : 'home';
+            $('g-title').value = `${g.home.name} vs. ${g.guest.name}`;
+            if (g.date) $('g-date').value = g.date;
+            if (g.video) $('g-url').value = g.video;
+            if (g.result && g.result.home !== null && g.result.home !== undefined && g.ended) { $('g-for').value = g.result[weAre]; $('g-against').value = g.result[them]; }
+            let opp = opponents.find(o => (o.name || '').trim().toLowerCase() === g[them].name.trim().toLowerCase());
+            if (!opp) {
+                try { const ref = await F.T('opponents').add({ name: g[them].name, createdAt: new Date() }); opp = { id: ref.id, name: g[them].name }; opponents.push(opp); opponents.sort((a, b) => a.name.localeCompare(b.name, 'de')); }
+                catch (e) { console.warn(e); }
+                $('g-opp').innerHTML = `<option value="">– kein Gegner –</option>` + opponents.map(o => `<option value="${o.id}">${F.esc(o.name)}</option>`).join('');
+            }
+            if (opp) $('g-opp').value = opp.id;
+            smPrefill = { game: g, weAre };
+            msg.textContent = `✓ ${g.home.name} – ${g.guest.name}, ${F.fmtDate(g.date)}${g.video ? '' : ' · kein Video im Saisonmanager hinterlegt – YouTube-Link bitte selbst eintragen'}`;
+        } catch (e) { msg.textContent = e.message || String(e); }
+        $('btn-sm-fill').disabled = false;
+    }
+
+    async function saveSmProxy() {
+        const url = $('sm-proxy').value.trim();
+        if (url && !/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) return F.toast('Bitte die Web-App-URL von script.google.com einfügen', 'error');
+        await Saisonmanager.setProxyUrl(url);
+        F.toast(url ? 'Saisonmanager-Verbindung gespeichert' : 'Verbindung entfernt');
+    }
+    async function testSmProxy() {
+        const msg = $('sm-proxy-msg'); msg.textContent = 'Teste …';
+        await Saisonmanager.setProxyUrl($('sm-proxy').value.trim(), { save: false });
+        try { const g = await Saisonmanager.load('58691'); msg.textContent = `✓ Verbindung funktioniert (Testspiel: ${g.home.name} – ${g.guest.name} ${g.result.home}:${g.result.guest}). Jetzt „Speichern“.`; }
+        catch (e) { msg.textContent = '✗ ' + (e.message || e); }
+    }
+
     async function updateGame(id, data) {
         const clean = {};
         for (const [k, v] of Object.entries(data)) clean[k] = k.startsWith('score') ? (v === '' ? firebase.firestore.FieldValue.delete() : Math.max(0, parseInt(v) || 0)) : (v || firebase.firestore.FieldValue.delete());
@@ -469,6 +521,11 @@
             if ($('g-opp').value) data.opponentId = $('g-opp').value;
             if ($('g-for').value !== '' && $('g-against').value !== '') { data.scoreFor = parseInt($('g-for').value) || 0; data.scoreAgainst = parseInt($('g-against').value) || 0; }
             $('g-for').value = $('g-against').value = ''; $('g-opp').value = '';
+        }
+        if (col === 'games' && $('g-sm').value.trim()) {
+            const smId = Saisonmanager.gameId($('g-sm').value);
+            if (smId) data.sm = { id: +smId, link: $('g-sm').value.trim(), ...(smPrefill ? { weAre: smPrefill.weAre, home: smPrefill.game.home, guest: smPrefill.game.guest } : {}) };
+            $('g-sm').value = ''; $('g-sm-msg').textContent = ''; smPrefill = null;
         }
         await F.T(col).add(data);
         $(p + '-title').value = $(p + '-url').value = $(p + '-date').value = '';
