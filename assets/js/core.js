@@ -146,13 +146,43 @@ const Falcons = (() => {
         return c;
     }
 
+    /* Kontext-Zwischenspeicher: Die drei Abfragen für den Login-Kontext (Umstellung, Konto, Kader-Eintrag)
+       laufen sonst bei jedem Seitenaufruf nacheinander, bevor irgendetwas angezeigt wird. Der Kontext steuert
+       nur die Anzeige – die Rechte prüft Firestore serverseitig. Er wird daher sofort aus dem Speicher genommen
+       und im Hintergrund geprüft; hat sich etwas geändert (Rolle, Teams), lädt die Seite einmal neu. */
+    const CTX_KEY = 'falcons_ctx', CTX_MAX_AGE = 14 * 864e5;
+    const slimCtx = c => ({ ...c, teams: Object.fromEntries(Object.entries(c.teams || {}).sort()
+        .map(([t, m]) => [t, { nr: m.nr, name: m.name || '', role: m.role || 'player', clubAdmin: m.clubAdmin === true }])) });
+    const ctxKey = c => JSON.stringify([c.uid, c.team, c.nr, !!c.coach, !!c.clubAdmin, slimCtx(c).teams]);
+    function storeCtx(c) { try { localStorage.setItem(CTX_KEY, JSON.stringify({ at: Date.now(), c: slimCtx(c) })); } catch (e) {} }
+    function forgetCtx() { try { localStorage.removeItem(CTX_KEY); } catch (e) {} }
+    function cachedCtx(uid) {
+        try {
+            const x = JSON.parse(localStorage.getItem(CTX_KEY) || 'null'), local = getUser();
+            if (!x || !x.c || x.c.uid !== uid || Date.now() - x.at > CTX_MAX_AGE) return null;
+            if (local && local.team && local.team !== x.c.team) return null;   // Team gewechselt → neu laden
+            return x.c;
+        } catch (e) { return null; }
+    }
+    async function revalidateCtx(fbUser) {
+        let fresh;
+        try { fresh = await loadContext(fbUser); } catch (e) { return; }   // offline o. Ä.: Zwischenspeicher behalten
+        if (!fresh || fresh.migration) { forgetCtx(); localStorage.removeItem(USER_KEY); await auth.signOut(); return location.replace('index.html'); }
+        const changed = ctxKey(fresh) !== ctxKey(ctx);
+        storeCtx(fresh);
+        if (changed) location.reload(); else Object.assign(ctx, slimCtx(fresh));
+    }
+
     /** Löst mit dem Kontext des angemeldeten Spielers auf – oder mit null, wenn niemand angemeldet ist. */
     const authState = new Promise(resolve => {
         const stop = auth.onAuthStateChanged(async fbUser => {
             stop();
-            if (!fbUser) { localStorage.removeItem(USER_KEY); return resolve(null); }
+            if (!fbUser) { localStorage.removeItem(USER_KEY); forgetCtx(); return resolve(null); }
+            const cached = cachedCtx(fbUser.uid);
+            if (cached) { ctx = cached; resolve(ctx); return revalidateCtx(fbUser); }
             try { ctx = await loadContext(fbUser); } catch (e) { console.error(e); ctx = null; }
-            if (!ctx) { localStorage.removeItem(USER_KEY); await auth.signOut(); }
+            if (!ctx) { localStorage.removeItem(USER_KEY); forgetCtx(); await auth.signOut(); }
+            else if (!ctx.migration) storeCtx(ctx);
             resolve(ctx);
         });
     });
@@ -161,7 +191,7 @@ const Falcons = (() => {
     const ready = () => readyPromise || (readyPromise = authState.then(c => (c && !c.migration) ? c : new Promise(() => location.replace('index.html'))));
 
     function logout() {
-        localStorage.removeItem(USER_KEY);
+        localStorage.removeItem(USER_KEY); forgetCtx();
         auth.signOut().finally(() => location.href = 'index.html');
     }
     /** Liefert sofort den gespeicherten Spieler (für die Anzeige) bzw. leitet zum Login um. */
@@ -173,6 +203,7 @@ const Falcons = (() => {
     function switchTeam(team) {
         const u = getUser() || {};
         const m = ctx && ctx.teams[team];
+        forgetCtx();
         setUser({ ...u, team, nr: m ? m.nr : '' });
         location.href = 'index.html';
     }
@@ -183,6 +214,7 @@ const Falcons = (() => {
 
     /** Login mit bestehender PIN. player = { team, nr, name, login } */
     async function signIn(player, pin) {
+        forgetCtx();
         const cred = await auth.signInWithEmailAndPassword(email(player.login), passwordFor(pin));
         await db.collection('users').doc(cred.user.uid).set({ teams: { [player.team]: player.nr } }, { merge: true });
         setUser({ uid: cred.user.uid, team: player.team, nr: player.nr, name: player.name });
@@ -190,6 +222,7 @@ const Falcons = (() => {
 
     /** Erster Login: neues Konto anlegen und mit der Nummer im Team verknüpfen */
     async function register(player, pin) {
+        forgetCtx();
         const login = `${player.team}.${player.nr}.${player.authVersion || 0}`, pw = passwordFor(pin);
         let cred;
         try { cred = await auth.createUserWithEmailAndPassword(email(login), pw); }
@@ -205,6 +238,7 @@ const Falcons = (() => {
 
     /** Angemeldeter Spieler verknüpft eine freie Nummer in einem weiteren Team mit seinem Konto */
     async function linkTeam(team, nr) {
+        forgetCtx();
         const c = await ready();
         const ref = T('players', team).doc(nr), d = await ref.get();
         if (!d.exists) throw Object.assign(new Error(), { code: 'not-found' });
@@ -455,10 +489,34 @@ const Falcons = (() => {
      * Lädt alle Einzelclips (Google Drive + YouTube) und optional Taktik-Boards.
      * Fällt das Drive-Skript aus, werden trotzdem die YouTube-Clips geliefert.
      */
+    /**
+     * Drive-Clips über das Google-Apps-Script. Das Skript braucht mehrere Sekunden – deshalb aus dem
+     * Zwischenspeicher liefern und höchstens alle 5 Minuten im Hintergrund auffrischen (neue Drive-Clips
+     * erscheinen damit beim nächsten Seitenaufruf). Ohne Zwischenspeicher höchstens 6 s warten.
+     */
+    function driveClips(cfg) {
+        if (!cfg.driveScriptUrl) return Promise.resolve([]);
+        const key = 'falcons_drive_' + cfg.id;
+        let cached = null;
+        try { cached = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
+        const fetchFresh = () => fetch(cfg.driveScriptUrl).then(r => r.json()).then(list => {
+            if (!Array.isArray(list)) throw new Error('Unerwartete Antwort');
+            try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), list })); } catch (e) {}
+            return list;
+        });
+        if (cached && Array.isArray(cached.list)) {
+            if (Date.now() - (cached.at || 0) > 5 * 60e3) fetchFresh().catch(err => console.warn('Drive-Clips nicht ladbar', err));
+            return Promise.resolve(cached.list);
+        }
+        return Promise.race([fetchFresh(), new Promise(r => setTimeout(() => r(null), 6000))])
+            .then(list => list || [])
+            .catch(err => { console.warn('Drive-Clips nicht ladbar', err); return []; });
+    }
+
     async function loadMedia({ tactics = false } = {}) {
         const cfg = teamConfig();
         const [driveRes, ytSnap, clubSnap, metaSnap, tacSnap, clubTacSnap] = await Promise.all([
-            cfg.driveScriptUrl ? fetch(cfg.driveScriptUrl).then(r => r.json()).catch(err => { console.warn('Drive-Clips nicht ladbar', err); return []; }) : [],
+            driveClips(cfg),
             T('youtube_clips').get(),
             T('club_clips').get().catch(() => null),
             T('video_metadata').get().catch(() => null),

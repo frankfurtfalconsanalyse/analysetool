@@ -24,14 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261123h">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261125a">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261123h"></script>
-    <script src="assets/js/core.js?v=20261123h"></script>
-    <script src="assets/js/player.js?v=20261123h"></script>
-    <script src="assets/js/saisonmanager.js?v=20261123h"></script>
+    <script src="assets/js/config.js?v=20261125a"></script>
+    <script src="assets/js/core.js?v=20261125a"></script>
+    <script src="assets/js/player.js?v=20261125a"></script>
+    <script src="assets/js/saisonmanager.js?v=20261125a"></script>
     <style>
         .time-row { display: flex; gap: 8px; }
         .time-row .input { font-family: var(--mono); }
@@ -262,11 +262,11 @@
 
     async function init() {
         if (!itemId) return location.replace(K.back);
-        const doc = await F.T(K.col).doc(itemId).get();
+        const [doc, pSnap] = await Promise.all([F.T(K.col).doc(itemId).get(), F.T('players').get()]);
         if (!doc.exists) { $('view-events').innerHTML = F.empty('Nicht gefunden', 'Diese Aufzeichnung existiert nicht mehr.', 'video'); return; }
         const d = doc.data();
         rec = d; ytId = d.ytId;
-        roster = (await F.T('players').get()).docs.map(x => ({ id: x.id, ...x.data() })).sort((a, b) => a.id.localeCompare(b.id));
+        roster = pSnap.docs.map(x => ({ id: x.id, ...x.data() })).sort((a, b) => a.id.localeCompare(b.id));
         $('title').textContent = d.title;
         $('date').textContent = F.fmtDate(d.date);
         document.title = `${d.title} · Falcons Analyse-Hub`;

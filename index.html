@@ -24,14 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261123h">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261125a">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261123h"></script>
-    <script src="assets/js/core.js?v=20261123h"></script>
-    <script src="assets/js/player.js?v=20261123h"></script>
-    <script src="assets/js/migrate.js?v=20261123h"></script>
+    <script src="assets/js/config.js?v=20261125a"></script>
+    <script src="assets/js/core.js?v=20261125a"></script>
+    <script src="assets/js/player.js?v=20261125a"></script>
+    <script src="assets/js/migrate.js?v=20261125a"></script>
     <style>
         /* ---------- Login ---------- */
         .login-screen {
@@ -364,6 +364,11 @@
         $('hero-wrap').innerHTML = '<div class="skeleton" style="height:180px"></div>';
         $('session-grid').innerHTML = $('mention-grid').innerHTML = F.loading();
 
+        // Markierungen schon jetzt abfragen (parallel zum Rest)
+        mentionsP = Promise.all([
+            user.nr ? F.T('comments').where('mentions', 'array-contains', user.nr).get().catch(() => null) : null,
+            user.nr ? F.T('video_views').doc(user.nr).get().catch(() => null) : null
+        ]);
         const [m, sessSnap, progSnap, pSnap, isAdm] = await Promise.all([
             F.loadMedia(),
             F.T('sessions').orderBy('createdAt', 'desc').get(),
@@ -435,8 +440,10 @@
             </a>`).join('');
     }
 
+    let mentionsP = null;
     async function loadMentions() {
-        const snap = user.nr ? await F.T('comments').where('mentions', 'array-contains', user.nr).get() : { forEach() {} };
+        const [cSnap, vDoc] = await mentionsP;
+        const snap = cSnap || { forEach() {} };
         const byClip = new Map();
         snap.forEach(doc => {
             const c = doc.data();
@@ -444,7 +451,7 @@
             byClip.set(c.videoId, (byClip.get(c.videoId) || 0) + 1);
         });
         // Clips, in denen ein Coach dich markiert hat und die du noch nicht angesehen hast
-        const viewed = user.nr ? ((await F.T('video_views').doc(user.nr).get().catch(() => null)) || { data: () => ({}) }).data() || {} : {};
+        const viewed = (vDoc && vDoc.data && vDoc.data()) || {};
         media.filter(v => (v.players || []).includes(user.nr) && !viewed[v.id] && !byClip.has(v.id)).forEach(v => byClip.set(v.id, 'clip'));
         const cards = [...byClip].map(([vid, n]) => {
             const v = media.find(x => x.id === vid);

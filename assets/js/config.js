@@ -42,4 +42,7 @@ const FALCONS_CONFIG = {
 
 firebase.initializeApp(FALCONS_CONFIG.firebase);
 const db = firebase.firestore();
+// Erkennt Netze, in denen die Daten-Verbindung hängt (Firmen-WLAN, Virenscanner, manche Mobilfunknetze),
+// und weicht dann automatisch aus – sonst lädt die Seite dort minutenlang.
+try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e) {}
 const auth = firebase.auth();

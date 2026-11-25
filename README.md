@@ -106,6 +106,11 @@ Ereignisse werden 10 Sekunden vor der geschätzten Torzeit eingetragen.
 - Bekannte Grenze: Eine Nummer, die sich noch nie angemeldet hat, kann von jedem beansprucht werden, der sie kennt.
   Fällt das auf, PIN im Kader zurücksetzen.
 - Die Regeln sind mit dem Firestore-Emulator getestet (`tests/rules`, 75 Fälle).
+- **Ladezeit:** Der Login-Kontext (Team, Nummer, Rolle) liegt im Browser (`falcons_ctx`, max. 14 Tage) und wird nach
+  dem Anzeigen im Hintergrund geprüft – hat sich Rolle oder Team geändert, lädt die Seite einmal neu; ist das Konto
+  nicht mehr im Kader, wird abgemeldet. Er steuert nur die Anzeige, die Rechte prüft Firestore. Die Drive-Clips
+  (`falcons_drive_<team>`) kommen ebenfalls aus dem Browser-Speicher und werden höchstens alle 5 Minuten im
+  Hintergrund aufgefrischt. Firestore wählt die Verbindungsart automatisch (`experimentalAutoDetectLongPolling`).
 
 ### Umstellung auf Teams (einmalig)
 

@@ -24,12 +24,12 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261123h">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261125a">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261123h"></script>
-    <script src="assets/js/core.js?v=20261123h"></script>
+    <script src="assets/js/config.js?v=20261125a"></script>
+    <script src="assets/js/core.js?v=20261125a"></script>
 </head>
 <body>
 
@@ -66,26 +66,29 @@
         const kind = currentKind === 'games' ? 'game' : 'training';
         F.editRecording(kind, cards[id], { onDone: () => show(currentKind), onDeleted: () => show(currentKind) });
     }
-    async function show(kind) {
+    let lastData = null;   // letzte Abfrage – die Saison-Auswahl filtert nur, ohne neu zu laden
+    async function show(kind, reuse = false) {
         if (!KINDS[kind]) kind = 'games';
         currentKind = kind;
         const k = KINDS[kind];
         history.replaceState(null, '', `?type=${kind}`);
         $('tab-games').classList.toggle('active', kind === 'games');
         $('tab-trainings').classList.toggle('active', kind === 'trainings');
-        $('grid').className = 'grid';
-        $('grid').innerHTML = F.loading();
+        const cached = reuse && lastData && lastData.kind === kind;
+        if (!cached) { $('grid').className = 'grid'; $('grid').innerHTML = F.loading(); }
 
-        const [snap, viewDoc, oppSnap] = await Promise.all([
+        const data = cached ? lastData.data : await Promise.all([
             F.T(kind).orderBy('date', 'desc').get(),
             user.nr ? F.T(k.views).doc(user.nr).get() : Promise.resolve({ exists: false, data: () => ({}) }),
             kind === 'games' ? F.T('opponents').get().catch(() => null) : null
         ]);
+        lastData = { kind, data };
+        const [snap, viewDoc, oppSnap] = data;
         isCoach = await F.isAdmin();
         cards = Object.fromEntries(snap.docs.map(d => [d.id, { id: d.id, ...d.data() }]));
         const opps = {}; if (oppSnap) oppSnap.forEach(d => opps[d.id] = d.data().name);
         // Saison-Auswahl beim ersten Laden aufbauen
-        if (!seasonReady) { seasonReady = true; F.seasonSelect($('season'), snap.docs.map(d => d.data().date), sv => { season = sv; show(currentKind); }); return; }
+        if (!seasonReady) { seasonReady = true; F.seasonSelect($('season'), snap.docs.map(d => d.data().date), sv => { season = sv; show(currentKind, true); }); return; }
         const docs = snap.docs.filter(d => F.inSeason(d.data().date, season));
         const seen = viewDoc.exists ? viewDoc.data() : {};
 
