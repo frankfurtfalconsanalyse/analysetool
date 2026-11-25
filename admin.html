@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261125b">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261125c">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261125b"></script>
-    <script src="assets/js/core.js?v=20261125b"></script>
-    <script src="assets/js/saisonmanager.js?v=20261125b"></script>
+    <script src="assets/js/config.js?v=20261125c"></script>
+    <script src="assets/js/core.js?v=20261125c"></script>
+    <script src="assets/js/saisonmanager.js?v=20261125c"></script>
     <style>
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
@@ -80,6 +80,12 @@
         .kpi { padding: 16px 18px; }
         .kpi small { display: block; font-size: 12px; color: var(--text-muted); }
         .kpi strong { font-size: 24px; font-weight: 700; font-family: var(--font-display); }
+        /* Saisonmanager-Einrichtung */
+        #sm-guide summary { cursor: pointer; font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+        .sm-steps { margin: 0 0 14px; padding-left: 20px; display: grid; gap: 8px; font-size: 13.5px; line-height: 1.5; color: var(--text-muted); }
+        .sm-steps b { color: var(--text); }
+        .sm-steps a { color: var(--info); }
+        .sm-steps .btn { vertical-align: middle; margin-right: 2px; }
     </style>
 </head>
 <body>
@@ -177,8 +183,18 @@
         </div>
         <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Spiel</th><th>Datum</th><th>Gegner</th><th>Ergebnis</th><th></th></tr></thead><tbody id="games-table"></tbody></table></div></div>
         <div class="card club-only hidden" id="sm-setup-card">
-            <div class="card-head"><div><h3>Saisonmanager-Verbindung</h3><p>Einmalig einrichten (nur Vereins-Admins): Web-App-URL des Saisonmanager-Dienstes eintragen. Anleitung in der Hilfe unter „Saisonmanager“.</p></div></div>
-            <div class="card-body"><div style="display:flex; gap:8px; flex-wrap:wrap">
+            <div class="card-head"><div><h3>Saisonmanager-Verbindung</h3><p>Einmalig einrichten (nur Vereins-Admins). Danach können alle Coaches Spielberichte aus dem Saisonmanager laden.</p></div></div>
+            <div class="card-body">
+                <details id="sm-guide" open><summary>Anleitung</summary>
+                <ol class="sm-steps">
+                    <li><button class="btn btn-sm" id="btn-sm-copy" onclick="copySmCode()">Code kopieren</button> und <a href="https://script.new" target="_blank" rel="noopener">script.new</a> öffnen (neues Google-Apps-Script-Projekt, mit deinem Google-Konto anmelden).</li>
+                    <li>Den vorhandenen Inhalt im Editor komplett löschen, den kopierten Code einfügen und speichern (Disketten-Symbol).</li>
+                    <li>Oben rechts <b>Bereitstellen → Neue Bereitstellung</b> → Zahnrad bei „Typ auswählen“ → <b>Web-App</b>. Ausführen als: <b>Ich</b> · Zugriff: <b>Jeder</b> → <b>Bereitstellen</b>.</li>
+                    <li><b>Zugriff autorisieren</b> → Konto wählen. Zeigt Google „App nicht überprüft“: <b>Erweitert → Weiter zu … (unsicher)</b> → <b>Zulassen</b> – das ist normal, es ist euer eigenes Skript.</li>
+                    <li>Die <b>Web-App-URL</b> (endet auf <span class="mono">/exec</span>) kopieren, hier einfügen, <b>Testen</b> und <b>Speichern</b>.</li>
+                </ol></details>
+                <textarea id="sm-code" class="textarea mono hidden" rows="6" readonly style="font-size:11px; margin-bottom:10px"></textarea>
+                <div style="display:flex; gap:8px; flex-wrap:wrap">
                 <input id="sm-proxy" class="input" style="flex:1; min-width:220px" placeholder="https://script.google.com/macros/s/…/exec">
                 <button class="btn" onclick="testSmProxy()">Testen</button>
                 <button class="btn btn-primary" onclick="saveSmProxy()">Speichern</button>
@@ -238,6 +254,7 @@
         if (!ok) { document.body.insertAdjacentHTML('beforeend', `<main class="page">${F.empty('Kein Zugriff', 'Dieser Bereich ist nur für Trainer und Admins.', 'lock')}</main>`); return; }
         $('app').classList.remove('hidden');
         $('btn-import-toggle').innerHTML = I('list', 'icon-sm') + ' Liste einfügen';
+        $('btn-sm-copy').innerHTML = I('copy', 'icon-sm') + ' Code kopieren';
         $('yt-cat').innerHTML = F.CFG.categories.map(c => `<option>${c}</option>`).join('');
         $('yt-pos').innerHTML = ['Alle', ...F.CFG.positions].map(p => `<option>${p}</option>`).join('');
         $('p-nr').addEventListener('input', e => e.target.value = e.target.value.replace(/\D/g, ''));
@@ -269,7 +286,7 @@
         ctx = aSnap;
         $('team-eyebrow').textContent = `Coach-Bereich · ${F.teamName(ctx.team)}`;
         document.querySelectorAll('.club-only').forEach(el => el.classList.toggle('hidden', !ctx.clubAdmin));
-        if (ctx.clubAdmin && !$('sm-proxy').value) Saisonmanager.proxyUrl().then(u => $('sm-proxy').value = u || '');
+        if (ctx.clubAdmin && !$('sm-proxy').value) Saisonmanager.proxyUrl().then(u => { $('sm-proxy').value = u || ''; if (u) $('sm-guide').open = false; });
         media = m;
         sessions = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         games = gSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -489,6 +506,17 @@
         if (url && !/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) return F.toast('Bitte die Web-App-URL von script.google.com einfügen', 'error');
         await Saisonmanager.setProxyUrl(url);
         F.toast(url ? 'Saisonmanager-Verbindung gespeichert' : 'Verbindung entfernt');
+    }
+    /** Code des Saisonmanager-Dienstes in die Zwischenablage (Fallback: Textfeld zum Markieren) */
+    async function copySmCode() {
+        let code;
+        try { code = await (await fetch('tools/saisonmanager-proxy.gs', { cache: 'no-store' })).text(); }
+        catch (e) { return F.toast('Code konnte nicht geladen werden', 'error'); }
+        try { await navigator.clipboard.writeText(code); F.toast('Code kopiert – jetzt in script.new einfügen'); }
+        catch (e) {
+            const ta = $('sm-code'); ta.value = code; ta.classList.remove('hidden'); ta.focus(); ta.select();
+            F.toast('Bitte den markierten Code kopieren (Strg+C bzw. lange tippen → Kopieren)');
+        }
     }
     async function testSmProxy() {
         const msg = $('sm-proxy-msg'); msg.textContent = 'Teste …';

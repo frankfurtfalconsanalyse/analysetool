@@ -39,7 +39,7 @@ const Saisonmanager = (() => {
         const id = gameId(link);
         if (!id) throw new Error('Kein gültiger Saisonmanager-Link (…/spiel/12345).');
         const url = await proxyUrl();
-        if (!url) throw new Error('Die Saisonmanager-Verbindung ist noch nicht eingerichtet (Verwaltung → Spiele, nur Vereins-Admins).');
+        if (!url) throw new Error('Die Saisonmanager-Verbindung ist noch nicht eingerichtet – ein Vereins-Admin richtet sie einmalig ein: Verwaltung → Spiele → ganz unten „Saisonmanager-Verbindung“.');
         let res;
         try { res = await fetch(url + (url.includes('?') ? '&' : '?') + 'game=' + id); }
         catch (e) { throw new Error('Saisonmanager-Dienst nicht erreichbar. Ist die Web-App mit Zugriff „Jeder“ bereitgestellt?'); }
