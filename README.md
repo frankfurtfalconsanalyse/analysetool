@@ -3,7 +3,7 @@
 Video-Analyse-Tool der **Frankfurt Falcons** (Floorball). Spieler sehen Sessions, Clips und Spiel-/Trainingsaufzeichnungen und bekommen persönliches Feedback. Trainer pflegen Inhalte, markieren Spieler und sehen, wer was angeschaut hat.
 
 Reine statische Website (HTML/CSS/JS, kein Build-Schritt) – läuft z. B. direkt über GitHub Pages.
-Daten liegen in **Firebase Firestore**, Drive-Clips kommen über ein **Google-Apps-Script**.
+Daten liegen in **Firebase Firestore**, Videos auf **YouTube**.
 Mehrere Teams (Herren, Damen, Herren Regio) mit eigenem Kader und eigenen Inhalten – siehe [Teams](#teams).
 
 ## Seiten
@@ -12,7 +12,7 @@ Mehrere Teams (Herren, Damen, Herren Regio) mit eigenem Kader und eigenen Inhalt
 |---|---|---|
 | `index.html` | Login (Trikotnummer + PIN) und Dashboard: neueste Session, Markierungen, Sessions, Clip-Bibliothek | alle |
 | `session_view.html?id=…` | Session-Player: Clips/Taktik-Boards der Reihe nach, mit Kommentaren | alle |
-| `analyze.html?id=…&type=youtube\|drive` | Analyse-Modus für einen Clip: groß, mit Zeichnen und Kommentaren | alle |
+| `analyze.html?id=…` | Analyse-Modus für einen Clip: groß, mit Zeichnen und Kommentaren | alle |
 | `recordings.html?type=games\|trainings` | Übersicht der Spiel- und Trainingsaufzeichnungen | alle |
 | `recording_view.html?type=game\|training&id=…` | Aufzeichnung mit Ereignis-Timeline und privatem Feedback | alle (Eintragen: Admin) |
 | `tactic.html?id=…` | Taktikboard: Figuren, Zeichenwerkzeuge, Phasen + Abspielen; Team-Boards und private „Meine Boards“ | alle (Team-Boards: Admin) |
@@ -26,7 +26,7 @@ Mehrere Teams (Herren, Damen, Herren Regio) mit eigenem Kader und eigenen Inhalt
 ```
 assets/
   css/app.css     Design-System (Farben, Buttons, Karten, Layouts) – für alle Seiten
-  js/config.js    Firebase-Konfiguration, Teams (inkl. Drive-Script-URL je Team), Kategorien/Positionen
+  js/config.js    Firebase-Konfiguration, Teams, Kategorien/Positionen, Saisonmanager-Dienst
   js/core.js      Login, Teams/Rollen, Navigation, Kommentar-Formatierung, Clip-Bibliothek
   js/migrate.js   Einmalige Umstellung der alten Daten auf Teams
   js/player.js   Video-Player (Zeitlupe, Bild für Bild, A–B-Schleife, Tastenkürzel)
@@ -59,7 +59,7 @@ Trikotnummern gelten nur innerhalb eines Teams – #22 bei den Herren ist nicht 
 | `teams/{team}/players/{nr}` | `name`, `nr`, `role` (`player`/`coach`), `clubAdmin`, `uid` + `login` (verknüpftes Login-Konto), `authVersion` |
 | `users/{uid}` | `teams: { herren: '22', regio: '07' }` – Nummer des Kontos je Team |
 | `teams/{team}/youtube_clips` | `title`, `ytId`, `startTime`, `endTime`, `category`, `position`, `players[]`, `source` (Spiel/Training), `opponentId` |
-| `teams/{team}/video_metadata/{driveId}` | `position` für Drive-Clips |
+| `teams/{team}/video_metadata/{id}` | nur noch gelesen: `position` älterer Clips (früher auch Drive-Clips) |
 | `teams/{team}/sessions` | `title`, `description`, `videoIds[]` (Clip- oder Taktik-IDs), `dueDate`, `createdAt` |
 | `teams/{team}/comments` | Kommentare zu Clips: `videoId`, `text`, `author`, `authorNr`, `mentions[]`, `readBy[]`, `parentId` (Antwort), `drawing` + `drawingTime` |
 | `teams/{team}/games` · `trainings` | `title`, `ytId`, `date`; Spiele zusätzlich `opponentId`, `scoreFor`, `scoreAgainst`, `sm` (`id`, `link`, `weAre` = `home`/`guest`, `home`, `guest`, `stops[]`, `countdown`), `smSync[]` (Abgleich `{ period, clock, video, ev? }`) |
@@ -108,9 +108,7 @@ Ereignisse werden 10 Sekunden vor der geschätzten Torzeit eingetragen.
 - Die Regeln sind mit dem Firestore-Emulator getestet (`tests/rules`, 75 Fälle).
 - **Ladezeit:** Der Login-Kontext (Team, Nummer, Rolle) liegt im Browser (`falcons_ctx`, max. 14 Tage) und wird nach
   dem Anzeigen im Hintergrund geprüft – hat sich Rolle oder Team geändert, lädt die Seite einmal neu; ist das Konto
-  nicht mehr im Kader, wird abgemeldet. Er steuert nur die Anzeige, die Rechte prüft Firestore. Die Drive-Clips
-  (`falcons_drive_<team>`) kommen ebenfalls aus dem Browser-Speicher und werden höchstens alle 5 Minuten im
-  Hintergrund aufgefrischt. Firestore wählt die Verbindungsart automatisch (`experimentalAutoDetectLongPolling`).
+  nicht mehr im Kader, wird abgemeldet. Er steuert nur die Anzeige, die Rechte prüft Firestore. Firestore wählt die Verbindungsart automatisch (`experimentalAutoDetectLongPolling`).
 
 ### Umstellung auf Teams (einmalig)
 

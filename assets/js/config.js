@@ -14,10 +14,9 @@ const FALCONS_CONFIG = {
     },
 
     // Teams. Die erste ID ist das Haupt-Team (bisherige Daten). IDs nie ändern – sie stehen in der Datenbank
-    // und in firestore.rules. driveScriptUrl = Google-Apps-Script, das die Drive-Clips des Teams liefert
-    // (Antwort-Format: [{ title, link, category }, …]); ohne URL hat das Team nur YouTube-Clips.
+    // und in firestore.rules.
     teams: [
-        { id: "herren", name: "Herren", driveScriptUrl: "https://script.google.com/macros/s/AKfycbwQp7jJO8U-kj6HCKX-PvzNKGydl-_MDF0qcqEPIht4boBNGFvsVDoGpgpKufmKdlry/exec" },
+        { id: "herren", name: "Herren" },
         { id: "damen", name: "Damen" },
         { id: "regio", name: "Herren Regio" }
     ],

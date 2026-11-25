@@ -3,7 +3,7 @@
    - Login-Status & Admin-Prüfung
    - Kopfzeile / Navigation
    - Text-Formatierung (Zeitstempel, @Mentions)
-   - Clip-Bibliothek (Google Drive + YouTube + Taktik-Boards)
+   - Clip-Bibliothek (YouTube + Taktik-Boards)
    - kleine UI-Helfer (Icons, Toasts)
    Benötigt: Firebase-SDK + assets/js/config.js
    ========================================================================== */
@@ -91,7 +91,6 @@ const Falcons = (() => {
     const teamDoc = (team = currentTeam()) => db.collection('teams').doc(team);
     // Collections mit 'club_' gelten für alle Teams (für alle freigegebene Clips/Boards)
     const T = (name, team) => name.startsWith('club_') ? db.collection(name) : teamDoc(team).collection(name);
-    const teamConfig = (team = currentTeam()) => TEAMS.find(t => t.id === team) || {};
 
     /* ---------------------------------------------------------- Login/User */
     // Login über Firebase Auth: Ein Konto (E-Mail "<login>@falcons-hub.app", PIN als Passwort)
@@ -485,56 +484,20 @@ const Falcons = (() => {
     }
 
     /* ----------------------------------------------------- Clip-Bibliothek */
-    /**
-     * Lädt alle Einzelclips (Google Drive + YouTube) und optional Taktik-Boards.
-     * Fällt das Drive-Skript aus, werden trotzdem die YouTube-Clips geliefert.
-     */
-    /**
-     * Drive-Clips über das Google-Apps-Script. Das Skript braucht mehrere Sekunden – deshalb aus dem
-     * Zwischenspeicher liefern und höchstens alle 5 Minuten im Hintergrund auffrischen (neue Drive-Clips
-     * erscheinen damit beim nächsten Seitenaufruf). Ohne Zwischenspeicher höchstens 6 s warten.
-     */
-    function driveClips(cfg) {
-        if (!cfg.driveScriptUrl) return Promise.resolve([]);
-        const key = 'falcons_drive_' + cfg.id;
-        let cached = null;
-        try { cached = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
-        const fetchFresh = () => fetch(cfg.driveScriptUrl).then(r => r.json()).then(list => {
-            if (!Array.isArray(list)) throw new Error('Unerwartete Antwort');
-            try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), list })); } catch (e) {}
-            return list;
-        });
-        if (cached && Array.isArray(cached.list)) {
-            if (Date.now() - (cached.at || 0) > 5 * 60e3) fetchFresh().catch(err => console.warn('Drive-Clips nicht ladbar', err));
-            return Promise.resolve(cached.list);
-        }
-        return Promise.race([fetchFresh(), new Promise(r => setTimeout(() => r(null), 6000))])
-            .then(list => list || [])
-            .catch(err => { console.warn('Drive-Clips nicht ladbar', err); return []; });
-    }
+    // Reste der früheren Drive-Anbindung im Browser aufräumen
+    try { Object.keys(localStorage).filter(k => k.startsWith('falcons_drive_')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
 
+    /** Lädt alle Einzelclips (YouTube, auch für alle Teams freigegebene) und optional Taktik-Boards. */
     async function loadMedia({ tactics = false } = {}) {
-        const cfg = teamConfig();
-        const [driveRes, ytSnap, clubSnap, metaSnap, tacSnap, clubTacSnap] = await Promise.all([
-            driveClips(cfg),
+        const [ytSnap, clubSnap, metaSnap, tacSnap, clubTacSnap] = await Promise.all([
             T('youtube_clips').get(),
             T('club_clips').get().catch(() => null),
-            T('video_metadata').get().catch(() => null),
+            T('video_metadata').get().catch(() => null),   // ältere Clips: Position stand früher hier
             tactics ? T('tactics').where('visibility', '==', 'team').get().catch(() => null) : null,
             tactics ? T('club_tactics').get().catch(() => null) : null
         ]);
         const meta = {};
         if (metaSnap) metaSnap.forEach(d => meta[d.id] = d.data().position);
-
-        const drive = (Array.isArray(driveRes) ? driveRes : []).map(v => {
-            const id = (String(v.link || '').split('/d/')[1] || '').split('/')[0];
-            if (!id) return null;
-            return {
-                id, type: 'drive', title: v.title, category: v.category,
-                position: meta[id] || 'Alle',
-                embedUrl: `https://drive.google.com/file/d/${id}/preview`, thumb: null
-            };
-        }).filter(Boolean);
 
         const ytFrom = (snap, shared) => snap ? snap.docs.map(d => {
             const c = d.data();
@@ -550,10 +513,10 @@ const Falcons = (() => {
         }) : [];
 
         const tacFrom = (snap, shared) => snap ? snap.docs.map(d => ({ id: d.id, type: 'tactic', title: d.data().title, tacticData: d.data(), shared, thumb: null })) : [];
-        return [...drive, ...ytFrom(ytSnap, false), ...ytFrom(clubSnap, true), ...tacFrom(tacSnap, false), ...tacFrom(clubTacSnap, true)];
+        return [...ytFrom(ytSnap, false), ...ytFrom(clubSnap, true), ...tacFrom(tacSnap, false), ...tacFrom(clubTacSnap, true)];
     }
 
-    const SOURCE_LABEL = { drive: 'Drive', youtube: 'YouTube', tactic: 'Taktik' };
+    const SOURCE_LABEL = { youtube: 'YouTube', tactic: 'Taktik' };
 
     /** Karte für einen Clip (Dashboard-Raster) */
     function mediaCard(v, { label, onclick } = {}) {

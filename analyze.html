@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261125a">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261125b">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261125a"></script>
-    <script src="assets/js/core.js?v=20261125a"></script>
-    <script src="assets/js/player.js?v=20261125a"></script>
+    <script src="assets/js/config.js?v=20261125b"></script>
+    <script src="assets/js/core.js?v=20261125b"></script>
+    <script src="assets/js/player.js?v=20261125b"></script>
     <style>
         #draw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; touch-action: none; }
         #draw-canvas.active { pointer-events: auto; cursor: crosshair; }
@@ -89,7 +89,7 @@
     F.mountShell('dashboard', { bottomNav: false });
 
     const params = new URLSearchParams(location.search);
-    const videoId = params.get('id'), type = params.get('type') || 'drive';
+    const videoId = params.get('id');
     let players = {}, admin = false, clip = null, commentDocs = [], pendingDrawing = params.get('c');
 
     $('crumb').innerHTML = I('arrowLeft', 'icon-sm') + ' Dashboard';
@@ -105,20 +105,18 @@
         const [pSnap, isAdm, media] = await Promise.all([F.T('players').get(), F.isAdmin(), F.loadMedia()]);
         players = F.playerMap(pSnap); admin = isAdm;
 
-        clip = media.find(m => m.id === videoId) || (type === 'drive'
-            ? { id: videoId, type: 'drive', title: 'Clip', embedUrl: `https://drive.google.com/file/d/${videoId}/preview` }
-            : null);
-        if (!clip) { $('comments').innerHTML = F.empty('Clip nicht gefunden', '', 'video'); return; }
+        clip = media.find(m => m.id === videoId) || null;
+        if (!clip) { $('comments').innerHTML = F.empty('Clip nicht gefunden', 'Er wurde evtl. gelöscht.', 'video'); return; }
 
         await mediaView.show(clip);
         mediaView.overlay.appendChild($('draw-canvas'));   // Zeichenfläche liegt über dem Video, nicht über der Steuerleiste
         mediaView.overlay.appendChild($('draw-hint'));
         $('title').textContent = clip.title;
         document.title = `${clip.title} · Falcons Analyse-Hub`;
-        $('badges').innerHTML = [clip.category, clip.position !== 'Alle' && clip.position, clip.type === 'youtube' ? 'YouTube' : 'Drive']
+        $('badges').innerHTML = [clip.category, clip.position !== 'Alle' && clip.position]
             .filter(Boolean).map(b => `<span class="badge">${F.esc(b)}</span>`).join('');
         F.markViewed('video_views', videoId);
-        // Coaches: YouTube-Clips bearbeiten/löschen (Drive-Clips werden im Drive-Ordner verwaltet)
+        // Coaches: Clips bearbeiten/löschen (freigegebene nur vom freigebenden Team)
         if (admin && clip.type === 'youtube' && (!clip.shared || clip.ownerTeam === F.currentTeam())) {
             $('clip-admin').classList.remove('hidden');
             $('btn-edit-clip').innerHTML = I('pen', 'icon-sm') + ' Clip bearbeiten / löschen';

@@ -256,7 +256,7 @@ const FalconsPlayer = (() => {
     }
 
     /**
-     * Zeigt einen Clip an: YouTube → Falcons-Player, Google Drive → einfacher Drive-Player.
+     * Zeigt einen Clip an: YouTube → Falcons-Player, sonstige Einbettung (embedUrl) → einfacher iframe.
      * media.show(clip), media.seek(sec), media.time(), media.overlay (Element für Zeichnungen)
      */
     class Media {

@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261125a">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261125b">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261125a"></script>
-    <script src="assets/js/core.js?v=20261125a"></script>
-    <script src="assets/js/saisonmanager.js?v=20261125a"></script>
+    <script src="assets/js/config.js?v=20261125b"></script>
+    <script src="assets/js/core.js?v=20261125b"></script>
+    <script src="assets/js/saisonmanager.js?v=20261125b"></script>
     <style>
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
@@ -144,7 +144,7 @@
     <!-- CLIPS -->
     <section class="tab-panel" id="tab-clips">
         <div class="card">
-            <div class="card-head"><div><h3>YouTube-Clip hinzufügen</h3><p>Startzeit wird aus dem Link übernommen (z. B. <span class="mono">?t=95</span>). Drive-Clips kommen automatisch aus dem Google-Drive-Ordner.</p></div></div>
+            <div class="card-head"><div><h3>YouTube-Clip hinzufügen</h3><p>Startzeit wird aus dem Link übernommen (z. B. <span class="mono">?t=95</span>).</p></div></div>
             <div class="card-body">
                 <div class="form-grid">
                     <div class="field"><label>Titel</label><input id="yt-title" class="input" placeholder="z. B. Konter über links"></div>
@@ -156,7 +156,7 @@
                 </div>
             </div>
         </div>
-        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Clip</th><th>Quelle</th><th>Situation</th><th>Position</th><th></th></tr></thead><tbody id="clip-table"></tbody></table></div></div>
+        <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Clip</th><th>Situation</th><th>Position</th><th></th></tr></thead><tbody id="clip-table"></tbody></table></div></div>
     </section>
 
     <!-- SPIELE -->
@@ -231,7 +231,7 @@
     F.mountShell('admin');
 
     let players = [], ctx = null, opponents = [], media = [], sessions = [], games = [], trainings = [], selected = [], statusMode = 'sessions';
-    const SOURCE = { drive: 'Drive', youtube: 'YouTube', tactic: 'Taktik' };
+    const SOURCE = { youtube: 'YouTube', tactic: 'Taktik' };
 
     /* ------------------------------------------------------------ Start */
     F.ready.then(F.isAdmin).then(ok => {
@@ -341,7 +341,7 @@
         const { item, mode, openPlayers } = reminders[id];
         const base = location.href.replace(/admin\.html.*$/, '');
         const link = mode === 'sessions' ? `${base}session_view.html?id=${item.id}`
-            : mode === 'clips' ? `${base}analyze.html?id=${item.id}&type=${item.type === 'drive' ? 'drive' : 'youtube'}`
+            : mode === 'clips' ? `${base}analyze.html?id=${item.id}&type=youtube`
             : `${base}recording_view.html?type=${mode === 'games' ? 'game' : 'training'}&id=${item.id}`;
         const what = { sessions: 'die Session', clips: 'den Clip', games: 'die Spielanalyse', trainings: 'die Trainingsanalyse' }[mode];
         const until = item.dueDate ? ` bis ${new Date(item.dueDate).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}` : '';
@@ -402,15 +402,12 @@
         const clips = media.filter(x => x.type !== 'tactic');
         $('clip-table').innerHTML = clips.length ? clips.map(v => `<tr>
             <td><strong>${F.esc(v.title)}</strong>${v.shared ? ` <span class="badge badge-violet">Alle Teams${v.ownerTeam && v.ownerTeam !== ctx.team ? ' · von ' + F.esc(F.teamName(v.ownerTeam)) : ''}</span>` : ''}</td>
-            <td><span class="badge ${v.type === 'youtube' ? 'badge-brand' : 'badge-info'}">${SOURCE[v.type]}</span></td>
             <td class="muted">${F.esc(v.category || '–')}</td>
-            <td><select class="select" ${canEditClip(v) ? '' : 'disabled'} onchange="setPosition('${v.id}', '${v.type}', this.value)">
+            <td><select class="select" ${canEditClip(v) ? '' : 'disabled'} onchange="setPosition('${v.id}', this.value)">
                 ${['Alle', ...F.CFG.positions].map(p => `<option ${p === v.position ? 'selected' : ''}>${p}</option>`).join('')}
             </select></td>
-            <td class="actions">${v.type === 'youtube'
-                ? (canEditClip(v) ? `<button class="btn btn-ghost btn-sm" onclick="editClip('${v.id}')">${I('pen', 'icon-sm')} Bearbeiten</button><button class="btn btn-ghost btn-icon btn-sm btn-danger" title="Löschen" onclick="remove('${v.shared ? 'club_clips' : 'youtube_clips'}','${v.id}')">${I('trash', 'icon-sm')}</button>` : '')
-                : `<span class="faint" style="font-size:12px" title="Drive-Clips im Google-Drive-Ordner löschen">im Drive</span>`}</td>
-        </tr>`).join('') : `<tr><td colspan="5" class="muted">Noch keine Clips.</td></tr>`;
+            <td class="actions">${canEditClip(v) ? `<button class="btn btn-ghost btn-sm" onclick="editClip('${v.id}')">${I('pen', 'icon-sm')} Bearbeiten</button><button class="btn btn-ghost btn-icon btn-sm btn-danger" title="Löschen" onclick="remove('${v.shared ? 'club_clips' : 'youtube_clips'}','${v.id}')">${I('trash', 'icon-sm')}</button>` : ''}</td>
+        </tr>`).join('') : `<tr><td colspan="4" class="muted">Noch keine Clips.</td></tr>`;
     }
 
     function editClip(id) { const v = media.find(x => x.id === id); if (v) F.editClip(v, { onDone: loadAll, onDeleted: loadAll }); }
@@ -438,11 +435,9 @@
         F.toast('Clip hinzugefügt'); loadAll();
     }
 
-    async function setPosition(id, type, position) {
-        // Drive-Clips: Position in video_metadata; YouTube-Clips: direkt am Clip
+    async function setPosition(id, position) {
         const v0 = media.find(x => x.id === id);
-        if (type === 'youtube') await F.T(v0 && v0.shared ? 'club_clips' : 'youtube_clips').doc(id).update({ position });
-        else await F.T('video_metadata').doc(id).set({ position }, { merge: true });
+        await F.T(v0 && v0.shared ? 'club_clips' : 'youtube_clips').doc(id).update({ position });
         const v = media.find(x => x.id === id); if (v) v.position = position;
         F.toast('Position gespeichert');
     }
