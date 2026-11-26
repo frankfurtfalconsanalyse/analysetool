@@ -89,6 +89,12 @@ des Drittels bzw. der anderen Drittel. Ohne Drittelende wird grob „nächster A
 `games.sm.stops` speichert die Unterbrechungen, `games.sm.countdown` eine rückwärts laufende Uhr.
 Ereignisse werden 10 Sekunden vor der geschätzten Torzeit eingetragen.
 
+**Automatischer Abgleich** (`assets/js/scoreboard-scan.js`, nur Desktop-Chrome/Edge): Der Coach gibt den eigenen Tab
+frei (`getDisplayMedia`, „Diesen Tab“), der Player wird seitenfüllend, Tesseract.js (von jsDelivr, erst bei Bedarf
+geladen) liest die Spieluhr oben links. Ablauf: Scoreboard suchen → Grobraster alle 60 s (Lesefehler werden über
+„Uhr läuft nie schneller als das Video“ aussortiert) → je Ereignis frühester Moment, an dem die Uhr dessen Zeit zeigt.
+Die Treffer werden als Anker (`ev`) gespeichert, danach wird automatisch eingetragen.
+
 ## Text-Konventionen in Kommentaren
 
 - `@19` wird beim Senden zu `@19 | Name*` aufgelöst und blau dargestellt; `mentions` enthält `"19"` (Nummer im Team).

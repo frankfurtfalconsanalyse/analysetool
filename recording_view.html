@@ -24,14 +24,15 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261126a">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261126b">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261126a"></script>
-    <script src="assets/js/core.js?v=20261126a"></script>
-    <script src="assets/js/player.js?v=20261126a"></script>
-    <script src="assets/js/saisonmanager.js?v=20261126a"></script>
+    <script src="assets/js/config.js?v=20261126b"></script>
+    <script src="assets/js/core.js?v=20261126b"></script>
+    <script src="assets/js/player.js?v=20261126b"></script>
+    <script src="assets/js/saisonmanager.js?v=20261126b"></script>
+    <script src="assets/js/scoreboard-scan.js?v=20261126b"></script>
     <style>
         .time-row { display: flex; gap: 8px; }
         .time-row .input { font-family: var(--mono); }
@@ -111,6 +112,19 @@
         .sm-ev .m small { color: var(--text-faint); font-family: var(--mono); }
         .sm-ev .btn { flex-shrink: 0; }
         .sm-err { color: #ff5a63; font-size: 13px; margin-top: 8px; }
+        /* Automatischer Abgleich */
+        .auto-sync { border: 1px solid rgba(78,163,230,.35); background: var(--info-soft); border-radius: 9px; padding: 12px; margin-bottom: 12px; }
+        .auto-sync b { display: block; font-size: 13px; margin-bottom: 4px; }
+        .auto-sync p { font-size: 12.5px; color: var(--text-muted); line-height: 1.45; margin-bottom: 10px; }
+        .sync-or { font-size: 12px; color: var(--text-faint); margin: 2px 0 8px; }
+        .fp.fp-scan { position: fixed; inset: 0; z-index: 9000; background: #000; border-radius: 0; }
+        .fp.fp-scan .fp-stage { flex: 1; aspect-ratio: auto; height: auto; }
+        .fp.fp-scan .fp-bar, .fp.fp-scan .fp-tap { display: none; }
+        .scan-shield { position: absolute; inset: 0; z-index: 5; cursor: progress; }
+        .scan-hud { position: absolute; z-index: 6; left: 50%; bottom: 28px; transform: translateX(-50%); width: min(460px, 90%); background: rgba(12,14,18,.92); border: 1px solid var(--border-strong); border-radius: 12px; padding: 14px 16px; color: var(--text); font-size: 13px; box-shadow: var(--shadow-lg); }
+        .scan-hud .bar { height: 6px; border-radius: 3px; background: var(--surface-3); margin: 10px 0 12px; overflow: hidden; }
+        .scan-hud .bar span { display: block; height: 100%; width: 0; background: var(--brand); transition: width .3s; }
+        .scan-hud .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: 12px; }
     </style>
 </head>
 <body>
@@ -687,7 +701,10 @@
                 return `<button class="btn btn-sm ${a ? 'is-set' : ''}" onclick="markPeriod(${p}, '${which}')" title="Aktuelle Videostelle = ${which === 'start' ? 'Anpfiff' : 'Schlusssirene'}">
                     <span>${a ? I('check', 'icon-sm') : ''} ${which === 'start' ? 'Anpfiff' : 'Ende'}</span><small>${a ? F.fmtTime(a.video) : 'ist jetzt'}</small></button>`;
             };
-            html += `<div class="sync-step"><h4><span class="n">1</span> Drittel im Video markieren</h4>
+            const auto = typeof ScoreboardScan !== 'undefined' && ScoreboardScan.supported() ? `<div class="auto-sync"><b>${I('zap', 'icon-sm')} Automatisch abgleichen</b>
+                <p>Der Hub liest die Spieluhr aus dem Scoreboard oben links im Video und sucht jedes Tor und jede Strafe selbst – danach wird alles eingetragen. Dauert je nach Videolänge 5–10 Minuten. Beim Start <b>„Diesen Tab“ freigeben</b> und den Tab nicht wechseln.</p>
+                <button class="btn btn-primary" onclick="autoSync()">${I('play', 'icon-sm')} Automatisch abgleichen</button></div><p class="sync-or">… oder von Hand:</p>` : '';
+            html += `<div class="sync-step"><h4><span class="n">1</span> Drittel im Video markieren</h4>${auto}
                 <p class="h">Floorball läuft mit gestoppter Zeit – ein Drittel dauert im Video oft 30 Minuten und mehr. Spule zu <b>Anpfiff</b> und <b>Schlusssirene</b> jedes Drittels und tippe den Knopf. Die Unterbrechungen nach Toren und Strafen rechnet der Hub dazwischen selbst ein.</p>
                 <div class="period-grid">${periods.map(p => `<div class="period-row"><span class="pl">${SMx.periodLabel(p)}</span>${mark(p, 'start')}${mark(p, 'end')}</div>`).join('')}</div>
                 <label class="sm-opt"><input type="checkbox" ${cd ? 'checked' : ''} onchange="setCountdown(this.checked)"> Die Uhr im Video läuft rückwärts (20:00 → 0:00)</label>
@@ -733,6 +750,61 @@
             </div>`;
         }
         el.innerHTML = html;
+    }
+
+    /* Automatischer Abgleich über das Scoreboard (Tab-Freigabe + Texterkennung) */
+    let scanner = null;
+    async function autoSync() {
+        if (!yt || !yt.ready) return F.toast('Video ist noch nicht bereit', 'error');
+        if (scanner) return;
+        const list = smList();
+        scanner = new ScoreboardScan.Scanner({ player: yt, periodLen: SMx.periodLen, countdown: smCountdown(), onProgress: scanProgress });
+        try { await scanner.open(); }
+        catch (e) {
+            scanner = null;
+            return F.toast(e.name === 'NotAllowedError' ? 'Freigabe abgelehnt – ohne Tab-Freigabe kann der Hub das Video nicht lesen.' : (e.message || String(e)), 'error');
+        }
+        // Player über die ganze Seite, Maus vom Video fernhalten (sonst blendet YouTube Titel ein)
+        const hud = document.createElement('div');
+        hud.innerHTML = `<div class="scan-shield"></div><div class="scan-hud"><div class="t">Automatischer Abgleich startet …</div><div class="bar"><span></span></div>
+            <div class="row"><span>Tab offen lassen · Esc bricht ab</span><button class="btn btn-sm" type="button">Abbrechen</button></div></div>`;
+        hud.querySelector('button').onclick = () => scanner && scanner.abort('Abgebrochen');
+        [...hud.children].forEach(el => yt.stage.appendChild(el));
+        yt.root.classList.add('fp-scan');
+        const onKey = e => { if (e.key === 'Escape' && scanner) scanner.abort('Abgebrochen'); };
+        document.addEventListener('keydown', onKey);
+        try { yt.yt.mute(); yt.yt.setPlaybackRate(1); } catch (e) {}
+        let result = null, err = null;
+        try { result = await scanner.run(list.map(e => ({ id: e.id, period: e.period, clock: SMx.clockSec(e.time) }))); }
+        catch (e) { err = e; }
+        finally {
+            scanner.close(); scanner = null;
+            document.removeEventListener('keydown', onKey);
+            yt.root.classList.remove('fp-scan');
+            yt.stage.querySelectorAll('.scan-shield, .scan-hud').forEach(el => el.remove());
+            try { yt.pause(); yt.yt.unMute(); } catch (e) {}
+        }
+        if (err) { console.warn(err); return F.toast(err instanceof ScoreboardScan.AbortError ? err.message : 'Automatischer Abgleich fehlgeschlagen: ' + (err.message || err), 'error'); }
+
+        // gefundene Stellen als Abgleichspunkte übernehmen (+ Grobraster alle ~3 Minuten für die Spielstand-Anzeige)
+        const add = [];
+        list.forEach(e => { const v = result.hits[e.id]; if (v !== undefined) add.push({ period: e.period, clock: SMx.clockSec(e.time), video: v, ev: e.id }); });
+        let lastT = -1e9;
+        result.samples.forEach(s => { if (s.t - lastT >= 170 && !add.some(a => a.period === s.period && Math.abs(a.clock - s.clock) < 2)) { add.push({ period: s.period, clock: s.clock, video: Math.round(s.t * 10) / 10 }); lastT = s.t; } });
+        anchors = anchors.filter(a => !add.some(b => (b.ev !== undefined && a.ev === b.ev) || (a.period === b.period && Math.abs(a.clock - b.clock) < 2)));
+        anchors.push(...add);
+        anchors.sort((a, b) => a.period - b.period || a.clock - b.clock);
+        await F.T('games').doc(itemId).update({ smSync: anchors }); rec.smSync = anchors;
+        const found = Object.keys(result.hits).length;
+        renderSync();
+        await importSm();
+        F.toast(`${found} von ${list.length} Toren und Strafen im Video gefunden${found < list.length ? ' – die übrigen sind geschätzt eingetragen' : ''}`);
+    }
+    function scanProgress({ text, done, total }) {
+        const hud = yt && yt.stage.querySelector('.scan-hud');
+        if (!hud) return;
+        hud.querySelector('.t').textContent = text;
+        if (total) hud.querySelector('.bar span').style.width = Math.round(done / total * 100) + '%';
     }
 
     async function importSm() {
