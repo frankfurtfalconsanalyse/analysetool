@@ -242,8 +242,13 @@ const ScoreboardScan = (() => {
             const hits = {};
             for (let i = 0; i < events.length; i++) {
                 this.onProgress({ text: `Suche Tore und Strafen … (${i + 1}/${events.length})`, done: n + 1 + i * 6, total: n + 1 + events.length * 6 });
-                const t = await this.refine(events[i], samples);
-                if (t !== null) hits[events[i].id] = Math.round(t * 10) / 10;
+                // Die Hallenuhr bleibt beim Tor oft schon eine Sekunde vor der Saisonmanager-Zeit stehen und zeigt
+                // dessen Zeit erst nach dem Anstoß. Deshalb den Moment suchen, in dem die Uhr eine Sekunde davor
+                // erreicht – das Ereignis liegt direkt danach.
+                const ev = events[i], before = ev.clock > 0 ? { ...ev, clock: ev.clock - 1 } : ev;
+                let t = await this.refine(before, samples);
+                if (t !== null && before !== ev) t += .8;
+                if (t !== null) hits[ev.id] = Math.round(t * 10) / 10;
             }
             return { hits, samples };
         }

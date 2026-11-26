@@ -87,7 +87,7 @@ Saisonmanager-Ereignis). Modell je Drittel: Videodauer bis Spieluhr *c* = 1,35 �
 vor *c*. Das Modell wird über die Anker skaliert – zwischen zwei Ankern exakt durch beide, davor/danach mit der Skalierung
 des Drittels bzw. der anderen Drittel. Ohne Drittelende wird grob „nächster Anpfiff − 10 min Pause“ angenommen.
 `games.sm.stops` speichert die Unterbrechungen, `games.sm.countdown` eine rückwärts laufende Uhr.
-Ereignisse werden 10 Sekunden vor der geschätzten Torzeit eingetragen.
+Ereignisse werden 7 Sekunden vor der Torzeit eingetragen (Hallenuhr steht oft schon 1 s vor der Saisonmanager-Zeit – gesucht wird daher der Moment, in dem die Uhr 1 s davor erreicht).
 
 **Automatischer Abgleich** (`assets/js/scoreboard-scan.js`, nur Desktop-Chrome/Edge): Der Coach gibt den eigenen Tab
 frei (`getDisplayMedia`, „Diesen Tab“), der Player wird seitenfüllend, Tesseract.js (von jsDelivr, erst bei Bedarf

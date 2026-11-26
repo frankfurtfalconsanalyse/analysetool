@@ -24,15 +24,15 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261126b">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261126c">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261126b"></script>
-    <script src="assets/js/core.js?v=20261126b"></script>
-    <script src="assets/js/player.js?v=20261126b"></script>
-    <script src="assets/js/saisonmanager.js?v=20261126b"></script>
-    <script src="assets/js/scoreboard-scan.js?v=20261126b"></script>
+    <script src="assets/js/config.js?v=20261126c"></script>
+    <script src="assets/js/core.js?v=20261126c"></script>
+    <script src="assets/js/player.js?v=20261126c"></script>
+    <script src="assets/js/saisonmanager.js?v=20261126c"></script>
+    <script src="assets/js/scoreboard-scan.js?v=20261126c"></script>
     <style>
         .time-row { display: flex; gap: 8px; }
         .time-row .input { font-family: var(--mono); }
@@ -649,7 +649,7 @@
         const est = smEst(e.period, SMx.clockSec(e.time));
         smActive = id; renderSync();
         if (est === null) return F.toast(`Erst Anpfiff ${SMx.periodLabel(e.period)} markieren (Schritt 1)`, 'error');
-        yt.seek(Math.max(0, Math.round(est) - 10));
+        yt.seek(Math.max(0, Math.round(est) - 7));
     }
     function smConfirm(id) {
         const e = smEvent(id); if (!e) return;
@@ -670,10 +670,10 @@
         let target;
         if (gap >= 0 && gap <= 60) {
             // Spieluhr läuft nie schneller als das Video: frühestens in „gap“ Sekunden – einfach weiterschauen
-            target = v + gap - 10;
+            target = v + gap - 7;
             F.toast(gap ? `Noch ${gap} s Spielzeit bis zum ${what} – weiterschauen (bei Unterbrechungen dauert es länger)` : `${what} ist genau hier`);
         } else {
-            target = smEst(e.period, goal) - 10;
+            target = smEst(e.period, goal) - 7;
             F.toast(gap < 0 ? `${what} ist schon vorbei – Video springt zurück` : `Noch ${SMx.fmtClock(gap)} Spielzeit – Video springt näher heran`);
         }
         renderSync();
@@ -720,7 +720,7 @@
             // Schritt 2: Tor für Tor
             const list = smList();
             html += `<div class="sync-step"><h4><span class="n">2</span> Tore & Strafen im Video finden (${list.filter(e => e.type === 'goal').length} Tore, ${list.filter(e => e.type === 'penalty').length} Strafen)</h4>
-                <p class="h">▶ springt 10 Sekunden vor die geschätzte Stelle. Siehst du das Tor: <b>Jetzt</b> tippen – das nächste ist dann schon ausgewählt. Passt es nicht, die <b>Spieluhr im Video ablesen</b> und eintragen: der Hub springt dann so, dass du nur noch weiterschauen musst.</p>
+                <p class="h">▶ springt 7 Sekunden vor die geschätzte Stelle. Siehst du das Tor: <b>Jetzt</b> tippen – das nächste ist dann schon ausgewählt. Passt es nicht, die <b>Spieluhr im Video ablesen</b> und eintragen: der Hub springt dann so, dass du nur noch weiterschauen musst.</p>
                 ${list.map(e => {
                     const est = smEst(e.period, SMx.clockSec(e.time));
                     const ours = e.team === us, isGoal = e.type === 'goal';
@@ -732,7 +732,7 @@
                         ${isGoal ? `<span class="score-chip">${e.home}:${e.guest}</span>` : `<span class="score-chip">2'</span>`}
                         <div class="m"><b>${isGoal ? (ours ? 'Tor' : 'Gegentor') : (ours ? 'Strafe gegen uns' : 'Strafe Gegner')} · ${SMx.periodLabel(e.period)} ${F.esc(e.time)}</b>${F.esc(who)}${isGoal && e.assist ? ' · V: #' + e.assist : ''}${!isGoal && e.reason ? ' · ' + F.esc(e.reason) : ''}
                             <br><small>${info}</small></div>
-                        <button class="btn btn-sm btn-icon" title="10 s vorher anspringen" onclick="smJump(${e.id})" ${est === null ? 'disabled' : ''}>${I('play', 'icon-sm')}</button>
+                        <button class="btn btn-sm btn-icon" title="7 s vorher anspringen" onclick="smJump(${e.id})" ${est === null ? 'disabled' : ''}>${I('play', 'icon-sm')}</button>
                         <button class="btn btn-sm ${active ? 'btn-primary' : ''}" title="${isGoal ? 'Das Tor fällt' : 'Die Strafe wird gepfiffen'} genau jetzt im Video" onclick="smConfirm(${e.id})">Jetzt</button>
                         ${active ? `<div class="sm-read"><span class="grow">Andere Zeit im Video? Spieluhr ablesen:</span>
                             <input id="sm-read" class="input" placeholder="${cd ? '12:20' : '7:40'}" inputmode="decimal" onkeydown="if (event.key === 'Enter') smRead(${e.id})">
@@ -746,7 +746,7 @@
             html += `<div class="sync-step"><h4><span class="n">3</span> Als Ereignisse eintragen</h4>
                 <label class="sm-opt" style="margin:0 0 10px"><input type="checkbox" id="sm-pen" checked> Strafen als Über-/Unterzahl eintragen</label>
                 <button class="btn btn-primary btn-block" onclick="importSm()" ${ready ? '' : 'disabled'}>${I('save', 'icon-sm')} ${ready} Ereignisse eintragen / aktualisieren</button>
-                <p class="h" style="margin:10px 0 0">${confirmed} von ${list.length} im Video bestätigt${confirmed < ready ? ' – die übrigen werden geschätzt eingetragen und lassen sich später jederzeit genauer abgleichen und neu eintragen' : ''}. Jedes Tor wird 10 Sekunden vor dem Treffer eingetragen, mit Spielstand, Torschütze und Vorlage (unsere Spieler werden markiert). Erneutes Eintragen aktualisiert die Zeiten statt doppelt anzulegen.</p>
+                <p class="h" style="margin:10px 0 0">${confirmed} von ${list.length} im Video bestätigt${confirmed < ready ? ' – die übrigen werden geschätzt eingetragen und lassen sich später jederzeit genauer abgleichen und neu eintragen' : ''}. Jedes Tor wird 7 Sekunden vor dem Treffer eingetragen, mit Spielstand, Torschütze und Vorlage (unsere Spieler werden markiert). Erneutes Eintragen aktualisiert die Zeiten statt doppelt anzulegen.</p>
             </div>`;
         }
         el.innerHTML = html;
@@ -790,7 +790,7 @@
         const add = [];
         list.forEach(e => { const v = result.hits[e.id]; if (v !== undefined) add.push({ period: e.period, clock: SMx.clockSec(e.time), video: v, ev: e.id }); });
         let lastT = -1e9;
-        result.samples.forEach(s => { if (s.t - lastT >= 170 && !add.some(a => a.period === s.period && Math.abs(a.clock - s.clock) < 2)) { add.push({ period: s.period, clock: s.clock, video: Math.round(s.t * 10) / 10 }); lastT = s.t; } });
+        result.samples.forEach(s => { if (s.t - lastT >= 50 && !add.some(a => a.period === s.period && Math.abs(a.clock - s.clock) < 2)) { add.push({ period: s.period, clock: s.clock, video: Math.round(s.t * 10) / 10 }); lastT = s.t; } });
         anchors = anchors.filter(a => !add.some(b => (b.ev !== undefined && a.ev === b.ev) || (a.period === b.period && Math.abs(a.clock - b.clock) < 2)));
         anchors.push(...add);
         anchors.sort((a, b) => a.period - b.period || a.clock - b.clock);

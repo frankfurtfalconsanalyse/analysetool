@@ -160,7 +160,7 @@ const Saisonmanager = (() => {
      * Ereignisse für die Spielanalyse bauen.
      * roster: Kader-IDs unseres Teams ('07', '22' …) zum Markieren von Torschütze/Vorlage.
      */
-    function buildEvents(game, anchors, side, roster, { penalties = true, leadIn = 10 } = {}) {
+    function buildEvents(game, anchors, side, roster, { penalties = true, leadIn = 7 } = {}) {
         const other = side === 'home' ? 'guest' : 'home';
         const sh = (game.home && game.home.short) || 'Heim', sg = (game.guest && game.guest.short) || 'Gast';
         const out = [], missing = [], stops = stopsFromGame(game);
