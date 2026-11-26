@@ -33,6 +33,7 @@ const TacticBoard = (() => {
         run:     { name: 'Laufweg', free: true, arrow: true },
         dribble: { name: 'Dribbling', free: true, arrow: true },
         pass:    { name: 'Pass', straight: true, arrow: true, dash: true },
+        shot:    { name: 'Abschluss', straight: true, arrow: true, double: true },
         line:    { name: 'Linie', straight: true },
         eraser:  { name: 'Radierer' }
     };
@@ -484,12 +485,17 @@ const TacticBoard = (() => {
                 dPath = 'M' + out.map(p => p.join(',')).join('L');
             } else dPath = smoothPath(pts);
 
-            el('path', { d: dPath, ...common, ...(tool.dash ? { 'stroke-dasharray': '.45 .3' } : {}) }, g);
+            if (tool.double) {
+                // Doppelpfeil (Abschluss): zwei parallele Linien, die vor der Spitze enden
+                const [a, b] = pts, len = dist(a, b) || 1, ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len, nx = -uy, ny = ux, o = .16;
+                const e = [b[0] - ux * .4, b[1] - uy * .4];
+                [o, -o].forEach(k => el('path', { d: `M${r2(a[0] + nx * k)},${r2(a[1] + ny * k)}L${r2(e[0] + nx * k)},${r2(e[1] + ny * k)}`, ...common }, g));
+            } else el('path', { d: dPath, ...common, ...(tool.dash ? { 'stroke-dasharray': '.45 .3' } : {}) }, g);
             if (tool.arrow) {
                 const end = pts[pts.length - 1];
                 let i = pts.length - 2; while (i > 0 && dist(pts[i], end) < .5) i--;
                 const from = pts[i], len = dist(from, end) || 1, ux = (end[0] - from[0]) / len, uy = (end[1] - from[1]) / len;
-                const L = .55, Wd = .3;
+                const L = tool.double ? .7 : .55, Wd = tool.double ? .42 : .3;
                 el('path', { d: `M${end[0] + ux * .1},${end[1] + uy * .1} L${end[0] - ux * L - uy * Wd},${end[1] - uy * L + ux * Wd} L${end[0] - ux * L + uy * Wd},${end[1] - uy * L - ux * Wd}Z`, fill: d.color, stroke: d.color, 'stroke-width': .05, 'stroke-linejoin': 'round' }, g);
             }
             // breite unsichtbare Fläche → Radierer trifft auch dünne Linien
@@ -549,10 +555,10 @@ const TacticBoard = (() => {
                 // passende Zeichnung suchen: Ball bevorzugt Pässe, Spieler Laufwege/Dribblings
                 let near = null, best = Infinity;
                 a.drawings.forEach(d => {
-                    if (!['run', 'dribble', 'pass'].includes(d.tool)) return;
+                    if (!['run', 'dribble', 'pass', 'shot'].includes(d.tool)) return;
                     const q = pairs(d.points), d1 = dist(q[0], s), d2 = dist(q[q.length - 1], t);
                     if (d1 > 1.8 || d2 > 1.8) return;
-                    const fits = (p.type === 'ball') === (d.tool === 'pass');
+                    const fits = (p.type === 'ball') === (d.tool === 'pass' || d.tool === 'shot');
                     const score = d1 + d2 + (fits ? 0 : 3);
                     if (score < best) { best = score; near = d; }
                 });

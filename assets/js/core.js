@@ -61,6 +61,7 @@ const Falcons = (() => {
         run: '<path d="M4 19c3-9 8-13 15-13"/><path d="m15 3 4 3-3 4"/>',
         pass: '<path d="M5 19l2-2M10 14l2-2M15 9l3-3"/><path d="M12 5h7v7"/>',
         dribble: '<path d="M3 16c1.5-2.5 3 2.5 4.5 0s3-2.5 4.5 0 3 2.5 4.5 0"/><path d="m17 10 4 5-5 2"/>',
+        shot: '<path d="M4 17 14.5 6.5M7 20 17.5 9.5"/><path d="M13 4h7v7"/>',
         line: '<path d="M5 19 19 5"/>',
         eraser: '<path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l10-10a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L13 19"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',
         redo: '<path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/>',
