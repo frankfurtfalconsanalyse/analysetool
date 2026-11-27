@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261127a">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261127b">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261127a"></script>
-    <script src="assets/js/core.js?v=20261127a"></script>
-    <script src="assets/js/tactic-board.js?v=20261127a"></script>
+    <script src="assets/js/config.js?v=20261127b"></script>
+    <script src="assets/js/core.js?v=20261127b"></script>
+    <script src="assets/js/tactic-board.js?v=20261127b"></script>
     <style>
         body { overflow: hidden; }
         .tac { display: flex; height: calc(100vh - var(--header-h)); height: calc(100dvh - var(--header-h)); }
@@ -390,7 +390,9 @@
                 Object.assign(active, data, { title, category: payload.category, visibility });
                 if (!data.legacyImage) delete active.legacyImage;
                 savedJson = JSON.stringify(board.data());
-                F.toast('Änderungen gespeichert');
+                // steckt das Board als Kopie in Sessions (private Boards), dort gleich mit aktualisieren
+                const n = admin ? await F.syncEmbeddedBoard(active.id, { ...data, title, category: payload.category }) : 0;
+                F.toast(n ? `Änderungen gespeichert – auch in ${n} ${n === 1 ? 'Session' : 'Sessions'} übernommen` : 'Änderungen gespeichert');
                 applyPermissions(); renderLib();
             }
         } catch (e) { console.error(e); F.toast('Speichern fehlgeschlagen', 'error'); }

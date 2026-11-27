@@ -543,6 +543,26 @@ const Falcons = (() => {
             return n;   // Anzahl veröffentlichter Sessions
         })());
     }
+    /**
+     * Ein Board wurde geändert: eingebettete Kopien in Sessions und Entwürfen aktualisieren
+     * (private Boards stecken als Kopie in Sessions, weil Spieler das Original nicht lesen dürfen).
+     * Gibt die Zahl der aktualisierten Sessions zurück.
+     */
+    async function syncEmbeddedBoard(id, board) {
+        const { ownerNr, ownerName, visibility, opponentId, updatedAt, createdAt, ...copy } = board;
+        let n = 0;
+        for (const col of ['sessions', 'session_drafts']) {
+            const snap = await T(col).where('videoIds', 'array-contains', id).get().catch(() => null);
+            if (!snap) continue;
+            for (const d of snap.docs) {
+                const emb = d.data().embedded || {};
+                if (!emb[id]) continue;
+                await T(col).doc(d.id).update({ embedded: { ...emb, [id]: copy } }).then(() => n++).catch(e => console.warn('Session nicht aktualisiert', e));
+            }
+        }
+        return n;
+    }
+
     /** Inhalte einer Session: Clips/Boards aus der Bibliothek, private Boards als eingebettete Kopie */
     function sessionItems(s, media) {
         const emb = s.embedded || {};
@@ -802,7 +822,7 @@ const Falcons = (() => {
         toDate, season, seasonSelect, inSeason, fmtTime, dueInfo,
         icon, getUser, setUser, logout, requireUser, isAdmin, mountShell, authState, signIn, register, authError,
         esc, parseTime, hasTime, formatText, resolveMentions, parseYouTube, ytThumb, fmtDate, playerMap,
-        loadMedia, publishDueSessions, sessionItems, mediaCard, threadHtml, openReply, formDialog, deleteRecording, editRecording, editClip, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
+        loadMedia, publishDueSessions, sessionItems, syncEmbeddedBoard, mediaCard, threadHtml, openReply, formDialog, deleteRecording, editRecording, editClip, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
         onTimestamp: null, openClip: null, onDrawing: null
     };
     return api;
