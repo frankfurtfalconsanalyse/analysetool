@@ -24,14 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261126c">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261127a">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261126c"></script>
-    <script src="assets/js/core.js?v=20261126c"></script>
-    <script src="assets/js/player.js?v=20261126c"></script>
-    <script src="assets/js/tactic-board.js?v=20261126c"></script>
+    <script src="assets/js/config.js?v=20261127a"></script>
+    <script src="assets/js/core.js?v=20261127a"></script>
+    <script src="assets/js/player.js?v=20261127a"></script>
+    <script src="assets/js/tactic-board.js?v=20261127a"></script>
     <style>
         .tactic-stage { position: absolute; inset: 0; padding: 12px 12px 64px; background: radial-gradient(ellipse at center, #1a1d22, #0e0f12); }
         .tactic-controls { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 12px; background: rgba(19,21,25,.92); border: 1px solid var(--border); max-width: calc(100% - 24px); }
@@ -84,6 +84,7 @@
     F.mountShell('dashboard', { bottomNav: false });
 
     const sessionId = new URLSearchParams(location.search).get('id');
+    const isDraft = new URLSearchParams(location.search).get('draft') === '1';   // Vorschau eines Entwurfs (Coaches)
     let clips = [], idx = 0, players = {}, admin = false, unsub = null, maxSeen = 0;
 
     $('crumb').innerHTML = I('arrowLeft', 'icon-sm') + ' Dashboard';
@@ -95,8 +96,9 @@
 
     async function init() {
         if (!sessionId) return location.replace('index.html');
+        if (!isDraft) await F.publishDueSessions();   // Link auf eine gerade fällig gewordene Session
         const [sDoc, pSnap, media, progDoc, isAdm] = await Promise.all([
-            F.T('sessions').doc(sessionId).get(),
+            F.T(isDraft ? 'session_drafts' : 'sessions').doc(sessionId).get().catch(() => ({ exists: false })),
             F.T('players').get(),
             F.loadMedia({ tactics: true }),
             user.nr ? F.T('progress').doc(user.nr).get() : Promise.resolve({ exists: false, data: () => ({}) }),
@@ -109,7 +111,8 @@
         $('s-title').textContent = s.title;
         $('s-desc').textContent = s.description || '';
         document.title = `${s.title} · Falcons Analyse-Hub`;
-        clips = (s.videoIds || []).map(id => media.find(m => m.id === id)).filter(Boolean);
+        clips = F.sessionItems(s, media);
+        if (isDraft) $('s-title').textContent = s.title + (s.publishAt ? ' · Vorschau (geplant)' : ' · Vorschau (Entwurf)');
         maxSeen = (progDoc.exists && progDoc.data()[sessionId]) || 0;
 
         if (!clips.length) { $('comments').innerHTML = F.empty('Leere Session', 'Diese Session enthält keine (verfügbaren) Clips.', 'layers'); return; }
@@ -151,7 +154,7 @@
         if (n <= maxSeen) return;
         maxSeen = n;
         renderToc();
-        if (user.nr) F.T('progress').doc(user.nr).set({ [sessionId]: n }, { merge: true });
+        if (user.nr && !isDraft) F.T('progress').doc(user.nr).set({ [sessionId]: n }, { merge: true });
     }
 
     function listen(videoId) {

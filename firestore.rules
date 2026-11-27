@@ -63,6 +63,11 @@ service cloud.firestore {
     }
     function migrating() { return !exists(/databases/$(database)/documents/teams/herren) && legacyAdmin(); }
 
+    function dueDraft(team, id) {
+      let path = /databases/$(database)/documents/teams/$(team)/session_drafts/$(id);
+      return exists(path) && get(path).data.get('publishAt', null) is timestamp && get(path).data.publishAt <= request.time;
+    }
+
     // Login-Seite während der Umstellung: alter Kader-Eintrag zur Nummer
     match /players/{nr} { allow get: if !exists(/databases/$(database)/documents/teams/herren); }
     // alte Collections: nur noch für die Umstellung lesbar
@@ -102,7 +107,24 @@ service cloud.firestore {
       // ------------------------------------- Inhalte (nur Coaches pflegen)
       match /youtube_clips/{id}   { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
       match /video_metadata/{id}  { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
-      match /sessions/{id}        { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
+      match /sessions/{id} {
+        allow read: if canRead(team);
+        allow write: if isCoach(team) || migrating();
+        // Geplante Session veröffentlichen: jeder im Team darf den fälligen Entwurf unverändert hierher übernehmen
+        allow create: if canRead(team) && dueDraft(team, id)
+          && request.resource.data == get(/databases/$(database)/documents/teams/$(team)/session_drafts/$(id)).data;
+      }
+      // Entwürfe und geplante Sessions: nur Coaches – fällige darf jeder im Team lesen und (beim Veröffentlichen) löschen
+      match /session_drafts/{id} {
+        allow read, write: if isCoach(team);
+        allow get, delete: if canRead(team) && resource.data.get('publishAt', null) is timestamp && resource.data.publishAt <= request.time;
+      }
+      // Zeitplan ohne Inhalt (Id + Zeitpunkt), damit Spieler-Browser fällige Sessions finden
+      match /schedule/{id} {
+        allow read: if canRead(team);
+        allow write: if isCoach(team);
+        allow delete: if canRead(team) && resource.data.publishAt <= request.time;
+      }
       match /games/{id}           { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
       match /trainings/{id}       { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }
       match /game_events/{id}     { allow read: if canRead(team); allow write: if isCoach(team) || migrating(); }

@@ -60,7 +60,9 @@ Trikotnummern gelten nur innerhalb eines Teams – #22 bei den Herren ist nicht 
 | `users/{uid}` | `teams: { herren: '22', regio: '07' }` – Nummer des Kontos je Team |
 | `teams/{team}/youtube_clips` | `title`, `ytId`, `startTime`, `endTime`, `category`, `position`, `players[]`, `source` (Spiel/Training), `opponentId` |
 | `teams/{team}/video_metadata/{id}` | nur noch gelesen: `position` älterer Clips (früher auch Drive-Clips) |
-| `teams/{team}/sessions` | `title`, `description`, `videoIds[]` (Clip- oder Taktik-IDs), `dueDate`, `createdAt` |
+| `teams/{team}/sessions` | `title`, `description`, `videoIds[]` (Clip- oder Taktik-IDs), `dueDate`, `createdAt`, `embedded` (Kopien privater Boards) |
+| `teams/{team}/session_drafts` | Entwürfe/geplante Sessions (nur Coaches): wie `sessions` + `publishAt` |
+| `teams/{team}/schedule/{id}` | Zeitplan ohne Inhalt (`publishAt`) – fällige Entwürfe verschiebt der erste Besucher unverändert nach `sessions` (Regeln prüfen Zeit + Inhalt) |
 | `teams/{team}/comments` | Kommentare zu Clips: `videoId`, `text`, `author`, `authorNr`, `mentions[]`, `readBy[]`, `parentId` (Antwort), `drawing` + `drawingTime` |
 | `teams/{team}/games` · `trainings` | `title`, `ytId`, `date`; Spiele zusätzlich `opponentId`, `scoreFor`, `scoreAgainst`, `sm` (`id`, `link`, `weAre` = `home`/`guest`, `home`, `guest`, `stops[]`, `countdown`), `smSync[]` (Abgleich `{ period, clock, video, ev? }`) |
 | `teams/{team}/opponents` | Gegner: `name`, `strengths`, `weaknesses`, `keyPlayers`, `plan` |

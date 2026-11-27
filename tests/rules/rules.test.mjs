@@ -148,6 +148,34 @@ await t('other team coach cannot edit', assertFails(updateDoc(doc(regioCoach, 'c
 await t('owner team coach edits', assertSucceeds(updateDoc(doc(coach, 'club_tactics/ct1'), { title: 'y' })));
 await t('owner team coach deletes', assertSucceeds(deleteDoc(doc(coach, 'club_tactics/ct1'))));
 
+/* ============================================ 9. Entwürfe & geplante Sessions */
+const past = new Date(Date.now() - 60e3), future = new Date(Date.now() + 3600e3);
+const draftDue = { title: 'Geplant', videoIds: ['yt1'], createdAt: past, publishAt: past };
+await t('coach saves draft + schedule', assertSucceeds((() => { const b = writeBatch(coach);
+    b.set(doc(coach, 'teams/herren/session_drafts/d1'), { title: 'Entwurf', videoIds: ['yt1'], createdAt: past });
+    b.set(doc(coach, 'teams/herren/session_drafts/d2'), { title: 'Später', videoIds: ['yt1'], createdAt: future, publishAt: future });
+    b.set(doc(coach, 'teams/herren/schedule/d2'), { publishAt: future });
+    b.set(doc(coach, 'teams/herren/session_drafts/d3'), draftDue);
+    b.set(doc(coach, 'teams/herren/schedule/d3'), { publishAt: past });
+    return b.commit(); })()));
+await t('player cannot list drafts', assertFails(getDocs(collection(max, 'teams/herren/session_drafts'))));
+await t('player cannot read plain draft', assertFails(getDoc(doc(max, 'teams/herren/session_drafts/d1'))));
+await t('player cannot read future draft', assertFails(getDoc(doc(max, 'teams/herren/session_drafts/d2'))));
+await t('player reads schedule', assertSucceeds(getDocs(collection(max, 'teams/herren/schedule'))));
+await t('player cannot write schedule', assertFails(setDoc(doc(max, 'teams/herren/schedule/d1'), { publishAt: past })));
+await t('player cannot publish future draft', assertFails((() => { const b = writeBatch(max);
+    b.set(doc(max, 'teams/herren/sessions/d2'), { title: 'Später', videoIds: ['yt1'], createdAt: future, publishAt: future });
+    b.delete(doc(max, 'teams/herren/session_drafts/d2')); b.delete(doc(max, 'teams/herren/schedule/d2')); return b.commit(); })()));
+await t('player cannot publish changed content', assertFails((() => { const b = writeBatch(max);
+    b.set(doc(max, 'teams/herren/sessions/d3'), { ...draftDue, title: 'Gefälscht' });
+    b.delete(doc(max, 'teams/herren/session_drafts/d3')); b.delete(doc(max, 'teams/herren/schedule/d3')); return b.commit(); })()));
+await t('player cannot create plain session', assertFails(setDoc(doc(max, 'teams/herren/sessions/zz'), { title: 'x' })));
+await t('player reads due draft', assertSucceeds(getDoc(doc(max, 'teams/herren/session_drafts/d3'))));
+await t('player publishes due draft unchanged', assertSucceeds((() => { const b = writeBatch(max);
+    b.set(doc(max, 'teams/herren/sessions/d3'), draftDue);
+    b.delete(doc(max, 'teams/herren/session_drafts/d3')); b.delete(doc(max, 'teams/herren/schedule/d3')); return b.commit(); })()));
+await t('stranger cannot read schedule', assertFails(getDocs(collection(stranger, 'teams/herren/schedule'))));
+
 console.log(`\n${ok} bestanden, ${bad} fehlgeschlagen`);
 await env.cleanup();
 process.exit(bad ? 1 : 0);

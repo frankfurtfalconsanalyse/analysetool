@@ -24,14 +24,14 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261126c">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261127a">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261126c"></script>
-    <script src="assets/js/core.js?v=20261126c"></script>
-    <script src="assets/js/player.js?v=20261126c"></script>
-    <script src="assets/js/migrate.js?v=20261126c"></script>
+    <script src="assets/js/config.js?v=20261127a"></script>
+    <script src="assets/js/core.js?v=20261127a"></script>
+    <script src="assets/js/player.js?v=20261127a"></script>
+    <script src="assets/js/migrate.js?v=20261127a"></script>
     <style>
         /* ---------- Login ---------- */
         .login-screen {
@@ -364,6 +364,8 @@
         $('hero-wrap').innerHTML = '<div class="skeleton" style="height:180px"></div>';
         $('session-grid').innerHTML = $('mention-grid').innerHTML = F.loading();
 
+        // fällige geplante Sessions veröffentlichen (parallel; kam etwas dazu → einmal neu laden)
+        F.publishDueSessions().then(n => { if (n) location.reload(); });
         // Markierungen schon jetzt abfragen (parallel zum Rest)
         mentionsP = Promise.all([
             user.nr ? F.T('comments').where('mentions', 'array-contains', user.nr).get().catch(() => null) : null,

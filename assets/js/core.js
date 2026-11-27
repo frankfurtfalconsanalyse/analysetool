@@ -517,6 +517,38 @@ const Falcons = (() => {
         return [...ytFrom(ytSnap, false), ...ytFrom(clubSnap, true), ...tacFrom(tacSnap, false), ...tacFrom(clubTacSnap, true)];
     }
 
+    /**
+     * Geplante Sessions veröffentlichen: teams/{team}/schedule enthält nur Id + Zeitpunkt (für alle lesbar).
+     * Ist der Zeitpunkt erreicht, verschiebt der erste Besucher den Entwurf unverändert nach sessions –
+     * die Datenbank-Regeln prüfen Zeitpunkt und Inhalt. Einmal je Seitenaufruf, Fehler stören nie.
+     */
+    let publishing = null;
+    function publishDueSessions() {
+        return publishing || (publishing = (async () => {
+            let n = 0;
+            try {
+                const snap = await T('schedule').get();
+                const ms = v => !v ? Infinity : v.toDate ? v.toDate().getTime() : new Date(v).getTime();
+                const due = snap.docs.filter(d => ms(d.data().publishAt) <= Date.now() - 3000);
+                for (const d of due) {
+                    try {
+                        const draft = await T('session_drafts').doc(d.id).get().catch(() => null);
+                        const batch = db.batch();
+                        if (draft && draft.exists) { batch.set(T('sessions').doc(d.id), draft.data()); batch.delete(T('session_drafts').doc(d.id)); }
+                        batch.delete(T('schedule').doc(d.id));
+                        await batch.commit(); n++;
+                    } catch (e) { console.warn('Geplante Session nicht veröffentlicht', e); }
+                }
+            } catch (e) { /* Regeln noch nicht eingespielt o. Ä. */ }
+            return n;   // Anzahl veröffentlichter Sessions
+        })());
+    }
+    /** Inhalte einer Session: Clips/Boards aus der Bibliothek, private Boards als eingebettete Kopie */
+    function sessionItems(s, media) {
+        const emb = s.embedded || {};
+        return (s.videoIds || []).map(id => media.find(m => m.id === id) || (emb[id] ? { id, type: 'tactic', title: emb[id].title, tacticData: emb[id] } : null)).filter(Boolean);
+    }
+
     const SOURCE_LABEL = { youtube: 'YouTube', tactic: 'Taktik' };
 
     /** Karte für einen Clip (Dashboard-Raster) */
@@ -770,7 +802,7 @@ const Falcons = (() => {
         toDate, season, seasonSelect, inSeason, fmtTime, dueInfo,
         icon, getUser, setUser, logout, requireUser, isAdmin, mountShell, authState, signIn, register, authError,
         esc, parseTime, hasTime, formatText, resolveMentions, parseYouTube, ytThumb, fmtDate, playerMap,
-        loadMedia, mediaCard, threadHtml, openReply, formDialog, deleteRecording, editRecording, editClip, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
+        loadMedia, publishDueSessions, sessionItems, mediaCard, threadHtml, openReply, formDialog, deleteRecording, editRecording, editClip, markViewed, toast, deleteDoc, empty, loading, commentHtml, toggleRead, submitOnEnter,
         onTimestamp: null, openClip: null, onDrawing: null
     };
     return api;

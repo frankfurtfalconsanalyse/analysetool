@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261126c">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261127a">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261126c"></script>
-    <script src="assets/js/core.js?v=20261126c"></script>
-    <script src="assets/js/saisonmanager.js?v=20261126c"></script>
+    <script src="assets/js/config.js?v=20261127a"></script>
+    <script src="assets/js/core.js?v=20261127a"></script>
+    <script src="assets/js/saisonmanager.js?v=20261127a"></script>
     <style>
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
@@ -80,6 +80,8 @@
         .kpi { padding: 16px 18px; }
         .kpi small { display: block; font-size: 12px; color: var(--text-muted); }
         .kpi strong { font-size: 24px; font-weight: 700; font-family: var(--font-display); }
+        .form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        @media (max-width: 640px) { .form-2 { grid-template-columns: 1fr; } }
         /* Saisonmanager-Einrichtung */
         #sm-guide summary { cursor: pointer; font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
         .sm-steps { margin: 0 0 14px; padding-left: 20px; display: grid; gap: 8px; font-size: 13.5px; line-height: 1.5; color: var(--text-muted); }
@@ -129,11 +131,16 @@
     <!-- SESSIONS -->
     <section class="tab-panel" id="tab-sessions">
         <div class="card">
-            <div class="card-head"><div><h3>Neue Session erstellen</h3><p>Eine geführte Playlist aus Clips und Taktik-Boards. Die Reihenfolge entspricht der Auswahl-Reihenfolge.</p></div></div>
+            <div class="card-head"><div><h3 id="s-form-title">Neue Session erstellen</h3><p>Eine geführte Playlist aus Clips und Taktik-Boards. Die Reihenfolge entspricht der Auswahl-Reihenfolge. Eigene „Nur mich“-Boards werden als Kopie in die Session übernommen – das Board selbst bleibt privat.</p></div></div>
             <div class="card-body" style="display:flex; flex-direction:column; gap:14px">
                 <div class="field"><label>Titel</label><input id="s-title" class="input" placeholder="z. B. Videoanalyse Spieltag 5"></div>
                 <div class="field"><label>Anweisungen für die Spieler</label><textarea id="s-desc" class="textarea" placeholder="Worauf sollen die Spieler achten?"></textarea></div>
-                <div class="field" style="max-width:260px"><label>Ansehen bis (optional)</label><input id="s-due" class="input" type="date"></div>
+                <div class="form-2" style="max-width:640px">
+                    <div class="field"><label>Ansehen bis (optional)</label><input id="s-due" class="input" type="date"></div>
+                    <div class="field"><label>Veröffentlichen</label><select id="s-pub" class="select" onchange="$('s-at-wrap').classList.toggle('hidden', this.value !== 'plan')">
+                        <option value="now">Sofort für alle</option><option value="draft">Nur für Coaches (Entwurf)</option><option value="plan">Geplant – Datum &amp; Uhrzeit</option></select></div>
+                </div>
+                <div class="field hidden" id="s-at-wrap" style="max-width:260px"><label>Für alle sichtbar ab</label><input id="s-at" class="input" type="datetime-local"></div>
                 <div class="field">
                     <label>Inhalte auswählen <span id="s-count" class="faint"></span></label>
                     <div class="picker">
@@ -141,8 +148,13 @@
                         <div class="picker-list" id="s-picker"></div>
                     </div>
                 </div>
-                <div><button class="btn btn-primary" onclick="saveSession()" id="btn-save-session">Session speichern</button></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap"><button class="btn btn-primary" onclick="saveSession()" id="btn-save-session">Session speichern</button>
+                    <button class="btn btn-ghost hidden" id="btn-cancel-edit" onclick="resetSessionForm()">Bearbeiten abbrechen</button></div>
             </div>
+        </div>
+        <div class="card hidden" id="draft-card">
+            <div class="card-head"><div><h3>Entwürfe &amp; geplant</h3><p>Nur Coaches sehen diese Sessions. Geplante gehen zur angegebenen Zeit automatisch für alle online.</p></div></div>
+            <div class="table-wrap"><table class="table"><thead><tr><th>Titel</th><th>Inhalte</th><th>Status</th><th>Für alle ab</th><th></th></tr></thead><tbody id="draft-table"></tbody></table></div>
         </div>
         <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Titel</th><th>Inhalte</th><th>Erstellt</th><th>Ansehen bis</th><th></th></tr></thead><tbody id="session-table"></tbody></table></div></div>
     </section>
@@ -247,6 +259,8 @@
     F.mountShell('admin');
 
     let players = [], ctx = null, opponents = [], media = [], sessions = [], games = [], trainings = [], selected = [], statusMode = 'sessions';
+    let drafts = [], draftsBlocked = false, editingDraft = null;
+    const toMs = v => !v ? 0 : v.toDate ? v.toDate().getTime() : new Date(v).getTime();
     const SOURCE = { youtube: 'YouTube', tactic: 'Taktik' };
 
     /* ------------------------------------------------------------ Start */
@@ -273,12 +287,15 @@
 
     async function loadAll() {
         $('status-list').innerHTML = F.loading();
-        const [pSnap, aSnap, m, sSnap, gSnap, tSnap, oSnap] = await Promise.all([
+        await F.publishDueSessions();
+        const [pSnap, aSnap, m, sSnap, gSnap, tSnap, oSnap, dSnap, mySnap] = await Promise.all([
             F.T('players').get(), F.ready, F.loadMedia({ tactics: true }),
             F.T('sessions').orderBy('createdAt', 'desc').get(),
             F.T('games').orderBy('date', 'desc').get(), F.T('trainings').orderBy('date', 'desc').get(),
             // Gegner sind optional – fehlen die neuen Datenbank-Regeln, läuft die Verwaltung trotzdem
-            F.T('opponents').get().catch(e => { console.warn('Gegner nicht ladbar', e); F.toast('Gegner nicht ladbar – Datenbank-Regeln in Firebase aktualisieren', 'error'); return { docs: [] }; })
+            F.T('opponents').get().catch(e => { console.warn('Gegner nicht ladbar', e); F.toast('Gegner nicht ladbar – Datenbank-Regeln in Firebase aktualisieren', 'error'); return { docs: [] }; }),
+            F.T('session_drafts').get().catch(e => { console.warn('Entwürfe nicht ladbar', e); draftsBlocked = true; return { docs: [] }; }),
+            (F.getUser() || {}).nr ? F.T('tactics').where('ownerNr', '==', F.getUser().nr).get().catch(() => ({ docs: [] })) : { docs: [] }
         ]);
         opponents = oSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
         $('g-opp').innerHTML = `<option value="">– kein Gegner –</option>` + opponents.map(o => `<option value="${o.id}">${F.esc(o.name)}</option>`).join('');
@@ -287,12 +304,16 @@
         $('team-eyebrow').textContent = `Coach-Bereich · ${F.teamName(ctx.team)}`;
         document.querySelectorAll('.club-only').forEach(el => el.classList.toggle('hidden', !ctx.clubAdmin));
         if (ctx.clubAdmin && !$('sm-proxy').value) Saisonmanager.proxyUrl().then(u => { $('sm-proxy').value = u || ''; if (u) $('sm-guide').open = false; });
-        media = m;
+        // eigene „Nur mich“-Boards zusätzlich für die Session-Auswahl
+        const priv = mySnap.docs.filter(d => d.data().visibility === 'private' && !m.some(x => x.id === d.id))
+            .map(d => ({ id: d.id, type: 'tactic', private: true, title: d.data().title, tacticData: d.data() }));
+        media = [...m, ...priv];
         sessions = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        drafts = dSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => toMs(a.publishAt || a.createdAt) - toMs(b.publishAt || b.createdAt));
         games = gSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         trainings = tSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        renderKpis(); renderSessions(); renderPicker(); renderClips(); renderRecordings('games'); renderRecordings('trainings'); renderKader();
+        renderKpis(); renderSessions(); renderDrafts(); renderPicker(); renderClips(); renderRecordings('games'); renderRecordings('trainings'); renderKader();
         loadStatus(statusMode);
     }
 
@@ -397,21 +418,99 @@
         $('s-picker').innerHTML = media.filter(v => !q || (v.title || '').toLowerCase().includes(q)).map(v => {
             const pos = selected.indexOf(v.id);
             return `<label class="pick"><input type="checkbox" ${pos > -1 ? 'checked' : ''} onchange="toggleSelect('${v.id}')">
-                <span class="badge">${SOURCE[v.type]}</span><span>${F.esc(v.title)}</span>${pos > -1 ? `<span class="order">${pos + 1}</span>` : ''}</label>`;
+                <span class="badge">${SOURCE[v.type]}${v.private ? ' · nur ich' : ''}</span><span>${F.esc(v.title)}</span>${pos > -1 ? `<span class="order">${pos + 1}</span>` : ''}</label>`;
         }).join('') || '<p class="faint" style="padding:10px; font-size:13px">Keine Treffer.</p>';
         $('s-count').textContent = selected.length ? `· ${selected.length} ausgewählt` : '';
     }
     function toggleSelect(id) { const i = selected.indexOf(id); i > -1 ? selected.splice(i, 1) : selected.push(id); renderPicker(); }
 
+    /** Eigene private Boards als Kopie in die Session (Spieler können das private Board selbst nicht lesen) */
+    function embeddedBoards(ids) {
+        const out = {};
+        ids.forEach(id => { const v = media.find(x => x.id === id); if (v && v.private) { const { ownerNr, ownerName, visibility, ...board } = v.tacticData; out[id] = board; } });
+        return out;
+    }
+    const fmtAt = v => { const d = new Date(toMs(v)); return d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ', ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr'; };
+    const localInput = v => { const d = new Date(toMs(v) - new Date().getTimezoneOffset() * 60e3); return d.toISOString().slice(0, 16); };
+
     async function saveSession() {
-        const title = $('s-title').value.trim();
+        const title = $('s-title').value.trim(), mode = $('s-pub').value;
         if (!title) return F.toast('Bitte einen Titel eingeben', 'error');
         if (!selected.length) return F.toast('Bitte mindestens einen Inhalt auswählen', 'error');
-        const data = { title, description: $('s-desc').value.trim(), videoIds: selected, createdAt: new Date() };
+        let at = null;
+        if (mode === 'plan') {
+            if (!$('s-at').value) return F.toast('Bitte Datum und Uhrzeit angeben', 'error');
+            at = new Date($('s-at').value);
+            if (at.getTime() < Date.now() + 60e3) return F.toast('Der Zeitpunkt muss in der Zukunft liegen', 'error');
+        }
+        const data = { title, description: $('s-desc').value.trim(), videoIds: [...selected], createdAt: at || new Date() };
         if ($('s-due').value) data.dueDate = $('s-due').value;
-        await F.T('sessions').add(data);
-        $('s-title').value = $('s-desc').value = $('s-due').value = ''; selected = [];
-        F.toast('Session erstellt'); loadAll();
+        const emb = embeddedBoards(selected); if (Object.keys(emb).length) data.embedded = emb;
+        try {
+            const batch = db.batch();
+            const id = editingDraft || F.T('session_drafts').doc().id;
+            if (mode === 'now') {
+                batch.set(F.T('sessions').doc(id), data);
+                if (editingDraft) batch.delete(F.T('session_drafts').doc(id));
+            } else {
+                if (at) data.publishAt = at;
+                batch.set(F.T('session_drafts').doc(id), data);
+            }
+            // Zeitplan (für alle lesbar, ohne Inhalt) – danach veröffentlicht der erste Besucher die Session
+            if (at) batch.set(F.T('schedule').doc(id), { publishAt: at }); else if (editingDraft) batch.delete(F.T('schedule').doc(id));
+            await batch.commit();
+        } catch (e) { console.warn(e); return F.toast(e.code === 'permission-denied' ? 'Keine Berechtigung – bitte die neuen Datenbank-Regeln in Firebase einspielen' : 'Speichern fehlgeschlagen', 'error'); }
+        F.toast(mode === 'now' ? 'Session für alle veröffentlicht' : mode === 'draft' ? 'Als Entwurf gespeichert – nur Coaches sehen sie' : `Geplant: für alle ab ${fmtAt(at)}`);
+        resetSessionForm(); loadAll();
+    }
+    function resetSessionForm() {
+        $('s-title').value = $('s-desc').value = $('s-due').value = $('s-at').value = ''; $('s-pub').value = 'now'; $('s-at-wrap').classList.add('hidden');
+        selected = []; editingDraft = null;
+        $('s-form-title').textContent = 'Neue Session erstellen'; $('btn-cancel-edit').classList.add('hidden');
+        renderPicker();
+    }
+    function editDraft(id) {
+        const d = drafts.find(x => x.id === id); if (!d) return;
+        editingDraft = id;
+        $('s-title').value = d.title || ''; $('s-desc').value = d.description || ''; $('s-due').value = d.dueDate || '';
+        $('s-pub').value = d.publishAt ? 'plan' : 'draft'; $('s-at-wrap').classList.toggle('hidden', !d.publishAt);
+        $('s-at').value = d.publishAt ? localInput(d.publishAt) : '';
+        selected = (d.videoIds || []).filter(v => media.some(m => m.id === v));
+        $('s-form-title').textContent = `Entwurf bearbeiten: ${d.title}`; $('btn-cancel-edit').classList.remove('hidden');
+        renderPicker();
+        document.getElementById('tab-sessions').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function renderDrafts() {
+        $('draft-card').classList.toggle('hidden', !drafts.length && !draftsBlocked);
+        if (draftsBlocked) { $('draft-table').innerHTML = `<tr><td colspan="5" class="muted">Entwürfe brauchen die neuen Datenbank-Regeln – bitte <span class="mono">firestore.rules</span> in Firebase einspielen.</td></tr>`; return; }
+        $('draft-table').innerHTML = drafts.map(d => `<tr>
+            <td><strong>${F.esc(d.title)}</strong>${d.description ? `<div class="faint" style="font-size:12px">${F.esc(d.description).slice(0, 90)}</div>` : ''}</td>
+            <td>${(d.videoIds || []).length}</td>
+            <td>${d.publishAt ? `<span class="badge badge-info">${I('clock', 'icon-sm')} Geplant</span>` : '<span class="badge">Entwurf</span>'}</td>
+            <td class="muted">${d.publishAt ? fmtAt(d.publishAt) : '–'}</td>
+            <td class="actions">
+                <a class="btn btn-ghost btn-sm" href="session_view.html?id=${d.id}&draft=1">${I('eye', 'icon-sm')} Vorschau</a>
+                <button class="btn btn-ghost btn-sm" onclick="editDraft('${d.id}')">${I('pen', 'icon-sm')} Bearbeiten</button>
+                <button class="btn btn-ghost btn-sm" onclick="publishNow('${d.id}')">${I('send', 'icon-sm')} Jetzt veröffentlichen</button>
+                <button class="btn btn-ghost btn-icon btn-sm btn-danger" title="Löschen" onclick="deleteDraft('${d.id}')">${I('trash', 'icon-sm')}</button>
+            </td></tr>`).join('');
+    }
+    async function publishNow(id) {
+        const d = drafts.find(x => x.id === id); if (!d) return;
+        if (!confirm(`„${d.title}“ jetzt für alle veröffentlichen?`)) return;
+        const { id: _, publishAt, ...data } = d;
+        const batch = db.batch();
+        batch.set(F.T('sessions').doc(id), { ...data, createdAt: new Date() });
+        batch.delete(F.T('session_drafts').doc(id)); batch.delete(F.T('schedule').doc(id));
+        await batch.commit();
+        F.toast('Session für alle veröffentlicht'); loadAll();
+    }
+    async function deleteDraft(id) {
+        const d = drafts.find(x => x.id === id); if (!d || !confirm(`Entwurf „${d.title}“ löschen?`)) return;
+        const batch = db.batch(); batch.delete(F.T('session_drafts').doc(id)); batch.delete(F.T('schedule').doc(id)); await batch.commit();
+        if (editingDraft === id) resetSessionForm();
+        F.toast('Entwurf gelöscht'); loadAll();
     }
 
     /* ----------------------------------------------------------- Clips */
