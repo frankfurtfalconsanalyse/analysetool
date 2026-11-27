@@ -24,13 +24,13 @@
             document.body ? go() : document.addEventListener('DOMContentLoaded', go);
         }
     </script>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261127b">
+    <link rel="stylesheet" href="assets/css/app.css?v=20261127c">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="assets/js/config.js?v=20261127b"></script>
-    <script src="assets/js/core.js?v=20261127b"></script>
-    <script src="assets/js/saisonmanager.js?v=20261127b"></script>
+    <script src="assets/js/config.js?v=20261127c"></script>
+    <script src="assets/js/core.js?v=20261127c"></script>
+    <script src="assets/js/saisonmanager.js?v=20261127c"></script>
     <style>
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
@@ -402,6 +402,7 @@
             <td><input type="date" class="input" style="height:32px; width:150px; font-size:13px" value="${s.dueDate || ''}" onchange="setDue('${s.id}', this.value)"></td>
             <td class="actions">
                 <a class="btn btn-ghost btn-sm" href="session_view.html?id=${s.id}">${I('eye', 'icon-sm')} Ansehen</a>
+                <button class="btn btn-ghost btn-sm" title="Session für Spieler ausblenden – sie wird wieder ein Entwurf" onclick="unpublish('${s.id}')">${I('lock', 'icon-sm')} Nur für Coaches</button>
                 <button class="btn btn-ghost btn-icon btn-sm btn-danger" onclick="remove('sessions','${s.id}')">${I('trash', 'icon-sm')}</button>
             </td></tr>`).join('') : `<tr><td colspan="5" class="muted">Noch keine Sessions.</td></tr>`;
     }
@@ -505,6 +506,19 @@
         batch.delete(F.T('session_drafts').doc(id)); batch.delete(F.T('schedule').doc(id));
         await batch.commit();
         F.toast('Session für alle veröffentlicht'); loadAll();
+    }
+    /** Veröffentlichte Session zurückziehen: wird wieder Entwurf (gleiche Id → Fortschritt der Spieler bleibt erhalten) */
+    async function unpublish(id) {
+        const x = sessions.find(v => v.id === id); if (!x) return;
+        if (!confirm(`„${x.title}“ für Spieler ausblenden? Sie wird wieder ein Entwurf, den nur Coaches sehen.`)) return;
+        const { id: _, ...data } = x;
+        try {
+            const batch = db.batch();
+            batch.set(F.T('session_drafts').doc(id), data);
+            batch.delete(F.T('sessions').doc(id));
+            await batch.commit();
+        } catch (e) { console.warn(e); return F.toast(e.code === 'permission-denied' ? 'Keine Berechtigung – bitte die neuen Datenbank-Regeln in Firebase einspielen' : 'Fehlgeschlagen', 'error'); }
+        F.toast('Session ist jetzt nur für Coaches sichtbar (Entwürfe & geplant)'); loadAll();
     }
     async function deleteDraft(id) {
         const d = drafts.find(x => x.id === id); if (!d || !confirm(`Entwurf „${d.title}“ löschen?`)) return;
